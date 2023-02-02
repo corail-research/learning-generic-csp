@@ -7,9 +7,17 @@ This repo contains experiments related to the representation of combinatorial op
 - sum
 - element
 
+## Types of problems represented
 As a start, we will represent the problems using a heterogeneous graph with 5 node types:
 - Constraint. Constraint nodes will have, among other features, a 1-hot encoding that represents the type of constraint. Constraint nodes represent constraints on input variables, such as equality, greater than, not equal, etc.
 - Operators. Operator nodes combine other variables and/or other operator nodes with an operation. Examples of operations include: sum, subtraction, multiplication, tuple (as in an extension constraint). 
 - Variables. Variables represent the problem's variables
 - Domain (values). Represent values that nodes can take.
 - Constants. Numerical values that are not Domain values.
+
+## Structure
+For now, the project is still very small. It currently has the following folders:
+- examples: contains jupyter notebooks with code examples for some problems
+- sample_problems: contains some problem instances, as expressed with the XCSP3 format
+- src: source code
+- test: test code
