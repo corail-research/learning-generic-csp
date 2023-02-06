@@ -71,21 +71,32 @@ def parse_variable(var_name, dim_index, dimensions, current_position, domain, va
             current_position.pop()
 
 def parse_array_variables(array_vars):
-    instance_variables = []
+    instance_variables = {}
+    other_domain = None  # domain for other variables
     for array in array_vars:
+        array_variables = []
+        array_name = array.attrib["id"]
         array_dimensions = get_array_dimensions(array.attrib["size"])
         array_domains_parsed = np.zeros(array_dimensions)
         for variable in array:
             if variable.tag == "domain":
                 domain = parse_variable_domain(variable.text)
                 var_names = variable.attrib["for"].split()
+                if var_names == "others":
+                    other_domain = domain
+                    continue
                 for new_var_name in var_names:
-                    current_array_dims = new_var_name.replace(
-                        "]", "").split('[')[1:]
-                    parse_variable(new_var_name, 0, current_array_dims, [
-                    ], domain, instance_variables, array_dimensions, array_domains_parsed)
-    
+                    current_array_dims = new_var_name.replace("]", "").split('[')[1:]
+                    parse_variable(array_name, 0, current_array_dims, [
+                    ], domain, array_variables, array_dimensions, array_domains_parsed)
+
+        for i, val in enumerate(array_domains_parsed):
+            if val == 0:
+                real_index = list(np.unravel_index(i, tuple(array_dimensions)))
+                new_var = build_variable(array_name, real_index, other_domain)
+                array_variables.append(new_var)
+        instance_variables[array_name] = array_variables
+
     return instance_variables
 
-# TODO: fill in "other" variables
 # TODO: parse non-array variables
