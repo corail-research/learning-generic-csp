@@ -1,6 +1,7 @@
 import ast
 import numpy as np
 from typing import List
+import xml.etree.ElementTree as ET
 
 
 class Variable:
@@ -25,21 +26,23 @@ def get_array_dimensions(size):
 
 def parse_variable_domain(raw_domain):
     domain = []
-    sub_domains = [dom_element for dom_element in raw_domain.replace(
-        "..", ",").split(" ")]
+    sub_domains = [dom_element for dom_element in raw_domain.replace("..", ",").replace("infinity", "inf").split(" ")]
     for sub_domain in sub_domains:
         if not sub_domain:
             continue
         if "," in sub_domain:
-            sub_domain = sub_domain.split(",")
-            domain.append([int(sub_domain[0]), int(sub_domain[1])])
+            start, end = sub_domain.split(",")
+            lower_bound = int(start) if "inf" not in start else float(start)
+            upper_bound = int(end) if "inf" not in end else float(end)
+            domain.append([lower_bound, upper_bound])
         else:
             domain.append([int(sub_domain)])
     return domain
 
 
 def build_variable(variable_name, current_position, domain):
-    full_variable_name = variable_name[0] + str(current_position)
+    position_as_name = str(current_position).replace(", ", "][")
+    full_variable_name = variable_name + position_as_name
     new_var = Variable(full_variable_name, domain)
 
     return new_var
@@ -99,4 +102,20 @@ def parse_array_variables(array_vars):
 
     return instance_variables
 
-# TODO: parse non-array variables
+def parse_integer_variables(int_vars):
+    instance_variables = {}
+    for var in int_vars:
+        variable_name = var.attrib["id"]
+        domain = parse_variable_domain(var.text)
+        new_var = build_variable(variable_name, "", domain)
+        instance_variables[variable_name] = new_var
+    return instance_variables
+        
+
+if __name__ == "__main__":
+    file_path = r"..\sample_problems\sample_problem_test\AircraftLanding-table-airland01_mc22.xml"
+    root = ET.parse(file_path)
+    variables = root.findall("variables")
+    array_vars = variables[0].findall("array")
+    integer_vars = variables[0].findall("var")
+    parsed_array_variables = parse_array_variables(array_vars)
