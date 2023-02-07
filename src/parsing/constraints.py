@@ -1,5 +1,3 @@
-
-
 def parse_instance_constraints(raw_constraints):
     constraints = {}
 
@@ -13,7 +11,9 @@ def parse_all_different_constraints(raw_alldiff_constraints):
         elif constraint.find("matrix") is not None:
             parsed_constraint = parse_matrix(constraint)
             alldiff_constraints.append(parsed_constraint)
-# TODO: add parsing for simple constraints
+        else:
+            parsed_constraint = parse_base_alldiff_constraint(constraint)
+            alldiff_constraints.append(parsed_constraint)
 
     return alldiff_constraints
 
@@ -43,6 +43,12 @@ def parse_matrix(root):
     return matrix
         
 
+def parse_base_alldiff_constraint(root):
+    constraint = {}
+    constraint["lists"] = root.text.strip().split()
+    constraint["exceptions"] = None
+
+    return constraint
 
 if __name__ == "__main__":
     from variables import *
@@ -65,10 +71,10 @@ if __name__ == "__main__":
         <list> z1 z2 z3 z4 </list>
         <except> (0,0,0,0) </except>
     </allDifferent>""",
-                # """<allDifferent>
-                #   x1 x2 x3 x4 x5
-                # </allDifferent>
-                # """,
+     """<allDifferent>
+       x1 x2 x3 x4 x5
+     </allDifferent>
+     """,
                 """
     <allDifferent>
     <list> y[] </list>
