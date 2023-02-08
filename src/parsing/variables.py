@@ -1,6 +1,7 @@
 import ast
 import numpy as np
 from typing import List
+import xml
 import xml.etree.ElementTree as ET
 
 
@@ -18,13 +19,23 @@ class Variable:
         return repr(f"""Name: {self.name} Domain: {self.domain}""")
 
 
-def get_array_dimensions(size):
+def get_array_dimensions(size:str) -> int:
+    """Compute array dimensions
+    """
     dimension_sizes = ast.literal_eval(
         "[" + size.replace("]", ",").replace("[", "") + "]")
     return dimension_sizes
 
 
-def parse_variable_domain(raw_domain):
+def parse_variable_domain(raw_domain:str):
+    """Get the domain 
+
+    Args:
+        raw_domain : domain expressed as string
+
+    Returns:
+        domain: List[List[int]]
+    """
     domain = []
     sub_domains = [dom_element for dom_element in raw_domain.replace("..", ",").replace("infinity", "inf").split(" ")]
     for sub_domain in sub_domains:
@@ -40,7 +51,9 @@ def parse_variable_domain(raw_domain):
     return domain
 
 
-def build_variable(variable_name, current_position, domain):
+def build_variable(variable_name:str, current_position:List[int], domain:List[List[int]]):
+    """Create a variable
+    """
     position_as_name = str(current_position).replace(", ", "][")
     full_variable_name = variable_name + position_as_name
     new_var = Variable(full_variable_name, domain)
@@ -48,7 +61,27 @@ def build_variable(variable_name, current_position, domain):
     return new_var
 
 
-def parse_variable(var_name, dim_index, dimensions, current_position, domain, variables, sizes, allocated_variables):
+def parse_variable(
+    var_name:str, 
+    dim_index:0, 
+    dimensions:List[str],
+    current_position:List[int],
+    domain:List[List[int]],
+    variables:List[Variable],
+    sizes:List[int],
+    allocated_variables:np.array):
+    """Recursively parse variables
+
+    Args:
+        var_name: name of array variable 
+        dim_index : index of the current position in the array
+        dimensions : dimension where the variable domains are defined
+        current_position : suffix to append to the variable name
+        domain : domain for the variable(s); defined as intervals
+        variables : contains variables created
+        sizes : dimensions of the variable array
+        allocated_variables : np.array of binary values; keeps track of which values were allocated
+    """
     if dim_index == len(dimensions):
         new_variable = build_variable(var_name, current_position, domain)
         variables.append(new_variable)
@@ -73,10 +106,21 @@ def parse_variable(var_name, dim_index, dimensions, current_position, domain, va
             parse_variable(var_name, dim_index+1, dimensions, current_position, domain, variables, sizes, allocated_variables)
             current_position.pop()
 
-def parse_array_variables(array_vars):
+
+def parse_array_variables(array_vars: List[xml.etree.ElementTree.Element]) -> dict:
+    """Parse all array variables and return the output as a dict where keys are the name of the arrays and values are of type List[Variable]
+    Args:
+        array_vars: list containing all array variables
+
+    Returns:
+        example: {
+            "x": [Variable("x[0]", [1, 4]), Variable("x[1]", [1, 5])],
+            "y": [Variable("y[0]", [4, 7]), Variable("y[1]", [1, 9])]
+        }
+    """
     instance_variables = {}
-    other_domain = None  # domain for other variables
     for array in array_vars:
+        other_domain = None  # domain for other variables
         array_variables = []
         array_name = array.attrib["id"]
         array_dimensions = get_array_dimensions(array.attrib["size"])
@@ -113,9 +157,10 @@ def parse_integer_variables(int_vars):
         
 
 if __name__ == "__main__":
-    file_path = r"..\sample_problems\sample_problem_test\AircraftLanding-table-airland01_mc22.xml"
+    file_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Graph-Representation\sample_problems\sample_problem_test\AircraftLanding-table-airland01_mc22.xml"
     root = ET.parse(file_path)
     variables = root.findall("variables")
     array_vars = variables[0].findall("array")
     integer_vars = variables[0].findall("var")
     parsed_array_variables = parse_array_variables(array_vars)
+    a = 1
