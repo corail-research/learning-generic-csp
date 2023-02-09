@@ -133,15 +133,18 @@ def parse_block(block: xml.etree.ElementTree.Element) -> List[Dict]:
     for child in block:
         name = child.tag
         if name == "extension":
-            new_constraint = parse_extension_constraint(child)
+            if child.find("supports") is not None:
+                new_constraint = parse_extension_constraint(child)
+            else:
+                new_constraint = parse_negative_extension_constraint(child)
         constraints.append(new_constraint)
 
     return constraints
 
 
 def parse_extension_constraint(constraint: xml.etree.ElementTree.Element) -> Dict:
-    """Parse an individual extension constraint defined with supports. Extension constraints defined with exclusion are parsed with
-    function parse_extension_exclusion_constraint
+    """Parse an individual extension constraint defined with supports; that is values the variables CAN take. 
+    Extension constraints defined with exclusion are parsed with function parse_negative_extension_constraint
     Returns a dict like:
     {"variables": [x, y], "tuples": ((1, 2), (2, 3))}
 
@@ -159,6 +162,26 @@ def parse_extension_constraint(constraint: xml.etree.ElementTree.Element) -> Dic
     parsed_constraint["tuples"] = tuples
 
     return parsed_constraint
+
+
+def parse_negative_extension_constraint(constraint: xml.etree.ElementTree.Element) -> Dict:
+    """Parse an individual extension constraint defined with conflicts; that is values the variables can't take.
+    Returns a dict like:
+    {"variables": [x, y], "tuples": ((1, 2), (2, 3))}, which means variables (x, y) can't take values (1, 2) or (2, 3)
+
+    Args:
+        constraint (xml.etree.ElementTree.Element): element of "extension" ; extension constraint
+    Returns:
+        parsed_constraint: dict containing the parsed constraint
+    """
+    parsed_constraint = {}
+    variables = constraint.find("list").text.strip().split()
+    parsed_constraint["variables"] = variables
+    tuples = ast.literal_eval(constraint.find("conflicts").text.strip().replace(")", "),"))
+    parsed_constraint["tuples"] = tuples
+
+    return parsed_constraint
+
 
 if __name__ == "__main__":
     # TODO: add tests for extension constraints
