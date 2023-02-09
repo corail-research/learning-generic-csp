@@ -1,2 +1,3 @@
 *-checkpoint.ipynb
 *.pyc
+./sample_problems/*.xml
