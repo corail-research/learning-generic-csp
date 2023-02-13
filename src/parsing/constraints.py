@@ -1,7 +1,8 @@
 import ast
+import re
 from typing import List, Dict
 import xml
-
+from intension_utils import *
 
 
 def parse_all_different_constraints(raw_alldiff_constraints: List[xml.etree.ElementTree.Element]) -> List[Dict]:
@@ -183,6 +184,42 @@ def parse_negative_extension_constraint(constraint: xml.etree.ElementTree.Elemen
     return parsed_constraint
 
 
+def parse_intension_group(group, base_intension_expression):
+    parsed_intension_constraints = []
+    args = group.findall("args")
+    for raw_arg in args:
+        arg_format = raw_arg.text.strip().split()
+        formatted = replace_placeholders(base_intension_expression, arg_format)
+        parsed = parse_intension_expression(formatted)
+        parsed_intension_constraints.append(parsed)
+    
+    return parsed_intension_constraints
+
+def parse_intension_expression(expression):
+    # Split the expression into operator and operands
+    split = re.split(r"\((.*)\)", expression)
+    operator = split[0]
+    if operator not in intension_operators:
+        # If the expression does not have any further parentheses, return it as a string
+        return expression
+    operands_str = split[1]
+    # Recursively parse the operands
+    operands = []
+    start = 0
+    balance = 0
+    for i, char in enumerate(operands_str):
+        if char == "(":
+            balance += 1
+        elif char == ")":
+            balance -= 1
+        elif char == "," and balance == 0:
+            operands.append(parse_intension_expression(operands_str[start:i]))
+            start = i + 1
+    operands.append(parse_intension_expression(operands_str[start:]))
+
+    # Return the IntensionNode for the expression
+    return IntensionNode(operator, operands)
+
 if __name__ == "__main__":
     # TODO: add tests for extension constraints
     from variables import *
@@ -225,3 +262,10 @@ if __name__ == "__main__":
     ]
     test_ad_constraints = [ET.fromstring(i) for i in test_cases]
     parse_all_different_constraints(test_ad_constraints)
+
+    file_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Graph-Representation\sample_problems\LinearArrangement-MinLA01_mc22.xml"
+    root = ET.parse(file_path)
+    constraints = root.findall("constraints")
+    groups = constraints[0].findall("group")
+    base_intension_expression = groups[0].find("intension").text.strip()
+    parse_intension_group(groups[0], base_intension_expression)
