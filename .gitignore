@@ -1,3 +1,6 @@
 *-checkpoint.ipynb
 *.pyc
 sample_problems/*.xml
+*.gz
+*.pt
+.vscode/*

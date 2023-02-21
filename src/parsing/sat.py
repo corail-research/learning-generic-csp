@@ -1,4 +1,5 @@
 from typing import List
+import torch
 from torch_geometric.data import HeteroData
 
 
@@ -56,22 +57,23 @@ class CNF:
                 if variable < 0:
                     operators.append([1])
                     variable_to_operator_edges.append([variable_index, negation_operator_id])
+                    variable_to_operator_edges.append([variable_index, negation_operator_id])
                     operator_to_constraint_edges.append([negation_operator_id, current_constraint_index])
                     negation_operator_id += 1
                 else:
                     variable_to_constraint_edges.append([variable_index, current_constraint_index])
             constraint_to_constraint_edges.append([0, current_constraint_index])
         data = HeteroData()
-        data["variable"].x = [[1] for _ in self.variables]
-        data["value"].x = [[0], [1]]
-        data["operator"].x = [[1] for _ in range(negation_operator_id)]
-        data["constraint"].x = constraints
+        data["variable"].x = torch.Tensor([[1] for _ in self.variables])
+        data["value"].x = torch.Tensor([[0], [1]])
+        data["operator"].x = torch.Tensor([[1] for _ in range(negation_operator_id)])
+        data["constraint"].x = torch.Tensor(constraints)
 
-        data["variable", "can_take_value", "value"].edge_index = variable_to_value_edges
-        data["variable", "affected_by_operator", "operator"].edge_index = variable_to_operator_edges
-        data["variable", "is_in", "constraint"].edge_index = variable_to_constraint_edges
-        data["operator", "connected_to", "constraint"].edge_index = operator_to_constraint_edges
-        data["constraint", "realted_to", "constraint"].edge_index = constraint_to_constraint_edges
+        data["variable", "connected_to", "value"].edge_index = torch.Tensor(variable_to_value_edges).long()
+        data["variable", "connected_to", "operator"].edge_index = torch.Tensor(variable_to_operator_edges).long()
+        data["variable", "connected_to", "constraint"].edge_index = torch.Tensor(variable_to_constraint_edges).long()
+        data["operator", "connected_to", "constraint"].edge_index = torch.Tensor(operator_to_constraint_edges).long()
+        data["constraint", "connected_to", "constraint"].edge_index = torch.Tensor(constraint_to_constraint_edges).long()
 
         return data
 
@@ -105,9 +107,19 @@ if __name__ == "__main__":
             x = self.conv2(x, edge_index)
             return x
     
-    # dataset = OGB_MAG(root='./data', preprocess='metapath2vec', transform=T.ToUndirected())
+    dataset = OGB_MAG(root='./data', preprocess='metapath2vec', transform=T.ToUndirected())
     test = dataset[0]
 
     model = GNN(hidden_channels=64, out_channels=1)
-    model = to_hetero(model, data.metadata(), aggr='sum')
+    # model = to_hetero(model, test.metadata(), aggr='sum')
+    # meta = {
+    #     ('variable', 'can_take_value', 'value'): {'edge_type': '1'},
+    #     ('variable', 'affected_by_operator', 'operator'): {'edge_type': '2'},
+    #     ('variable', 'is_in', 'constraint'): {'edge_type': '3'},
+    #     ('operator', 'connected_to', 'constraint'): {'edge_type': '4'},
+    #     ('constraint', 'related_to', 'constraint'): {'edge_type': '5'},
+    # }
+    # for key, value in meta.items():
+    #     data[key].metadata = value
     
+    model = to_hetero(model, data.metadata(), aggr='sum', debug=True)
