@@ -69,11 +69,11 @@ class CNF:
         data["operator"].x = torch.Tensor([[1] for _ in range(negation_operator_id)])
         data["constraint"].x = torch.Tensor(constraints)
 
-        data["variable", "connected_to", "value"].edge_index = torch.Tensor(variable_to_value_edges).long()
-        data["variable", "connected_to", "operator"].edge_index = torch.Tensor(variable_to_operator_edges).long()
-        data["variable", "connected_to", "constraint"].edge_index = torch.Tensor(variable_to_constraint_edges).long()
-        data["operator", "connected_to", "constraint"].edge_index = torch.Tensor(operator_to_constraint_edges).long()
-        data["constraint", "connected_to", "constraint"].edge_index = torch.Tensor(constraint_to_constraint_edges).long()
+        data["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(variable_to_value_edges)
+        data["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(variable_to_operator_edges)
+        data["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
+        data["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
+        data["constraint", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(constraint_to_constraint_edges)
 
         return data
 
@@ -84,13 +84,15 @@ class CNF:
                 new_edge = [variable, value]
                 edges.append(new_edge)
         return edges
+    
+    def build_edge_index_tensor(edges:List)->torch.Tensor:
+        return torch.Tensor(edges).long().t().contiguous()
 
 if __name__ == "__main__":
     import torch
     import torch_geometric.transforms as T
     from torch_geometric.datasets import OGB_MAG
     from torch_geometric.nn import SAGEConv, to_hetero
-
 
     test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic Graph Representation\neurosat\dimacs\test\sr5\grp1\sr_n=0006_pk2=0.30_pg=0.40_t=9_sat=0.dimacs"
     cnf = parse_dimacs_cnf(test_path)
@@ -106,20 +108,7 @@ if __name__ == "__main__":
             x = self.conv1(x, edge_index).relu()
             x = self.conv2(x, edge_index)
             return x
-    
-    dataset = OGB_MAG(root='./data', preprocess='metapath2vec', transform=T.ToUndirected())
-    test = dataset[0]
 
     model = GNN(hidden_channels=64, out_channels=1)
-    # model = to_hetero(model, test.metadata(), aggr='sum')
-    # meta = {
-    #     ('variable', 'can_take_value', 'value'): {'edge_type': '1'},
-    #     ('variable', 'affected_by_operator', 'operator'): {'edge_type': '2'},
-    #     ('variable', 'is_in', 'constraint'): {'edge_type': '3'},
-    #     ('operator', 'connected_to', 'constraint'): {'edge_type': '4'},
-    #     ('constraint', 'related_to', 'constraint'): {'edge_type': '5'},
-    # }
-    # for key, value in meta.items():
-    #     data[key].metadata = value
-    
+    data = T.ToUndirected()(data)
     model = to_hetero(model, data.metadata(), aggr='sum', debug=True)
