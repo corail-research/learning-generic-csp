@@ -31,7 +31,7 @@ class CNF:
         self.clauses = clauses
         variables = set()
         for clause in self.clauses:
-            base_vars = {abs(var) for var in clause.variables}
+            base_vars = {abs(var) - 1 for var in clause.variables}
             variables = variables.union(base_vars)
         variables = list(variables)
         self.variables = sorted(variables)
@@ -85,30 +85,42 @@ class CNF:
                 edges.append(new_edge)
         return edges
     
-    def build_edge_index_tensor(edges:List)->torch.Tensor:
+    def build_edge_index_tensor(self, edges:List)->torch.Tensor:
         return torch.Tensor(edges).long().t().contiguous()
+
+# def build_sat_dataset()
 
 if __name__ == "__main__":
     import torch
+    from torch.nn import Linear
+    import torch.nn.functional as F
     import torch_geometric.transforms as T
     from torch_geometric.datasets import OGB_MAG
-    from torch_geometric.nn import SAGEConv, to_hetero
+    from torch_geometric.nn import SAGEConv, GraphConv, to_hetero
+    from torch_geometric.nn import MeanAggregation
 
     test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic Graph Representation\neurosat\dimacs\test\sr5\grp1\sr_n=0006_pk2=0.30_pg=0.40_t=9_sat=0.dimacs"
     cnf = parse_dimacs_cnf(test_path)
     data = cnf.build_heterogeneous_graph()
 
     class GNN(torch.nn.Module):
-        def __init__(self, hidden_channels, out_channels):
+        def __init__(self, hidden_channels):
             super().__init__()
             self.conv1 = SAGEConv((-1, -1), hidden_channels)
-            self.conv2 = SAGEConv((-1, -1), out_channels)
+            self.conv2 = SAGEConv((-1, -1), hidden_channels)
+            self.pool = MeanAggregation()
+            self.lin = Linear(hidden_channels, hidden_channels)
 
-        def forward(self, x, edge_index):
+        def forward(self, x, edge_index, batch):
             x = self.conv1(x, edge_index).relu()
-            x = self.conv2(x, edge_index)
+            x = self.conv2(x, edge_index).relu()
+            x = F.dropout(x, p=0.5, training=self.training)
+            x = self.pool(x, batch)
+            x = self.lin(x)
+            
             return x
 
-    model = GNN(hidden_channels=64, out_channels=1)
+    model = GNN(hidden_channels=64)
     data = T.ToUndirected()(data)
-    model = to_hetero(model, data.metadata(), aggr='sum', debug=True)
+    model = to_hetero(model, data.metadata(), aggr='mean', debug=True)
+    a=1
