@@ -4,3 +4,4 @@ sample_problems/*.xml
 *.gz
 *.pt
 .vscode/*
+sat_data/*
