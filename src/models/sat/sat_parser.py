@@ -39,6 +39,9 @@ class CNF:
         self.variables = sorted(variables)
     
     def build_heterogeneous_graph(self):
+        """
+        Build heterogeneous graph representation. The graph's label will be stored in data["variable"].y
+        """
         # Nodes and node stuff
         constraints = [[1, 0]]
         negation_operator_id = 0
@@ -67,6 +70,8 @@ class CNF:
             constraint_to_constraint_edges.append([0, current_constraint_index])
         data = HeteroData()
         data["variable"].x = torch.Tensor([[1] for _ in self.variables])
+        label = [0, 1] if self.is_sat else [1, 0]
+        data["variable"].y = torch.Tensor(label)
         data["value"].x = torch.Tensor([[0], [1]])
         data["operator"].x = torch.Tensor([[1] for _ in range(negation_operator_id)])
         data["constraint"].x = torch.Tensor(constraints)
