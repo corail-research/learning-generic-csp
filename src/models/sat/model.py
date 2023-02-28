@@ -5,8 +5,9 @@ import torch_geometric.transforms as T
 from torch_geometric.datasets import OGB_MAG
 from torch_geometric.nn import SAGEConv
 from torch_geometric.nn import MeanAggregation
+from torch_geometric.nn import to_hetero
 
-class GNN(torch.nn.Module):
+class SatGNN(torch.nn.Module):
     def __init__(self, hidden_channels):
         super().__init__()
         self.conv1 = SAGEConv((-1, -1), hidden_channels)
