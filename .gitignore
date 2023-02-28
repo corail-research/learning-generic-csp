@@ -5,3 +5,6 @@ sample_problems/*.xml
 *.pt
 .vscode/*
 sat_data/*
+*.dimacs
+*sat=0.pt
+*sat=1.pt
