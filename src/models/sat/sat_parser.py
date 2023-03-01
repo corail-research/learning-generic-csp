@@ -71,7 +71,7 @@ class CNF:
         data = HeteroData()
         data["variable"].x = torch.Tensor([[1] for _ in self.variables])
         label = [0, 1] if self.is_sat else [1, 0]
-        data["variable"].y = torch.Tensor(label)
+        data["variable"].y = torch.Tensor([label])
         data["value"].x = torch.Tensor([[0], [1]])
         data["operator"].x = torch.Tensor([[1] for _ in range(negation_operator_id)])
         data["constraint"].x = torch.Tensor(constraints)
