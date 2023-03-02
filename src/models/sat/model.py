@@ -22,24 +22,23 @@ class SatGNN(torch.nn.Module):
                 ("operator", "rev_connected_to", "variable"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
                 ("constraint", "rev_connected_to", "variable"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
                 ("constraint", "rev_connected_to", "operator"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
-            }, aggr="mean")
+            }, aggr="max")
             self.convs.append(conv)        
-        self.lin = Linear(hidden_channels * 4, 2)
+        self.lin = Linear(hidden_channels * 2, 2)
         self.out_layer = torch.nn.Softmax()
 
     def forward(self, x_dict, edge_index_dict, batch_dict):
         for conv in self.convs:
             x_dict = conv(x_dict, edge_index_dict)
-            x_dict = {key: x.relu() for key, x in x_dict.items()}
+            x_dict = {key: F.dropout(x.relu(), p=0.3, training=self.training) for key, x in x_dict.items()}
         a = 1
         
-        value_pool = global_mean_pool(x_dict["value"], None)
-        variable_pool = global_mean_pool(x_dict["variable"], None)
-        operator_pool = global_mean_pool(x_dict["operator"], None)
-        constraint_pool = global_mean_pool(x_dict["constraint"], None)
-        concatenated = torch.concat((value_pool, variable_pool, operator_pool, constraint_pool), dim=1)
-        concatenated = F.relu(concatenated)
+        variable_pool = global_mean_pool(x_dict["variable"], batch_dict["variable"])
+        constraint_pool = global_mean_pool(x_dict["constraint"], batch_dict["constraint"])
+        concatenated = torch.concat((variable_pool, constraint_pool), dim=1)
+        # concatenated = F.relu(concatenated)
 
         x = self.lin(concatenated)
 
-        return self.out_layer(x)
+        # return self.out_layer(x)
+        return x
