@@ -69,7 +69,8 @@ class CNF:
                     variable_to_constraint_edges.append([variable_index, current_constraint_index])
             constraint_to_constraint_edges.append([0, current_constraint_index])
         data = HeteroData()
-        data["variable"].x = torch.Tensor([[1] for _ in self.variables])
+        var_tensor = torch.Tensor([[1, len(self.variables)] for _ in self.variables])
+        data["variable"].x = var_tensor
         label = [0, 1] if self.is_sat else [1, 0]
         data["variable"].y = torch.Tensor([label])
         data["value"].x = torch.Tensor([[0], [1]])
