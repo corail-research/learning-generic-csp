@@ -63,7 +63,6 @@ class CNF:
                 if variable < 0:
                     operators.append([1])
                     variable_to_operator_edges.append([variable_index, negation_operator_id])
-                    variable_to_operator_edges.append([variable_index, negation_operator_id])
                     operator_to_constraint_edges.append([negation_operator_id, current_constraint_index])
                     negation_operator_id += 1
                 else:

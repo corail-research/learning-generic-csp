@@ -1,6 +1,6 @@
 import torch
 from sat_parser import parse_dimacs_cnf
-from model import SatGNN
+from model import SatGNN, HGT
 from dataset import SatDataset
 import torch_geometric.transforms as T
 from torch_geometric.nn import to_hetero
@@ -26,13 +26,14 @@ if __name__ == "__main__":
     train_dataset = dataset[:26]
     test_dataset = dataset[26:]
 
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=False)
+    train_loader = DataLoader(train_dataset, batch_size=26, shuffle=False)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
 
-    model = SatGNN(hidden_channels=64, num_layers=2)
+    # model = SatGNN(hidden_channels=64, num_layers=2)
+    model = HGT(64, 2, 2, 2, train_dataset[0])
     model = model.to("cuda:0")
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=.1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=.01)
     criterion = torch.nn.MSELoss()
 
     def train():
