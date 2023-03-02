@@ -1,6 +1,7 @@
 from typing import List
 import torch
 from torch_geometric.data import HeteroData
+import torch_geometric.transforms as T
 
 
 def parse_dimacs_cnf(filepath:str):
@@ -28,9 +29,9 @@ class Clause:
         self.variables = {int(var) for var in line}
 
 class CNF:
-    def __init__(self, clauses:List[Clause], is_sat:int):
+    def __init__(self, clauses:List[Clause], is_sat:str):
         self.clauses = clauses
-        self.is_sat = is_sat
+        self.is_sat = int(is_sat)
         variables = set()
         for clause in self.clauses:
             base_vars = {abs(var) - 1 for var in clause.variables}
@@ -81,6 +82,7 @@ class CNF:
         data["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
         data["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
         data["constraint", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(constraint_to_constraint_edges)
+        T.ToUndirected()(data)
 
         return data
 
