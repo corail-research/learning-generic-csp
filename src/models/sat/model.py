@@ -23,7 +23,8 @@ class HGT(torch.nn.Module):
                            num_heads, group='sum')
             self.convs.append(conv)
 
-        self.lin = Linear(hidden_channels*2, out_channels)
+        self.lin = Linear(hidden_channels*3, out_channels)
+        self.out_layer = torch.nn.Softmax()
 
     def forward(self, x_dict, edge_index_dict, batch_dict):
         for node_type, x in x_dict.items():
@@ -32,12 +33,14 @@ class HGT(torch.nn.Module):
         for conv in self.convs:
             x_dict = conv(x_dict, edge_index_dict)
         
+        operator_pool = global_mean_pool(x_dict["operator"], batch_dict["operator"])
         variable_pool = global_mean_pool(x_dict["variable"], batch_dict["variable"])
         constraint_pool = global_mean_pool(x_dict["constraint"], batch_dict["constraint"])
 
-        concatenated = torch.concat((variable_pool, constraint_pool), dim=1)
+        concatenated = torch.concat(
+            (variable_pool, constraint_pool, operator_pool), dim=1)
         x = self.lin(concatenated)
-
+        x = self.out_layer(x)
         return x
 
 
@@ -50,11 +53,9 @@ class SatGNN(torch.nn.Module):
                 ("variable", "connected_to", "value"): GATConv((-1, -1), hidden_channels, add_self_loops=False), 
                 ("variable", "connected_to", "operator"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
                 ("variable", "connected_to", "constraint"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
-                ("operator", "connected_to", "constraint"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
                 ("constraint", "connected_to", "constraint"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
                 ("value", "rev_connected_to", "variable"): GATConv((-1, -1), hidden_channels, add_self_loops=False), 
                 ("operator", "rev_connected_to", "variable"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
-                ("constraint", "rev_connected_to", "variable"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
                 ("constraint", "rev_connected_to", "operator"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
             }, aggr="sum")
             self.convs.append(conv)        

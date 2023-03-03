@@ -9,6 +9,7 @@ import re
 import os
 import sys
 import warnings
+import random
 
 def files_exist(files: List[str]) -> bool:
     # NOTE: We return `False` in case `files` is empty, leading to a
@@ -22,13 +23,14 @@ def _repr(obj) -> str:
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
 class SatDataset(Dataset):
-    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None):
+    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="modified"):
         """
         Args:
             root : directory containing the dataset. This directory contains 2 sub-directories: raw (raw data) and processed (processed data)
             transform (optional): transform to apply to elements of the dataset. Defaults to None.
             pre_transform (optional): Defaults to None.
         """
+        self.graph_type = graph_type
         super(SatDataset, self).__init__(
             root, transform=transform, pre_transform=pre_transform)
     
@@ -43,7 +45,8 @@ class SatDataset(Dataset):
     def processed_file_names(self):
         """If these files are present in the processed data directory, data processing step is skipped
         """
-        return "data_0_sat=0.pt"
+        # return "data_0_sat=0.pt"
+        return "data"
     
     @property
     def raw_paths(self) -> List[str]:
@@ -70,7 +73,10 @@ class SatDataset(Dataset):
         for i, filepath in enumerate(self.raw_paths):
             pbar.update(1)
             cnf = parse_dimacs_cnf(filepath)
-            data = cnf.build_heterogeneous_graph()
+            if self.graph_type == "base":
+                data = cnf.build_heterogeneous_graph()
+            elif self.graph_type == "modified":
+                data = cnf.build_modified_heterogeneous_graph()
             is_sat = filepath[-8]
             out_path = os.path.join(self.processed_dir, f"data_{i}_sat={is_sat}.pt")
             torch.save(data, out_path, _use_new_zipfile_serialization=False)
