@@ -91,7 +91,7 @@ class CNF:
 
         return data
     
-    def build_modified_heterogeneous_graph(self):
+    def build_modified_heterogeneous_graph(self, random_values=False):
         """Build the modified graph representation; i.e. one where variables (literals) are directly connected to their negated variable (literals)
 
         Returns:
@@ -131,7 +131,10 @@ class CNF:
                 variable_to_constraint_edges.append([variable_index, current_constraint_index])
             constraint_to_constraint_edges.append([0, current_constraint_index])
         data = HeteroData()
-        var_tensor = torch.Tensor([[1] if var > 0 else [-1] for var in self.variables])
+        if random_values:
+            var_tensor = torch.randn((len(self.variables), 1))
+        else:
+            var_tensor = torch.Tensor([[1] if var > 0 else [-1] for var in self.variables])
         data["variable"].x = var_tensor
         label = [0, 1] if self.is_sat else [1, 0]
         data["variable"].y = torch.Tensor([label])
@@ -147,6 +150,7 @@ class CNF:
         T.ToUndirected()(data)
 
         return data
+
 
     def get_sat_variable_to_domain_edges(self, variables, modified=False):
         edges = []

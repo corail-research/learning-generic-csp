@@ -5,7 +5,7 @@ from torch_geometric.datasets import OGB_MAG
 from torch_geometric.nn import SAGEConv, GATConv
 from torch_geometric.nn import MeanAggregation
 from torch_geometric.nn import HeteroConv, HGTConv
-from torch_geometric.nn import global_mean_pool
+from torch_geometric.nn import global_mean_pool, global_max_pool
 
 
 class HGT(torch.nn.Module):
@@ -23,8 +23,8 @@ class HGT(torch.nn.Module):
                            num_heads, group='sum')
             self.convs.append(conv)
 
-        self.lin = Linear(hidden_channels*3, out_channels)
-        self.out_layer = torch.nn.Softmax()
+        self.lin = Linear(hidden_channels*2, out_channels)
+        self.out_layer = torch.nn.Softmax(dim=1)
 
     def forward(self, x_dict, edge_index_dict, batch_dict):
         for node_type, x in x_dict.items():
@@ -33,15 +33,20 @@ class HGT(torch.nn.Module):
         for conv in self.convs:
             x_dict = conv(x_dict, edge_index_dict)
         
-        operator_pool = global_mean_pool(x_dict["operator"], batch_dict["operator"])
+        # operator_pool = global_max_pool(x_dict["operator"], batch_dict["operator"])
         variable_pool = global_mean_pool(x_dict["variable"], batch_dict["variable"])
-        constraint_pool = global_mean_pool(x_dict["constraint"], batch_dict["constraint"])
+        # constraint_pool = global_mean_pool(
+        #     x_dict["constraint"], batch_dict["constraint"])
 
-        concatenated = torch.concat(
-            (variable_pool, constraint_pool, operator_pool), dim=1)
+        
+        diffs = batch_dict["constraint"].diff()
+        diffs[0] = 1
+        indices = (diffs == 1).nonzero(as_tuple=True)
+        main_constraint = x_dict["constraint"][indices]
+        concatenated = torch.concat((variable_pool, main_constraint), dim=1)
         x = self.lin(concatenated)
         x = self.out_layer(x)
-        
+
         return x
 
 
