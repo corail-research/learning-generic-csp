@@ -29,6 +29,10 @@ class SatDataset(Dataset):
             root : directory containing the dataset. This directory contains 2 sub-directories: raw (raw data) and processed (processed data)
             transform (optional): transform to apply to elements of the dataset. Defaults to None.
             pre_transform (optional): Defaults to None.
+            graph_type (str): choice of 'modified' or 'base'. The base version connects nodes in the following way: variable -> operator -> constraint
+                whereas the modified version connects variable -> operator -> variable. Because the modified version needs one negation operator node per negated literal,
+                it results in much more nodes in the graph. In addition to requiring less nodes to encode the problem, the modified version connects positive literals
+                to their negation, which gives more structure to the resulting graph.
         """
         self.graph_type = graph_type
         super(SatDataset, self).__init__(

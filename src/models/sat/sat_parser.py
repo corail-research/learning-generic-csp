@@ -8,10 +8,6 @@ def parse_dimacs_cnf(filepath:str):
     with open(filepath, "r") as f:
         lines = f.readlines()
     
-    problem_definition = lines[0].strip().split()
-    num_literals = problem_definition[2]
-    num_clauses = problem_definition[3]
-    
     is_sat = filepath[-8]
     clauses = []
     for i in range(1, len(lines)):
@@ -44,8 +40,10 @@ class CNF:
         self.base_variables = sorted(base_variables)
     
     def build_heterogeneous_graph(self, original=True):
-        """
-        Build heterogeneous graph representation. The graph's label will be stored in data["variable"].y
+        """Build the modified graph representation; i.e. one where variables (literals) are directly connected to their negated variable (literals)
+
+        Returns:
+            data (torch_geometric.data.HeteroData): graph for the SAT problem
         """
         # Nodes and node stuff
         constraints = [[1, 0]]
@@ -94,6 +92,11 @@ class CNF:
         return data
     
     def build_modified_heterogeneous_graph(self):
+        """Build the modified graph representation; i.e. one where variables (literals) are directly connected to their negated variable (literals)
+
+        Returns:
+            data (torch_geometric.data.HeteroData): graph for the SAT problem
+        """
         # Nodes and node stuff
         variable_to_index = {var: idx for idx, var in enumerate(self.variables)}
         constraints = [[1, 0]]

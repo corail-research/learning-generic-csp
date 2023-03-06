@@ -41,6 +41,7 @@ class HGT(torch.nn.Module):
             (variable_pool, constraint_pool, operator_pool), dim=1)
         x = self.lin(concatenated)
         x = self.out_layer(x)
+        
         return x
 
 
