@@ -100,15 +100,16 @@ if __name__ == "__main__":
 
     hidden_units = [128, 256]
     learning_rates = [0.001, 0.005, 0.1]
-    num_layers = [5, 7]
+    num_layers = [4, 7]
+    dropout = 0.3
 
     for num_hidden_units in hidden_units:
         for lr in learning_rates:
             for layers in num_layers:
-                model = HGT(num_hidden_units, 2, 2, layers, train_dataset[0])
+                model = HGT(num_hidden_units, 2, 2, layers, train_dataset[0], dropout=0.3)
                 model = model.to("cuda:0")
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-                train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, 300)
+                train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, 40)
                 plot_name = f"lr={lr}-num_layers={layers}-hidden_units={num_hidden_units}"
                 plot_and_save(test_losses, train_losses, test_accs, train_accs, plot_name)
 

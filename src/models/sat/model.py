@@ -6,10 +6,11 @@ from torch_geometric.nn import SAGEConv, GATConv
 from torch_geometric.nn import MeanAggregation
 from torch_geometric.nn import HeteroConv, HGTConv
 from torch_geometric.nn import global_mean_pool, global_max_pool
+from torch.nn import Dropout
 
 
 class HGT(torch.nn.Module):
-    def __init__(self, hidden_channels, out_channels, num_heads, num_layers, data):
+    def __init__(self, hidden_channels, out_channels, num_heads, num_layers, data, dropout_prob=0):
         super().__init__()
 
         self.lin_dict = torch.nn.ModuleDict()
@@ -23,32 +24,32 @@ class HGT(torch.nn.Module):
                            num_heads, group='sum')
             self.convs.append(conv)
 
-        self.lin = Linear(hidden_channels*2, out_channels)
+        self.lin = Linear(hidden_channels, out_channels)
         self.out_layer = torch.nn.Softmax(dim=1)
+        self.dropout_prob = dropout_prob
+        self.dropout = Dropout(dropout_prob)
 
     def forward(self, x_dict, edge_index_dict, batch_dict):
         for node_type, x in x_dict.items():
             x_dict[node_type] = self.lin_dict[node_type](x).relu_()
-
-        for conv in self.convs:
-            x_dict = conv(x_dict, edge_index_dict)
         
-        # operator_pool = global_max_pool(x_dict["operator"], batch_dict["operator"])
-        variable_pool = global_mean_pool(x_dict["variable"], batch_dict["variable"])
-        # constraint_pool = global_mean_pool(
-        #     x_dict["constraint"], batch_dict["constraint"])
+        if self.dropout_prob:
+            for conv in self.convs:
+                x_dict = conv(x_dict, edge_index_dict)
+                x_dict = {key: self.dropout(value) for key, value in x_dict.items()}
 
+        else:
+            for conv in self.convs:
+                x_dict = conv(x_dict, edge_index_dict)
         
         diffs = batch_dict["constraint"].diff()
         diffs[0] = 1
         indices = (diffs == 1).nonzero(as_tuple=True)
         main_constraint = x_dict["constraint"][indices]
-        concatenated = torch.concat((variable_pool, main_constraint), dim=1)
-        x = self.lin(concatenated)
+        x = self.lin(main_constraint)
         x = self.out_layer(x)
 
         return x
-
 
 class SatGNN(torch.nn.Module):
     def __init__(self, hidden_channels, num_layers):
@@ -72,14 +73,11 @@ class SatGNN(torch.nn.Module):
         for conv in self.convs:
             x_dict = conv(x_dict, edge_index_dict)
             x_dict = {key: F.dropout(x.relu(), p=0.3, training=self.training) for key, x in x_dict.items()}
-        a = 1
         
         variable_pool = global_mean_pool(x_dict["variable"], batch_dict["variable"])
         constraint_pool = global_mean_pool(x_dict["constraint"], batch_dict["constraint"])
         concatenated = torch.concat((variable_pool, constraint_pool), dim=1)
-        # concatenated = F.relu(concatenated)
 
         x = self.lin(concatenated)
 
-        # return self.out_layer(x)
         return x
