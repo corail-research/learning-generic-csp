@@ -80,7 +80,9 @@ class SatDataset(Dataset):
             if self.graph_type == "base":
                 data = cnf.build_heterogeneous_graph()
             elif self.graph_type == "modified":
-                data = cnf.build_modified_heterogeneous_graph()
+                data = cnf.build_sat_specific_heterogeneous_graph()
+            elif self.graph_type == "refactored":
+                data = cnf.build_generic_heterogeneous_graph()
             is_sat = filepath[-8]
             out_path = os.path.join(self.processed_dir, f"data_{i}_sat={is_sat}.pt")
             torch.save(data, out_path, _use_new_zipfile_serialization=False)
