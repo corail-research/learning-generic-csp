@@ -172,12 +172,13 @@ class CNF:
         meta_to_constraint_edges = []
 
         for i, clause in enumerate(self.clauses):
-            current_constraint_index = i + 1
+            current_constraint_index = i
             constraints.append([1, len(clause.variables)])
             for variable in clause.variables:
                 variable_index = abs(variable) - 1
                 if variable < 0:
-                    variable_to_operator_edges.append([variable_index, variable_index]) # the operator index is the same as the variable index
+                    if [variable_index, variable_index] not in variable_to_operator_edges:
+                        variable_to_operator_edges.append([variable_index, variable_index]) # the operator index is the same as the variable index
                     operator_to_constraint_edges.append([variable_index, current_constraint_index])
                 else:
                     variable_to_constraint_edges.append([variable_index, current_constraint_index])
