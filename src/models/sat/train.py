@@ -45,7 +45,6 @@ def train_one_epoch(model, optimizer, criterion, train_loader):
     
     train_acc, train_loss = right_classification/total_examples, float(total_loss)
 
-
     train_metrics = {
         "train/global_acc": train_acc,
         "train/acc_sat": train_acc,
