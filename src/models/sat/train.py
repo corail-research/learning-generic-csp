@@ -2,7 +2,7 @@ import os
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 import torch
 from sat_parser import parse_dimacs_cnf
-from model import SatGNN, HGT
+from model import SatGNN, HGT, HGTMeta
 from dataset import SatDataset
 import torch_geometric.transforms as T
 from torch_geometric.nn import to_hetero
@@ -89,13 +89,12 @@ def plot_and_save(test_losses, train_losses, test_accs, train_accs, plot_name):
 
 if __name__ == "__main__":
     test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\data"
-    dataset = SatDataset(root=test_path)
+    dataset = SatDataset(root=test_path, graph_type="refactored")
     train_dataset = dataset[:5000]
     test_dataset = dataset[5000:5500]
 
     train_loader = DataLoader(train_dataset, batch_size=128, shuffle=False, num_workers=4)
-    test_loader = DataLoader(test_dataset, batch_size=128,
-                             shuffle=False, num_workers=4)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=4)
     criterion = torch.nn.BCELoss()
 
     hidden_units = [128, 256]
@@ -106,7 +105,10 @@ if __name__ == "__main__":
     for num_hidden_units in hidden_units:
         for lr in learning_rates:
             for layers in num_layers:
-                model = HGT(num_hidden_units, 2, 2, layers, train_dataset[0], dropout=0.3)
+                if dataset.graph_type == "refactored":
+                    model = HGTMeta(num_hidden_units, 2, 2, layers, train_dataset[0], dropout_prob=0.3)
+                else:
+                    model = HGT(num_hidden_units, 2, 2, layers, train_dataset[0], dropout_prob=0.3)
                 model = model.to("cuda:0")
                 optimizer = torch.optim.Adam(model.parameters(), lr=lr)
                 train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, 40)

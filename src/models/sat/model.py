@@ -50,6 +50,46 @@ class HGT(torch.nn.Module):
         x = self.out_layer(x)
 
         return x
+    
+
+class HGTMeta(torch.nn.Module):
+    def __init__(self, hidden_channels, out_channels, num_heads, num_layers, data, dropout_prob=0):
+        super().__init__()
+
+        self.lin_dict = torch.nn.ModuleDict()
+        for node_type in data.node_types:
+            num_in_features = data[node_type]['x'].size(1)
+            self.lin_dict[node_type] = Linear(num_in_features, hidden_channels)
+
+        self.convs = torch.nn.ModuleList()
+        for _ in range(num_layers):
+            conv = HGTConv(hidden_channels, hidden_channels, data.metadata(),
+                           num_heads, group='sum')
+            self.convs.append(conv)
+
+        self.lin = Linear(hidden_channels, out_channels)
+        self.out_layer = torch.nn.Softmax(dim=1)
+        self.dropout_prob = dropout_prob
+        self.dropout = Dropout(dropout_prob)
+
+    def forward(self, x_dict, edge_index_dict, batch_dict):
+        for node_type, x in x_dict.items():
+            x_dict[node_type] = self.lin_dict[node_type](x).relu_()
+        
+        if self.dropout_prob:
+            for conv in self.convs:
+                x_dict = conv(x_dict, edge_index_dict)
+                x_dict = {key: self.dropout(value) for key, value in x_dict.items()}
+
+        else:
+            for conv in self.convs:
+                x_dict = conv(x_dict, edge_index_dict)
+
+        x = self.lin(x_dict["meta"])
+        x = self.out_layer(x)
+
+        return x
+
 
 class SatGNN(torch.nn.Module):
     def __init__(self, hidden_channels, num_layers):
