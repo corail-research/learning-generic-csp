@@ -2,7 +2,7 @@
 ## QSopt
 Concorde requires a linear programming solver. In this setup, we use QSopt. Simply download it (all three files) from (this link)[https://www.math.uwaterloo.ca/~bico/qsopt/downloads/downloads.htm]. I am using ubuntu, so I download all 3 files located at the bottom of the page and I place them in a directory named `qsopt_solver`. 
 
-## Download, Installation and Setup
+## Concorde Download, Installation and Setup
 ```
 sudo apt update
 sudo apt install build-essential libgmp-dev libgsl-dev
@@ -42,4 +42,12 @@ Final LP has 180 rows, 336 columns, 2921 nonzeros
 Optimal Solution: 780.00
 Number of bbnodes: 1
 Total Running Time: 0.45 (seconds)
+```
+
+## Installing pyconcorde
+pyconcorde is a python wrapper for the concorde TSP solver. It can be installed by running the following commands:
+```
+git clone https://github.com/jvkersch/pyconcorde
+cd pyconcorde
+pip install -e .
 ```
