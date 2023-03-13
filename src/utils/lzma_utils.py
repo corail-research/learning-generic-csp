@@ -19,3 +19,6 @@ def convert_lzma_file_to_xml(file_path: str, xml_root_dir: str):
     new_file_path = os.path.join(xml_root_dir, new_file_name)
     with open(new_file_path, "wb") as xml_file:
         xml_file.write(xml_bytes)
+
+if __name__ == "__main__":
+    pass
