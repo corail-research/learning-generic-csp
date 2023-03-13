@@ -83,22 +83,18 @@ def test_model(model, loader, criterion):
 if __name__ == "__main__":
     test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\data"
 
-    # hidden_units = [128, 256]
-    hidden_units = [128]
-    # learning_rates = [0.001, 0.005, 0.1]
-    learning_rates = [0.001]
-    # num_layers = [4, 7]
-    num_layers = [2]
+    hidden_units = [128, 256]
+    learning_rates = [0.001, 0.005, 0.1]
+    num_layers = [4, 7]
     dropout = 0.3
-    # num_epochs = 100
-    num_epochs = 5
-    batch_size = 128
+    num_epochs = 100
+    batch_size = 512
     num_heads = 2
     device = "cuda:0"
 
     dataset = SatDataset(root=test_path, graph_type="refactored")
-    train_dataset = dataset[:2]
-    test_dataset = dataset[2:3]
+    train_dataset = dataset[:18000]
+    test_dataset = dataset[18000:]
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
