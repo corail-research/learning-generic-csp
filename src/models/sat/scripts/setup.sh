@@ -6,4 +6,8 @@ cd PyMiniSolvers
 make
 cd ../..
 
-mkdir
+mkdir data
+cd data
+mkdir raw
+mkdir processed
+cd ..
