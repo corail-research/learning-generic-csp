@@ -21,3 +21,11 @@ For now, the project is still very small. It currently has the following folders
 - sample_problems: contains some problem instances, as expressed with the XCSP3 format
 - src: source code
 - test: test code
+
+## Setup
+As usual, start by creating a virtual environment and installing the requirements:
+```
+> python3 -m venv venv
+> source venv/bin/activate
+> pip install -r requirements.txt
+```

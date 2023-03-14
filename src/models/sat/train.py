@@ -81,7 +81,7 @@ def test_model(model, loader, criterion):
     return test_acc, test_loss
 
 if __name__ == "__main__":
-    test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\data"
+    test_path = r"./data"
 
     hidden_units = [128, 256]
     learning_rates = [0.001, 0.005, 0.1]
