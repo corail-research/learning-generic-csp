@@ -85,7 +85,7 @@ if __name__ == "__main__":
 
     hidden_units = [128, 256]
     learning_rates = [0.001, 0.005, 0.1]
-    num_layers = [4, 7]
+    num_layers = [5, 7]
     dropout = 0.3
     num_epochs = 100
     batch_size = 512
