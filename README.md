@@ -29,3 +29,7 @@ As usual, start by creating a virtual environment and installing the requirement
 > source venv/bin/activate
 > pip install -r requirements.txt
 ```
+Then, check which GPUs are available and adjust your runs with this command:
+```
+CUDA_VISIBLE_DEVICES=2 python3 -u train.py
+```
