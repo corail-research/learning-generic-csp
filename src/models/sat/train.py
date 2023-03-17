@@ -84,16 +84,16 @@ if __name__ == "__main__":
     test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\data"
 
     hidden_units = [64, 256]
-    learning_rates = [0.01]
-    num_layers = [3, 7]
+    learning_rates = [0.005]
+    num_layers = [4]
     dropout = 0
     num_epochs = 100
     batch_size = 32
     num_heads = 4
     device = "cuda:0"
 
-    dataset = SatDataset(root=test_path, graph_type="refactored")
-    train_dataset = dataset[0:18000]
+    dataset = SatDataset(root=test_path, graph_type="refactored", use_id_as_node_feature=True)
+    train_dataset = dataset[:18000]
     test_dataset = dataset[18000:]
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
