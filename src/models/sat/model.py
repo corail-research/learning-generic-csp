@@ -80,7 +80,6 @@ class HGTMeta(torch.nn.Module):
             for conv in self.convs:
                 x_dict = conv(x_dict, edge_index_dict)
                 x_dict = {key: self.dropout(value) for key, value in x_dict.items()}
-
         else:
             for conv in self.convs:
                 x_dict = conv(x_dict, edge_index_dict)
