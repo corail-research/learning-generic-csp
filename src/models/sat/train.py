@@ -43,7 +43,7 @@ def train_one_epoch(model, optimizer, criterion, train_loader):
         total_examples += len(data)
         total_loss += loss.item()
     
-    train_acc, train_loss = right_classification/total_examples, float(total_loss)
+    train_acc, train_loss = right_classification/total_examples, float(total_loss)/total_examples
 
     train_metrics = {
         "train/global_acc": train_acc,
@@ -71,7 +71,7 @@ def test_model(model, loader, criterion):
             total_examples += len(data)
             total_loss += loss.item()
     
-    test_acc, test_loss = right_classification/total_examples, float(total_loss)
+    test_acc, test_loss = right_classification / total_examples, float(total_loss)/total_examples
     test_metrics = {
         "test/acc": test_acc,
         "test/loss": test_loss
@@ -81,24 +81,24 @@ def test_model(model, loader, criterion):
     return test_acc, test_loss
 
 if __name__ == "__main__":
-    test_path = r"./data"
+    test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\data"
 
     hidden_units = [64, 256]
-    learning_rates = [0.001, 0.005, 0.1]
+    learning_rates = [0.01]
     num_layers = [3, 7]
-    dropout = 0.3
+    dropout = 0
     num_epochs = 100
     batch_size = 32
     num_heads = 4
     device = "cuda:0"
 
     dataset = SatDataset(root=test_path, graph_type="refactored")
-    train_dataset = dataset[:18000]
+    train_dataset = dataset[0:18000]
     test_dataset = dataset[18000:]
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
-    criterion = torch.nn.BCELoss()
+    criterion = torch.nn.BCELoss(reduction="sum")
 
     for num_hidden_units in hidden_units:
         for lr in learning_rates:
