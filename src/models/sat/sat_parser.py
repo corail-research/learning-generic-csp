@@ -152,10 +152,11 @@ class CNF:
         return data
 
 
-    def build_generic_heterogeneous_graph(self):
+    def build_generic_heterogeneous_graph(self, use_node_id_as_variable_feature=False):
         """Build generic graph representation with graph refactoring. This is the same representation as build_heterogeneous_graph, but uses one
         negation operator per literal instead of creating one for every negation that appears.
-
+        Args:
+            use_node_id_as_feature (bool): if set to true, the variable node features will be their id (variable x_2 will have value 2)
         Returns:
             data (torch_geometric.data.HeteroData): graph for the SAT problem
         """
@@ -185,7 +186,10 @@ class CNF:
             meta_to_constraint_edges.append([0, current_constraint_index])
         
         data = HeteroData()
-        var_tensor = torch.Tensor([[1] for _ in self.base_variables])
+        if use_node_id_as_variable_feature:
+            var_tensor = torch.Tensor([[i] for i in self.base_variables])
+        else:
+            var_tensor = torch.Tensor([[1] for _ in self.base_variables])
 
         data["variable"].x = var_tensor
         label = [0, 1] if self.is_sat else [1, 0]
