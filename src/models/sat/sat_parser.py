@@ -174,7 +174,7 @@ class CNF:
 
         for i, clause in enumerate(self.clauses):
             current_constraint_index = i
-            constraints.append([1, len(clause.variables)])
+            constraints.append([1, len(clause.variables), i])
             for variable in clause.variables:
                 variable_index = abs(variable) - 1
                 if variable < 0:
