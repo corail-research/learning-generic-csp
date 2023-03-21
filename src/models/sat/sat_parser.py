@@ -1,7 +1,10 @@
+from networkx import from_scipy_sparse_matrix, betweenness_centrality, eigenvector_centrality, closeness_centrality
 from typing import List
 import torch
 from torch_geometric.data import HeteroData
 import torch_geometric.transforms as T
+import torch_geometric.utils as pyg_utils
+import numpy as np
 
 
 def parse_dimacs_cnf(filepath:str):
@@ -152,7 +155,7 @@ class CNF:
         return data
 
 
-    def build_generic_heterogeneous_graph(self, use_node_id_as_variable_feature=False):
+    def build_generic_heterogeneous_graph(self, use_node_id_as_variable_feature=False, spatial_dimension=2):
         """Build generic graph representation with graph refactoring. This is the same representation as build_heterogeneous_graph, but uses one
         negation operator per literal instead of creating one for every negation that appears.
         Args:
@@ -205,10 +208,51 @@ class CNF:
         data["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
         data["meta", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(meta_to_constraint_edges)
         
+        centrality_measures = self.calculate_centrality_measures(data) # Calculate centrality measures for all nodes
+        spatial_encodings = self.generate_spatial_encoding(num_nodes=len(centrality_measures), dimension=spatial_dimension) # Generate spatial encodings for all node types
+
+        # Update the features for each node type
+        var_start_idx = 0
+        var_end_idx = len(self.base_variables)
+        data["variable"].x = self.update_node_features("variable", var_tensor, centrality_measures, spatial_encodings, var_start_idx, var_end_idx)
+
+        value_start_idx = var_end_idx
+        value_end_idx = value_start_idx + 2
+        data["value"].x = self.update_node_features("value", data["value"].x, centrality_measures, spatial_encodings, value_start_idx, value_end_idx)
+
+        operator_start_idx = value_end_idx
+        operator_end_idx = operator_start_idx + len(operators)
+        data["operator"].x = self.update_node_features("operator", data["operator"].x, centrality_measures, spatial_encodings, operator_start_idx, operator_end_idx)
+
+        constraint_start_idx = operator_end_idx
+        constraint_end_idx = constraint_start_idx + len(constraints)
+        data["constraint"].x = self.update_node_features("constraint", data["constraint"].x, centrality_measures, spatial_encodings, constraint_start_idx, constraint_end_idx)
+
+        meta_start_idx = constraint_end_idx
+        meta_end_idx = meta_start_idx + 1
+        data["meta"].x = self.update_node_features("meta", data["meta"].x, centrality_measures, spatial_encodings, meta_start_idx, meta_end_idx)
         T.ToUndirected()(data)
 
         return data
     
+    def calculate_centrality_measures(self, data):
+        adj_matrix = pyg_utils.to_networkx(data).to_undirected().to_adjacency_matrix().tocoo()
+        nx_graph = from_scipy_sparse_matrix(adj_matrix)
+        betw_cent = betweenness_centrality(nx_graph)
+        eigv_cent = eigenvector_centrality(nx_graph)
+        close_cent = closeness_centrality(nx_graph)
+
+        # Normalize centrality measures
+        betw_cent = np.array([betw_cent[i] for i in sorted(betw_cent.keys())])
+        eigv_cent = np.array([eigv_cent[i] for i in sorted(eigv_cent.keys())])
+        close_cent = np.array([close_cent[i] for i in sorted(close_cent.keys())])
+
+        return np.vstack((betw_cent, eigv_cent, close_cent)).T
+
+    def generate_spatial_encoding(self, num_nodes, dimension):
+        encoding = np.random.uniform(size=(num_nodes, dimension))
+        return encoding
+
     def get_sat_variable_to_domain_edges(self, variables, modified=False):
         edges = []
         for i, variable in enumerate(variables):
