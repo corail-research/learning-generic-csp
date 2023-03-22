@@ -200,16 +200,16 @@ class CNF:
         data["variable"].x = var_tensor
         label = [0, 1] if self.is_sat else [1, 0]
         data["variable"].y = torch.Tensor([label]).float()
-        data["value"].x = torch.Tensor([[0], [1]])
+        data["value"].x = torch.Tensor([[1, 0], [0, 1]])
         data["operator"].x = torch.Tensor(operators)
         data["constraint"].x = torch.Tensor(constraints)
         data["meta"].x = torch.Tensor(meta)
 
-        data["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(variable_to_value_edges)
-        data["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(variable_to_operator_edges)
-        data["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
-        data["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
-        data["meta", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(meta_to_constraint_edges)
+        data["variable", "has_domain", "value"].edge_index = self.build_edge_index_tensor(variable_to_value_edges)
+        data["variable", "affected_by", "operator"].edge_index = self.build_edge_index_tensor(variable_to_operator_edges)
+        data["variable", "appears_in", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
+        data["operator", "appears_in", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
+        data["meta", "appears_in", "constraint"].edge_index = self.build_edge_index_tensor(meta_to_constraint_edges)
         
         data = self.get_updated_heterodata(data)
         
@@ -261,16 +261,16 @@ class CNF:
         data["variable"].x = torch.tensor(variable_centrality, dtype=torch.float32)
         label = [0, 1] if self.is_sat else [1, 0]
         data["variable"].y = torch.tensor([label]).float()
-        data["value"].x = torch.cat(
-            (
-                torch.tensor([[0], [1]]),
-                torch.tensor(value_centrality, dtype=torch.float32)
-            ),
-            dim=1
-        )
-        data["operator"].x = torch.tensor(operator_centrality, dtype=torch.float32)
+        # data["value"].x = torch.cat(
+        #     (
+        #         torch.tensor([[0], [1]]),
+        #         torch.tensor(value_centrality, dtype=torch.float32)
+        #     ),
+        #     dim=1
+        # )
+        # data["operator"].x = torch.tensor(operator_centrality, dtype=torch.float32)
         data["constraint"].x = torch.tensor(constraint_centrality, dtype=torch.float32)
-        data["meta"].x = torch.tensor(meta_centrality, dtype=torch.float32)
+        # data["meta"].x = torch.tensor(meta_centrality, dtype=torch.float32)
 
         return data
     
