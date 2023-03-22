@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime
 import wandb
 import torch
 import os
@@ -101,28 +102,28 @@ def test_model(model, loader, criterion):
 if __name__ == "__main__":
     test_path = r"./data"
 
-    hidden_units = [64, 256]
+    hidden_units = [32, 256]
     learning_rates = [0.005]
     num_layers = [4]
     dropout = 0
     num_epochs = 100
     batch_size = 32
-    num_heads = 4
+    num_heads = 2
     device = "cuda:0"
 
-    dataset = SatDataset(root=test_path, graph_type="refactored", use_id_as_node_feature=True)
-    train_dataset = dataset[:18000]
-    test_dataset = dataset[18000:]
+    dataset = SatDataset(root=test_path, graph_type="refactored", use_id_as_node_feature=False)
+    train_dataset = dataset[:1000]
+    test_dataset = dataset[1000:1200]
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
     criterion = torch.nn.BCELoss(reduction="sum")
-
+    date = str(datetime.now().date())
     for num_hidden_units in hidden_units:
         for lr in learning_rates:
             for layers in num_layers:
                 wandb.init(
-                    project="generic-graph-rep-sat",
+                    project=f"generic-graph-rep-sat-{date}",
                     name=f"h={num_hidden_units}-l={layers}-lr={lr}-dr={dropout}-refactored",
                     config={
                         "epochs": num_epochs,
