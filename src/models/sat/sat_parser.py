@@ -252,11 +252,11 @@ class CNF:
         operator_centrality.sort(key=lambda x: x[0])
 
         # Extract only the centrality measures from the sorted lists
-        value_centrality = [x[1] for x in value_centrality]
-        variable_centrality = [x[1] for x in variable_centrality]
-        constraint_centrality = [x[1] for x in constraint_centrality]
-        meta_centrality = [x[1] for x in meta_centrality]
-        operator_centrality = [x[1] for x in operator_centrality]
+        value_centrality = np.array([x[1] for x in value_centrality])
+        variable_centrality = np.array([x[1] for x in variable_centrality])
+        constraint_centrality = np.array([x[1] for x in constraint_centrality])
+        meta_centrality = np.array([x[1] for x in meta_centrality])
+        operator_centrality = np.array([x[1] for x in operator_centrality])
 
         data["variable"].x = torch.tensor(variable_centrality, dtype=torch.float32)
         label = [0, 1] if self.is_sat else [1, 0]
