@@ -199,7 +199,7 @@ class CNF:
 
         data["variable"].x = var_tensor
         label = [0, 1] if self.is_sat else [1, 0]
-        data["variable"].y = torch.Tensor([label])
+        data["variable"].y = torch.Tensor([label]).float()
         data["value"].x = torch.Tensor([[0], [1]])
         data["operator"].x = torch.Tensor(operators)
         data["constraint"].x = torch.Tensor(constraints)
@@ -211,10 +211,17 @@ class CNF:
         data["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
         data["meta", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(meta_to_constraint_edges)
         
+        data = self.get_updated_heterodata(data)
+        
+        T.ToUndirected()(data)
+
+        return data
+    
+    def get_updated_heterodata(self, data):
         node_id_mapping = create_node_id_mapping(data)
         homogeneous = hetero_data_to_homogeneous(data, node_id_mapping)
 
-        centrality_measures = self.calculate_centrality_measures(homogeneous) # Calculate centrality measures for all nodes
+        centrality_measures = self.calculate_centrality_measures(homogeneous)  # Calculate centrality measures for all nodes
         value_centrality = []
         variable_centrality = []
         constraint_centrality = []
@@ -251,15 +258,19 @@ class CNF:
         meta_centrality = [x[1] for x in meta_centrality]
         operator_centrality = [x[1] for x in operator_centrality]
 
-        data["variable"].x = torch.tensor(variable_centrality)
+        data["variable"].x = torch.tensor(variable_centrality, dtype=torch.float32)
         label = [0, 1] if self.is_sat else [1, 0]
-        data["variable"].y = torch.Tensor([label])
-        data["value"].x = torch.cat((torch.Tensor([[0],[1]]), torch.tensor(value_centrality)), dim=1)
-        data["operator"].x = torch.Tensor(operator_centrality)
-        data["constraint"].x = torch.Tensor(constraint_centrality)
-        data["meta"].x = torch.Tensor(meta_centrality)
-        
-        T.ToUndirected()(data)
+        data["variable"].y = torch.tensor([label]).float()
+        data["value"].x = torch.cat(
+            (
+                torch.tensor([[0], [1]]),
+                torch.tensor(value_centrality, dtype=torch.float32)
+            ),
+            dim=1
+        )
+        data["operator"].x = torch.tensor(operator_centrality, dtype=torch.float32)
+        data["constraint"].x = torch.tensor(constraint_centrality, dtype=torch.float32)
+        data["meta"].x = torch.tensor(meta_centrality, dtype=torch.float32)
 
         return data
     
