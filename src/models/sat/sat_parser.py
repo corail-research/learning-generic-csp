@@ -276,7 +276,7 @@ class CNF:
     
     def calculate_centrality_measures(self, homogeneous_graph):
         betw_cent = betweenness_centrality(homogeneous_graph)
-        eigv_cent = eigenvector_centrality(homogeneous_graph)
+        eigv_cent = nx.eigenvector_centrality_numpy(homogeneous_graph)
         close_cent = closeness_centrality(homogeneous_graph)
 
         # Normalize centrality measures
