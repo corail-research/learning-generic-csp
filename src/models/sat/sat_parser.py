@@ -1,10 +1,13 @@
-from networkx import from_scipy_sparse_matrix, betweenness_centrality, eigenvector_centrality, closeness_centrality
+from networkx import betweenness_centrality, eigenvector_centrality, closeness_centrality
+from networkx import from_scipy_sparse_array
+import networkx as nx
 from typing import List
 import torch
 from torch_geometric.data import HeteroData
 import torch_geometric.transforms as T
 import torch_geometric.utils as pyg_utils
 import numpy as np
+# from node2vec import Node2Vec
 
 
 def parse_dimacs_cnf(filepath:str):
@@ -208,39 +211,62 @@ class CNF:
         data["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
         data["meta", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(meta_to_constraint_edges)
         
-        centrality_measures = self.calculate_centrality_measures(data) # Calculate centrality measures for all nodes
-        spatial_encodings = self.generate_spatial_encoding(num_nodes=len(centrality_measures), dimension=spatial_dimension) # Generate spatial encodings for all node types
+        node_id_mapping = create_node_id_mapping(data)
+        homogeneous = hetero_data_to_homogeneous(data, node_id_mapping)
 
-        # Update the features for each node type
-        var_start_idx = 0
-        var_end_idx = len(self.base_variables)
-        data["variable"].x = self.update_node_features("variable", var_tensor, centrality_measures, spatial_encodings, var_start_idx, var_end_idx)
+        centrality_measures = self.calculate_centrality_measures(homogeneous) # Calculate centrality measures for all nodes
+        value_centrality = []
+        variable_centrality = []
+        constraint_centrality = []
+        meta_centrality = []
+        operator_centrality = []
 
-        value_start_idx = var_end_idx
-        value_end_idx = value_start_idx + 2
-        data["value"].x = self.update_node_features("value", data["value"].x, centrality_measures, spatial_encodings, value_start_idx, value_end_idx)
+        # Fill the lists with the corresponding centrality measures
+        for node_id, node_type_and_idx in node_id_mapping.items():
+            node_type, node_idx = node_type_and_idx
+            node_centrality = centrality_measures[node_id, :]
 
-        operator_start_idx = value_end_idx
-        operator_end_idx = operator_start_idx + len(operators)
-        data["operator"].x = self.update_node_features("operator", data["operator"].x, centrality_measures, spatial_encodings, operator_start_idx, operator_end_idx)
+            if node_type == "value":
+                value_centrality.append((node_idx, node_centrality))
+            elif node_type == "variable":
+                variable_centrality.append((node_idx, node_centrality))
+            elif node_type == "constraint":
+                constraint_centrality.append((node_idx, node_centrality))
+            elif node_type == "meta":
+                meta_centrality.append((node_idx, node_centrality))
+            elif node_type == "operator":
+                operator_centrality.append((node_idx, node_centrality))
 
-        constraint_start_idx = operator_end_idx
-        constraint_end_idx = constraint_start_idx + len(constraints)
-        data["constraint"].x = self.update_node_features("constraint", data["constraint"].x, centrality_measures, spatial_encodings, constraint_start_idx, constraint_end_idx)
+        # Sort the lists based on the node index within its type
+        value_centrality.sort(key=lambda x: x[0])
+        variable_centrality.sort(key=lambda x: x[0])
+        constraint_centrality.sort(key=lambda x: x[0])
+        meta_centrality.sort(key=lambda x: x[0])
+        operator_centrality.sort(key=lambda x: x[0])
 
-        meta_start_idx = constraint_end_idx
-        meta_end_idx = meta_start_idx + 1
-        data["meta"].x = self.update_node_features("meta", data["meta"].x, centrality_measures, spatial_encodings, meta_start_idx, meta_end_idx)
+        # Extract only the centrality measures from the sorted lists
+        value_centrality = [x[1] for x in value_centrality]
+        variable_centrality = [x[1] for x in variable_centrality]
+        constraint_centrality = [x[1] for x in constraint_centrality]
+        meta_centrality = [x[1] for x in meta_centrality]
+        operator_centrality = [x[1] for x in operator_centrality]
+
+        data["variable"].x = torch.tensor(variable_centrality)
+        label = [0, 1] if self.is_sat else [1, 0]
+        data["variable"].y = torch.Tensor([label])
+        data["value"].x = torch.cat((torch.Tensor([[0],[1]]), torch.tensor(value_centrality)), dim=1)
+        data["operator"].x = torch.Tensor(operator_centrality)
+        data["constraint"].x = torch.Tensor(constraint_centrality)
+        data["meta"].x = torch.Tensor(meta_centrality)
+        
         T.ToUndirected()(data)
 
         return data
     
-    def calculate_centrality_measures(self, data):
-        adj_matrix = pyg_utils.to_networkx(data).to_undirected().to_adjacency_matrix().tocoo()
-        nx_graph = from_scipy_sparse_matrix(adj_matrix)
-        betw_cent = betweenness_centrality(nx_graph)
-        eigv_cent = eigenvector_centrality(nx_graph)
-        close_cent = closeness_centrality(nx_graph)
+    def calculate_centrality_measures(self, homogeneous_graph):
+        betw_cent = betweenness_centrality(homogeneous_graph)
+        eigv_cent = eigenvector_centrality(homogeneous_graph)
+        close_cent = closeness_centrality(homogeneous_graph)
 
         # Normalize centrality measures
         betw_cent = np.array([betw_cent[i] for i in sorted(betw_cent.keys())])
@@ -248,10 +274,6 @@ class CNF:
         close_cent = np.array([close_cent[i] for i in sorted(close_cent.keys())])
 
         return np.vstack((betw_cent, eigv_cent, close_cent)).T
-
-    def generate_spatial_encoding(self, num_nodes, dimension):
-        encoding = np.random.uniform(size=(num_nodes, dimension))
-        return encoding
 
     def get_sat_variable_to_domain_edges(self, variables, modified=False):
         edges = []
@@ -266,3 +288,37 @@ class CNF:
     
     def build_edge_index_tensor(self, edges:List)->torch.Tensor:
         return torch.Tensor(edges).long().t().contiguous()
+
+
+def create_node_id_mapping(data):
+    node_id_mapping = {}
+    current_id = 0
+
+    for node_type in data.node_types:
+        num_nodes = data[node_type].num_nodes
+        for i in range(num_nodes):
+            node_id_mapping[current_id] = (node_type, i)
+            current_id += 1
+
+    return node_id_mapping
+
+
+def hetero_data_to_homogeneous(data, node_id_mapping):
+    G = nx.Graph()
+
+    for node_id in node_id_mapping:
+        G.add_node(node_id)
+
+    for edge_type in data.edge_types:
+        src, dst = data[edge_type].edge_index
+        src = src.numpy()
+        dst = dst.numpy()
+        edges = zip(src, dst)
+
+        for src_node, dst_node in edges:
+            src_unique_id = [key for key, value in node_id_mapping.items() if value == (edge_type[0], src_node)][0]
+            dst_unique_id = [key for key, value in node_id_mapping.items() if value == (edge_type[2], dst_node)][0]
+
+            G.add_edge(src_unique_id, dst_unique_id)
+
+    return G
