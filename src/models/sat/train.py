@@ -2,6 +2,7 @@ import argparse
 from datetime import datetime
 import wandb
 import torch
+import numpy as np
 import os
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 from model import SatGNN, HGT, HGTMeta
@@ -28,7 +29,7 @@ def get_args():
     
     return args
 
-def train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs):
+def train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs, threshold=0.52):
     train_losses, test_losses, train_accs, test_accs = [], [], [], []
     for epoch in range(1, num_epochs):
         train_acc, train_loss = train_one_epoch(model, optimizer, criterion, train_loader)
@@ -37,6 +38,11 @@ def train_model(model, train_loader, test_loader, optimizer, criterion, num_epoc
         test_acc, test_loss = test_model(model, test_loader, criterion)
         test_losses.append(test_loss)
         test_accs.append(test_acc)
+        if epoch >= 15:
+            last_10_avg_train = np.mean(train_acc[-10:])
+            last_10_avg_eval = np.mean(test_acc[-10:])
+            if last_10_avg_eval < threshold or last_10_avg_train < threshold:
+                return None, None, None, None
 
         print(
             f'Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}')
@@ -102,13 +108,13 @@ def test_model(model, loader, criterion):
 if __name__ == "__main__":
     test_path = r"./data"
 
-    hidden_units = [32, 256]
-    learning_rates = [0.005]
-    num_layers = [4]
-    dropout = 0
-    num_epochs = 100
+    hidden_units = [32, 64, 128, 256]
+    learning_rates = [0.001, 0.002, 0.003, 0.004, 0.005]
+    num_layers = [3, 4, 5, 6]
+    dropout = 0.3
+    num_epochs = 200
     batch_size = 32
-    num_heads = 2
+    num_heads = [2, 4]
     device = "cuda:0"
 
     dataset = SatDataset(root=test_path, graph_type="refactored", use_id_as_node_feature=False)
@@ -120,29 +126,30 @@ if __name__ == "__main__":
     criterion = torch.nn.BCELoss(reduction="sum")
     date = str(datetime.now().date())
     for num_hidden_units in hidden_units:
-        for lr in learning_rates:
-            for layers in num_layers:
-                wandb.init(
-                    project=f"generic-graph-rep-sat-{date}",
-                    name=f"h={num_hidden_units}-l={layers}-lr={lr}-dr={dropout}-refactored",
-                    config={
-                        "epochs": num_epochs,
-                        "batch_size": batch_size,
-                        "num_layers": layers,
-                        "learning_rate": lr,
-                        "hidden_units": num_hidden_units,
-                        "dropout": dropout,
-                        "num_heads": num_heads
-                    }
-                )
-                config = wandb.config
+        for heads in num_heads:
+            for lr in learning_rates:
+                for layers in num_layers:
+                    wandb.init(
+                        project=f"generic-graph-rep-sat-{date}",
+                        name=f"h={num_hidden_units}-l={layers}-lr={lr}-dr={dropout}-refactored",
+                        config={
+                            "epochs": num_epochs,
+                            "batch_size": batch_size,
+                            "num_layers": layers,
+                            "learning_rate": lr,
+                            "hidden_units": num_hidden_units,
+                            "dropout": dropout,
+                            "num_heads": heads
+                        }
+                    )
+                    config = wandb.config
 
-                if dataset.graph_type == "refactored":
-                    model = HGTMeta(num_hidden_units, 2, num_heads, layers, train_dataset[0], dropout_prob=dropout)
-                else:
-                    model = HGT(num_hidden_units, 2, num_heads, layers, train_dataset[0], dropout_prob=dropout)
-                model = model.to(device)
-                optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-                train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs)
+                    if dataset.graph_type == "refactored":
+                        model = HGTMeta(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
+                    else:
+                        model = HGT(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
+                    model = model.to(device)
+                    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+                    train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs)
     
     wandb.finish()
