@@ -23,7 +23,7 @@ def _repr(obj) -> str:
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
 class SatDataset(Dataset):
-    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="modified", use_id_as_node_feature:bool=False):
+    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="modified", meta_connected_to_all:bool=False):
         """
         Args:
             root : directory containing the dataset. This directory contains 2 sub-directories: raw (raw data) and processed (processed data)
@@ -33,10 +33,10 @@ class SatDataset(Dataset):
                 whereas the modified version connects variable -> operator -> variable. Because the modified version needs one negation operator node per negated literal,
                 it results in much more nodes in the graph. In addition to requiring less nodes to encode the problem, the modified version connects positive literals
                 to their negation, which gives more structure to the resulting graph.
-            use_id_as_node_feature (bool): whether or not to use the variable ids as their features in the graph
+            meta_connected_to_all (bool): If set to true, the meta node will be connected to all other nodes. Otherwise, only constraints will be
         """
         self.graph_type = graph_type
-        self.use_id_as_node_feature = use_id_as_node_feature
+        self.meta_connected_to_all = meta_connected_to_all
         super(SatDataset, self).__init__(
             root, transform=transform, pre_transform=pre_transform)
     
@@ -84,7 +84,7 @@ class SatDataset(Dataset):
             elif self.graph_type == "modified":
                 data = cnf.build_sat_specific_heterogeneous_graph()
             elif self.graph_type == "refactored":
-                data = cnf.build_generic_heterogeneous_graph(self.use_id_as_node_feature)
+                data = cnf.build_generic_heterogeneous_graph(meta_connected_to_all = self.meta_connected_to_all)
             is_sat = filepath[-8]
             out_path = os.path.join(self.processed_dir, f"data_{i}_sat={is_sat}.pt")
             torch.save(data, out_path, _use_new_zipfile_serialization=False)

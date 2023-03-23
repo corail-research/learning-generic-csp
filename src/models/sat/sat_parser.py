@@ -157,12 +157,11 @@ class CNF:
 
         return data
 
-
-    def build_generic_heterogeneous_graph(self, use_node_id_as_variable_feature=False, spatial_dimension=2):
+    def build_generic_heterogeneous_graph(self, meta_connected_to_all=False):
         """Build generic graph representation with graph refactoring. This is the same representation as build_heterogeneous_graph, but uses one
         negation operator per literal instead of creating one for every negation that appears.
         Args:
-            use_node_id_as_feature (bool): if set to true, the variable node features will be their id (variable x_2 will have value 2)
+            meta_connected_to_all (bool): if set to true, all nodes will be connected to the meta node. Otherwise, only the constraint nodes will
         Returns:
             data (torch_geometric.data.HeteroData): graph for the SAT problem
         """
@@ -192,10 +191,7 @@ class CNF:
             meta_to_constraint_edges.append([0, current_constraint_index])
         
         data = HeteroData()
-        if use_node_id_as_variable_feature:
-            var_tensor = torch.Tensor([[i] for i in self.base_variables])
-        else:
-            var_tensor = torch.Tensor([[1] for _ in self.base_variables])
+        var_tensor = torch.Tensor([[1] for _ in self.base_variables])
 
         data["variable"].x = var_tensor
         label = [0, 1] if self.is_sat else [1, 0]
@@ -210,9 +206,12 @@ class CNF:
         data["variable", "appears_in", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
         data["operator", "appears_in", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
         data["meta", "appears_in", "constraint"].edge_index = self.build_edge_index_tensor(meta_to_constraint_edges)
-        
+        if meta_connected_to_all:
+            data["meta", "appears_in", "variable"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(self.base_variables))])
+            data["meta", "appears_in", "value"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(2)])
+            data["meta", "appears_in", "operator"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(operators))])
+             
         data = self.get_updated_heterodata(data)
-        
         T.ToUndirected()(data)
 
         return data
@@ -261,16 +260,7 @@ class CNF:
         data["variable"].x = torch.tensor(variable_centrality, dtype=torch.float32)
         label = [0, 1] if self.is_sat else [1, 0]
         data["variable"].y = torch.tensor([label]).float()
-        # data["value"].x = torch.cat(
-        #     (
-        #         torch.tensor([[0], [1]]),
-        #         torch.tensor(value_centrality, dtype=torch.float32)
-        #     ),
-        #     dim=1
-        # )
-        # data["operator"].x = torch.tensor(operator_centrality, dtype=torch.float32)
         data["constraint"].x = torch.tensor(constraint_centrality, dtype=torch.float32)
-        # data["meta"].x = torch.tensor(meta_centrality, dtype=torch.float32)
 
         return data
     
