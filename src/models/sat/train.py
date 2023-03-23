@@ -39,8 +39,8 @@ def train_model(model, train_loader, test_loader, optimizer, criterion, num_epoc
         test_losses.append(test_loss)
         test_accs.append(test_acc)
         if epoch >= 15:
-            last_10_avg_train = np.mean(train_acc[-10:])
-            last_10_avg_eval = np.mean(test_acc[-10:])
+            last_10_avg_train = np.mean(train_accs[-10:])
+            last_10_avg_eval = np.mean(test_accs[-10:])
             if last_10_avg_eval < threshold or last_10_avg_train < threshold:
                 return None, None, None, None
 
