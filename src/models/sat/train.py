@@ -5,7 +5,7 @@ import torch
 import numpy as np
 import os
 os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
-from model import SatGNN, HGT, HGTMeta
+from model import SatGNN, HGT, HGTMeta, HGTSATSpecific
 from dataset import SatDataset
 from torch_geometric.loader import DataLoader
 import multiprocessing
@@ -45,9 +45,9 @@ def train_model(model, train_loader, test_loader, optimizer, criterion, num_epoc
                 return None, None, None, None
 
         print(
-            f'Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}')
+            f'Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc}')
         print(
-            f'Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}')
+            f'Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc}')
 
     return train_losses, test_losses, train_accs, test_accs
 
@@ -108,18 +108,18 @@ def test_model(model, loader, criterion):
 if __name__ == "__main__":
     test_path = r"./data"
 
-    hidden_units = [32, 64, 128, 256]
-    learning_rates = [0.001, 0.002, 0.003, 0.004, 0.005]
-    num_layers = [3, 4, 5, 6]
+    hidden_units = [64, 128]
+    learning_rates = [0.001, 0.005]
+    num_layers = [2, 3, 4]
     dropout = 0.3
     num_epochs = 200
-    batch_sizes = [32, 64, 128]
+    batch_sizes = [32]
     num_heads = [2, 4]
     device = "cuda:0"
 
-    dataset = SatDataset(root=test_path, graph_type="refactored", use_id_as_node_feature=False)
+    dataset = SatDataset(root=test_path, graph_type="modified", meta_connected_to_all=True)
     train_dataset = dataset[:1000]
-    test_dataset = dataset[1000:1200]
+    test_dataset = dataset[1000:1500]
 
     criterion = torch.nn.BCELoss(reduction="sum")
     date = str(datetime.now().date())
@@ -132,9 +132,9 @@ if __name__ == "__main__":
                     for layers in num_layers:
                         wandb.init(
                             project=f"generic-graph-rep-sat-{date}",
-                            name=f"bs={batch_size}-hi={num_hidden_units}-he{heads}-l={layers}-lr={lr}-dr={dropout}",
+                            name=f"bs={batch_size}-hi={num_hidden_units}-he{heads}-l={layers}-lr={lr}-dr={dropout}-sat-spec",
                             config={
-                                "batch_size": batch_size
+                                "batch_size": batch_size,
                                 "epochs": num_epochs,
                                 "batch_size": batch_size,
                                 "num_layers": layers,
@@ -147,9 +147,9 @@ if __name__ == "__main__":
                         config = wandb.config
 
                         if dataset.graph_type == "refactored":
-                            model = HGTMeta(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
-                        else:
-                            model = HGT(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
+                            model = HGTMeta(num_hidden_units, 1, heads, layers, train_dataset[0], dropout_prob=dropout)
+                        elif dataset.graph_type == "modified":
+                            model = HGTSATSpecific(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
                         model = model.to(device)
                         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
                         train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs)
