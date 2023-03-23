@@ -113,7 +113,7 @@ if __name__ == "__main__":
     num_layers = [3, 4, 5, 6]
     dropout = 0.3
     num_epochs = 200
-    batch_size = 32
+    batch_sizes = [32, 64, 128]
     num_heads = [2, 4]
     device = "cuda:0"
 
@@ -121,35 +121,37 @@ if __name__ == "__main__":
     train_dataset = dataset[:1000]
     test_dataset = dataset[1000:1200]
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
     criterion = torch.nn.BCELoss(reduction="sum")
     date = str(datetime.now().date())
-    for num_hidden_units in hidden_units:
-        for heads in num_heads:
-            for lr in learning_rates:
-                for layers in num_layers:
-                    wandb.init(
-                        project=f"generic-graph-rep-sat-{date}",
-                        name=f"h={num_hidden_units}-l={layers}-lr={lr}-dr={dropout}-refactored",
-                        config={
-                            "epochs": num_epochs,
-                            "batch_size": batch_size,
-                            "num_layers": layers,
-                            "learning_rate": lr,
-                            "hidden_units": num_hidden_units,
-                            "dropout": dropout,
-                            "num_heads": heads
-                        }
-                    )
-                    config = wandb.config
+    for batch_size in batch_sizes:
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+        for num_hidden_units in hidden_units:
+            for heads in num_heads:
+                for lr in learning_rates:
+                    for layers in num_layers:
+                        wandb.init(
+                            project=f"generic-graph-rep-sat-{date}",
+                            name=f"bs={batch_size}-hi={num_hidden_units}-he{heads}-l={layers}-lr={lr}-dr={dropout}",
+                            config={
+                                "batch_size": batch_size
+                                "epochs": num_epochs,
+                                "batch_size": batch_size,
+                                "num_layers": layers,
+                                "learning_rate": lr,
+                                "hidden_units": num_hidden_units,
+                                "dropout": dropout,
+                                "num_heads": heads
+                            }
+                        )
+                        config = wandb.config
 
-                    if dataset.graph_type == "refactored":
-                        model = HGTMeta(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
-                    else:
-                        model = HGT(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
-                    model = model.to(device)
-                    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-                    train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs)
+                        if dataset.graph_type == "refactored":
+                            model = HGTMeta(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
+                        else:
+                            model = HGT(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
+                        model = model.to(device)
+                        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+                        train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs)
     
     wandb.finish()
