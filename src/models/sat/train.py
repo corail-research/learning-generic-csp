@@ -110,7 +110,7 @@ if __name__ == "__main__":
 
     hidden_units = [64, 128]
     learning_rates = [0.001, 0.005]
-    num_layers = [2, 3, 4]
+    num_layers = [3, 4, 5]
     dropout = 0.3
     num_epochs = 200
     batch_sizes = [32]
@@ -145,13 +145,9 @@ if __name__ == "__main__":
                             }
                         )
                         config = wandb.config
-
-                        if dataset.graph_type == "refactored":
-                            model = HGTMeta(num_hidden_units, 1, heads, layers, train_dataset[0], dropout_prob=dropout)
-                        elif dataset.graph_type == "modified":
-                            model = HGTSATSpecific(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
+                        
+                        model = HGTMeta(num_hidden_units, 2, heads, layers, train_dataset[0], dropout_prob=dropout)
                         model = model.to(device)
                         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
                         train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs)
-    
-    wandb.finish()
+                        wandb.finish()

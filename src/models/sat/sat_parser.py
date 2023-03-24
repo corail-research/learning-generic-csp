@@ -105,13 +105,15 @@ class CNF:
         """
         # Nodes and node stuff
         variable_to_index = {var: idx for idx, var in enumerate(self.variables)}
-        constraints = []
+        constraints = [[1, 0]]
 
         # Edges and edge stuff
         variable_to_variable_edges = []
         variable_to_constraint_edges = []
+        constraint_to_constraint_edges = []
 
-        for constraint_index, clause in enumerate(self.clauses):
+        for i, clause in enumerate(self.clauses):
+            constraint_index = i + 1
             constraints.append([0, 1])
             for variable in clause.variables:
                 variable_index = variable_to_index[variable]
@@ -124,6 +126,7 @@ class CNF:
                             variable_to_variable_edges.append(pair_to_add)
                     
                 variable_to_constraint_edges.append([variable_index, constraint_index])
+            constraint_to_constraint_edges.append([0, constraint_index])
         
         data = HeteroData()
         var_tensor = torch.Tensor([[1] if var > 0 else [-1] for var in self.variables])
@@ -135,6 +138,7 @@ class CNF:
 
         data["variable", "is_negation_of", "variable"].edge_index = self.build_edge_index_tensor(variable_to_variable_edges)
         data["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
+        data["constraint", "is_related_to", "constraint"].edge_index = self.build_edge_index_tensor(constraint_to_constraint_edges)
 
         T.ToUndirected()(data)
 
