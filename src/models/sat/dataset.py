@@ -23,7 +23,7 @@ def _repr(obj) -> str:
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
 class SatDataset(Dataset):
-    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="modified", meta_connected_to_all:bool=False):
+    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="modified", meta_connected_to_all:bool=False, use_sat_label_as_feature:bool=False):
         """
         Args:
             root : directory containing the dataset. This directory contains 2 sub-directories: raw (raw data) and processed (processed data)
@@ -34,11 +34,12 @@ class SatDataset(Dataset):
                 it results in much more nodes in the graph. In addition to requiring less nodes to encode the problem, the modified version connects positive literals
                 to their negation, which gives more structure to the resulting graph.
             meta_connected_to_all (bool): If set to true, the meta node will be connected to all other nodes. Otherwise, only constraints will be
+            use_sat_label_as_feature (bool): whether to use the label (sat or unsat) as a feature in the graph. Should be used for testing purposes only
         """
         self.graph_type = graph_type
         self.meta_connected_to_all = meta_connected_to_all
-        super(SatDataset, self).__init__(
-            root, transform=transform, pre_transform=pre_transform)
+        self.use_sat_label_as_feature = use_sat_label_as_feature
+        super(SatDataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
     
     @property
     def raw_file_names(self):
@@ -74,19 +75,22 @@ class SatDataset(Dataset):
         pass
 
     def process(self):
+        sorted_raw_paths = sorted(self.raw_paths)
         num_files_to_process = len(self.raw_paths)
         pbar = tqdm(total=num_files_to_process, position=0)
-        for i, filepath in enumerate(self.raw_paths):
+        for i, filepath in enumerate(sorted_raw_paths):
+            current_pair = i // 2
+            current_element = i % 2
             pbar.update(1)
             cnf = parse_dimacs_cnf(filepath)
             if self.graph_type == "base":
                 data = cnf.build_heterogeneous_graph()
             elif self.graph_type == "modified":
-                data = cnf.build_sat_specific_heterogeneous_graph()
+                data = cnf.build_sat_specific_heterogeneous_graph(use_sat_label_as_feature=self.use_sat_label_as_feature)
             elif self.graph_type == "refactored":
-                data = cnf.build_generic_heterogeneous_graph(meta_connected_to_all = self.meta_connected_to_all)
+                data = cnf.build_generic_heterogeneous_graph(meta_connected_to_all=self.meta_connected_to_all)
             is_sat = filepath[-8]
-            out_path = os.path.join(self.processed_dir, f"data_{i}_sat={is_sat}.pt")
+            out_path = os.path.join(self.processed_dir, f"data_{current_pair}_{current_element}_sat={is_sat}.pt")
             torch.save(data, out_path, _use_new_zipfile_serialization=False)
         
         pbar.close()

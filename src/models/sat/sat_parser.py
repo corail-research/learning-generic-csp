@@ -13,7 +13,7 @@ import numpy as np
 def parse_dimacs_cnf(filepath:str):
     with open(filepath, "r") as f:
         lines = f.readlines()
-    
+    filename = filepath[filepath.find("sr_n"):]
     is_sat = filepath[-8]
     clauses = []
     for i in range(1, len(lines)):
@@ -21,7 +21,7 @@ def parse_dimacs_cnf(filepath:str):
         new_clause = Clause(line)
         clauses.append(new_clause)
     
-    return CNF(clauses, is_sat)
+    return CNF(clauses, is_sat, filename)
 
 class Clause:
     """
@@ -31,9 +31,10 @@ class Clause:
         self.variables = {int(var) for var in line}
 
 class CNF:
-    def __init__(self, clauses:List[Clause], is_sat:str):
+    def __init__(self, clauses:List[Clause], is_sat:str, filename:str=None):
         self.clauses = clauses
         self.is_sat = int(is_sat)
+        self.filename = filename
         variables = set()
         base_variables = set()
         for clause in self.clauses:
@@ -96,10 +97,11 @@ class CNF:
 
         return data
     
-    def build_sat_specific_heterogeneous_graph(self, random_values=False):
+    def build_sat_specific_heterogeneous_graph(self, use_sat_label_as_feature=False):
         """Build the modified graph representation; i.e. one where variables (literals) are directly connected to their negated variable (literals)
         IMPORTANT: After investigation, it was concluded that this formulation is not generic enough as it leverages SAT-specific structure. 
-
+        Args:
+            use_sat_label_as_feature (bool): Whether to use the label (sat or unsat) as a feature in the graph. This should be used for testing purposes only
         Returns:
             data (torch_geometric.data.HeteroData): graph for the SAT problem
         """
@@ -129,7 +131,10 @@ class CNF:
             constraint_to_constraint_edges.append([0, constraint_index])
         
         data = HeteroData()
-        var_tensor = torch.Tensor([[1] if var > 0 else [-1] for var in self.variables])
+        if use_sat_label_as_feature:
+            var_tensor = torch.Tensor([[1, self.is_sat] if var > 0 else [-1, self.is_sat] for var in self.variables])
+        else:
+            var_tensor = torch.Tensor([[1] if var > 0 else [-1] for var in self.variables])
 
         data["variable"].x = var_tensor
         label = [0, 1] if self.is_sat else [1, 0]
@@ -139,7 +144,7 @@ class CNF:
         data["variable", "is_negation_of", "variable"].edge_index = self.build_edge_index_tensor(variable_to_variable_edges)
         data["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
         data["constraint", "is_related_to", "constraint"].edge_index = self.build_edge_index_tensor(constraint_to_constraint_edges)
-
+        data.filename = self.filename
         T.ToUndirected()(data)
 
         return data
