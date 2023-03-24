@@ -111,7 +111,7 @@ class HGTMeta(torch.nn.Module):
 
     def forward(self, x_dict, edge_index_dict, batch_dict):
         for node_type, x in x_dict.items():
-            x_dict[node_type] = self.lin_dict[node_type](x).relu_()
+            x_dict[node_type] = self.lin_dict[node_type](x).relu_() * 10
         
         if self.dropout_prob:
             for conv in self.convs:
@@ -125,7 +125,7 @@ class HGTMeta(torch.nn.Module):
         diffs[0] = 1
         indices = (diffs == 1).nonzero(as_tuple=True)
         main_constraint = x_dict["constraint"][indices]
-        x = self.lin(main_constraint)
+        x = self.lin(main_constraint) * 10
         x = self.out_layer(x)
 
         return x
