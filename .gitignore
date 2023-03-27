@@ -10,3 +10,4 @@ sat_data/*
 *sat=1.pt
 PyMiniSolvers/*
 wandb/*
+venv/*
