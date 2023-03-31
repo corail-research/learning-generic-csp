@@ -3,7 +3,7 @@ matplotlib==3.5.1
 networkx==3.0
 numpy==1.21.5
 pandas==1.4.2
-setuptools==61.2.0
+setuptools==65.5.1
 torch==1.13.1+cu117 --extra-index-url https://download.pytorch.org/whl/cu117
 torch_geometric==2.2.0
 tqdm==4.64.0
