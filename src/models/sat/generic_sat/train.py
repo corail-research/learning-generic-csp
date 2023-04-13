@@ -6,7 +6,7 @@ import numpy as np
 import random
 import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-from model import SatGNN, HGT, HGTMeta, HGTSATSpecific
+from model import SatGNN, HGT, HGTMeta, HGTSATSpecific, GatedUpdate
 from dataset import SatDataset
 from torch_geometric.loader import DataLoader
 import multiprocessing
@@ -221,7 +221,8 @@ if __name__ == "__main__":
             config=params
         )
         
-        model = HGTMeta(params["num_hidden_units"], 2, params["num_heads"], params["num_layers"], train_dataset[0], dropout_prob=params["dropout"])
+        # model = HGTMeta(params["num_hidden_units"], 2, params["num_heads"], params["num_layers"], train_dataset[0], dropout_prob=params["dropout"])
+        model = GatedUpdate(params["num_hidden_units"], 2, params["num_heads"], params["num_layers"], train_dataset[0], dropout_prob=params["dropout"])
         model = model.to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=params["learning_rate"])
         train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], shuffle=False, num_workers=0)
