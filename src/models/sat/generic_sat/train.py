@@ -5,6 +5,7 @@ import torch
 import numpy as np
 import random
 import os
+from sklearn.metrics import classification_report
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 from model import SatGNN, HGT, HGTMeta, HGTSATSpecific, GatedUpdate
 from dataset import SatDataset
@@ -30,120 +31,70 @@ def get_args():
     
     return args
 
-def train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs, threshold=0.52):
-    train_losses, test_losses, train_accs, test_accs = [], [], [], []
+def train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs, threshold=0.6):
+    train_losses, test_losses, train_metrics, test_metrics = [], [], [], []
+
     for epoch in range(1, num_epochs):
-        train_acc, train_loss = train_one_epoch(model, optimizer, criterion, train_loader)
+        train_acc, train_loss, train_metric = process_model(model, optimizer, criterion, train_loader, mode='train')
         train_losses.append(train_loss)
-        train_accs.append(train_acc)
-        test_acc, test_loss = test_model(model, test_loader, criterion)
+        train_metrics.append(train_metric)
+
+        test_acc, test_loss, test_metric = process_model(model, None, criterion, test_loader, mode='test')
         test_losses.append(test_loss)
-        test_accs.append(test_acc)
-        if epoch >= 15:
-            last_10_avg_train = np.mean(train_accs[-10:])
-            last_10_avg_eval = np.mean(test_accs[-10:])
+        test_metrics.append(test_metric)
+
+        if epoch >= 100:
+            last_10_avg_train = np.mean([tm['train/global_acc'] for tm in train_metrics[-10:]])
+            last_10_avg_eval = np.mean([tm['test/global_acc'] for tm in test_metrics[-10:]])
             if last_10_avg_eval < threshold or last_10_avg_train < threshold:
                 return None, None, None, None
 
-        print(
-            f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}")
-        print(
-            f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}")
+        print(f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}")
+        print(f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}")
 
-    return train_losses, test_losses, train_accs, test_accs
+    return train_losses, test_losses, train_metrics, test_metrics
 
+def process_model(model, optimizer, criterion, loader, mode='train'):
+    assert mode in ['train', 'test'], "Invalid mode, choose either 'train' or 'test'."
 
-def train_one_epoch(model, optimizer, criterion, train_loader):
-    model.train()
+    if mode == 'train':
+        model.train()
+    else:
+        model.eval()
+
     total_loss = 0
-    total_sat_correct = 0
-    total_unsat_correct = 0
-    total_sat_examples = 0
-    total_unsat_examples = 0
-
-    for data in train_loader:
-        data = data.to(device="cuda:0")
-        optimizer.zero_grad()
-        out = model(data.x_dict, data.edge_index_dict,
-                    data.batch_dict, data.filename)
-        loss = criterion(out, data["variable"].y)
-        loss.backward()
-        optimizer.step()
-
-        # Count the number of correct predictions for SAT and UNSAT instances separately
-        sat_correct = sum(out[data["variable"].y[:, 0] == 0].argmax(dim=1) == 0).item()
-        unsat_correct = sum(
-            out[data["variable"].y[:, 1] == 0].argmax(dim=1) == 1).item()
-        total_sat_correct += sat_correct
-        total_unsat_correct += unsat_correct
-
-        # Count the number of SAT and UNSAT instances separately
-        total_sat_examples += (data["variable"].y[:, 0] == 0).sum().item()
-        total_unsat_examples += (data["variable"].y[:, 1] == 0).sum().item()
-
-        total_loss += loss.item()
-
-    # Calculate the accuracy on SAT and UNSAT instances separately
-    sat_accuracy = total_sat_correct / total_sat_examples if total_sat_examples != 0 else 0
-    unsat_accuracy = total_unsat_correct / total_unsat_examples if total_unsat_examples != 0 else 0
-
-    # Calculate the overall accuracy
-    total_examples = total_sat_examples + total_unsat_examples
-    overall_accuracy = (total_sat_correct + total_unsat_correct) / total_examples if total_examples != 0 else 0
-
-    train_metrics = {
-        "train/global_acc": overall_accuracy,
-        "train/acc_sat": sat_accuracy,
-        "train/acc_unsat": unsat_accuracy,
-        "train/loss": total_loss / total_examples
-    }
-    wandb.log(train_metrics)
-
-    return overall_accuracy, total_loss / total_examples
-
-def test_model(model, loader, criterion):
-    model.eval()
-    total_loss = 0
-    total_sat_correct = 0
-    total_unsat_correct = 0
-    total_sat_examples = 0
-    total_unsat_examples = 0
+    y_true, y_pred = [], []
 
     for data in loader:
         data = data.to(device="cuda:0")
-        with torch.no_grad():
-            out = model(data.x_dict, data.edge_index_dict, data.batch_dict, data.filename)
-            loss = criterion(out, data["variable"].y)
+        if mode == 'train':
+            optimizer.zero_grad()
+        out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
+        loss = criterion(out, data["variable"].y)
+        if mode == 'train':
+            loss.backward()
+            optimizer.step()
 
-            # Count the number of correct predictions for SAT and UNSAT instances separately
-            sat_correct = sum(out[data["variable"].y[:, 0] == 0].argmax(dim=1) == 0).item()
-            unsat_correct = sum(out[data["variable"].y[:, 1] == 0].argmax(dim=1) == 1).item()
-            total_sat_correct += sat_correct
-            total_unsat_correct += unsat_correct
+        predicted = out.argmax(dim=1).cpu()
+        label = data["variable"].y.cpu()
+        y_true.extend(label.tolist())
+        y_pred.extend(predicted.tolist())
 
-            # Count the number of SAT and UNSAT instances separately
-            total_sat_examples += (data["variable"].y[:, 0] == 0).sum().item()
-            total_unsat_examples += (data["variable"].y[:, 1] == 0).sum().item()
+        total_loss += loss.item()
 
-            total_loss += loss.item()
-
-    # Calculate the accuracy on SAT and UNSAT instances separately
-    sat_accuracy = total_sat_correct / total_sat_examples if total_sat_examples != 0 else 0
-    unsat_accuracy = total_unsat_correct / total_unsat_examples if total_unsat_examples != 0 else 0
-
-    # Calculate the overall accuracy
-    total_examples = total_sat_examples + total_unsat_examples
-    overall_accuracy = (total_sat_correct + total_unsat_correct) / total_examples if total_examples != 0 else 0
-
-    test_metrics = {
-        "test/global_acc": overall_accuracy,
-        "test/acc_sat": sat_accuracy,
-        "test/acc_unsat": unsat_accuracy,
-        "test/loss": total_loss / total_examples
+    report = classification_report(y_true, y_pred, output_dict=True, zero_division=0)
+    metrics = {
+        f"{mode}/global_acc": report['accuracy'],
+        f"{mode}/acc_class_0": report['0']['precision'],
+        f"{mode}/acc_class_1": report['1']['precision'],
+        f"{mode}/f1_class_0": report['0']['f1-score'],
+        f"{mode}/f1_class_1": report['1']['f1-score'],
+        f"{mode}/loss": total_loss / len(y_true)
     }
-    wandb.log(test_metrics)
+    wandb.log(metrics)
 
-    return overall_accuracy, total_loss / total_examples
+    return report['weighted avg']["precision"], total_loss / len(y_true), metrics
+
 
 def generate_grid_search_parameters(batch_sizes, hidden_units, num_heads, learning_rates, num_layers, dropout, num_epochs):
     for batch_size in batch_sizes:
@@ -191,18 +142,18 @@ if __name__ == "__main__":
 
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
-    hidden_units = [64, 128]
+    hidden_units = [64]
     num_heads = [2, 4]
-    learning_rates = [0.001, 0.005]
-    num_layers = [3, 4, 5]
+    learning_rates = [0.001, 0.0005]
+    num_layers = [3]
     dropout = 0.3
     num_epochs = 200
     device = "cuda:0"
 
-    dataset = SatDataset(root=test_path, graph_type="modified", meta_connected_to_all=True, use_sat_label_as_feature=False)
-    train_dataset = dataset[:1000]
-    test_dataset = dataset[1000:1500]
-    criterion = torch.nn.BCELoss(reduction="sum")
+    dataset = SatDataset(root=test_path, graph_type="refactored", meta_connected_to_all=True, use_sat_label_as_feature=False)
+    train_dataset = dataset[:280]
+    test_dataset = dataset[280:]
+    criterion = torch.nn.CrossEntropyLoss(reduction="sum")
     date = str(datetime.now().date())
 
     # Generate parameters based on the search method
