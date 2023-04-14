@@ -172,7 +172,7 @@ class CNF:
 
         for i, clause in enumerate(self.clauses):
             current_constraint_index = i
-            constraints.append([1, len(clause.variables)])
+            constraints.append([1, len(clause.variables)/len(self.base_variables)])
             for variable in clause.variables:
                 variable_index = abs(variable) - 1
                 if variable < 0:
@@ -187,24 +187,24 @@ class CNF:
         var_tensor = torch.Tensor([[1] for _ in self.base_variables])
 
         data["variable"].x = var_tensor
-        label = [1] if self.is_sat else [0]
-        data["variable"].y = torch.Tensor([label]).float()
-        data["value"].x = torch.Tensor([[1, 0], [0, 1]])
+        label = 1 if self.is_sat else 0
+        data["variable"].y = torch.tensor([label])
+        data["value"].x = torch.Tensor([[0], [1]])
         data["operator"].x = torch.Tensor(operators)
         data["constraint"].x = torch.Tensor(constraints)
-        data["meta"].x = torch.Tensor(meta)
+        # data["meta"].x = torch.Tensor(meta)
 
         data["variable", "has_domain", "value"].edge_index = self.build_edge_index_tensor(variable_to_value_edges)
         data["variable", "affected_by", "operator"].edge_index = self.build_edge_index_tensor(variable_to_operator_edges)
         data["variable", "appears_in", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
         data["operator", "connects_variable_to", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
-        data["meta", "has_constraint", "constraint"].edge_index = self.build_edge_index_tensor(meta_to_constraint_edges)
-        if meta_connected_to_all:
-            data["meta", "has_variable", "variable"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(self.base_variables))])
-            data["meta", "has_value", "value"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(2)])
-            data["meta", "has_operator", "operator"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(operators))])
+        # data["meta", "has_constraint", "constraint"].edge_index = self.build_edge_index_tensor(meta_to_constraint_edges)
+        # if meta_connected_to_all:
+        #     data["meta", "has_variable", "variable"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(self.base_variables))])
+        #     data["meta", "has_value", "value"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(2)])
+        #     data["meta", "has_operator", "operator"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(operators))])
              
-        data = self.get_updated_heterodata(data)
+        # data = self.get_updated_heterodata(data)
         T.ToUndirected()(data)
 
         return data
@@ -251,8 +251,8 @@ class CNF:
         operator_centrality = np.array([x[1] for x in operator_centrality])
 
         data["variable"].x = torch.tensor(variable_centrality, dtype=torch.float32)
-        label = [1] if self.is_sat else [0]
-        data["variable"].y = torch.tensor([label]).float()
+        label = 1 if self.is_sat else 0
+        data["variable"].y = torch.tensor([label])
         data["constraint"].x = torch.tensor(constraint_centrality, dtype=torch.float32)
 
         return data

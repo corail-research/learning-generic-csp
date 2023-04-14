@@ -77,18 +77,28 @@ class SatDataset(Dataset):
     def process(self):
         sorted_raw_paths = sorted(self.raw_paths)
         num_files_to_process = len(self.raw_paths)
-        pbar = tqdm(total=num_files_to_process, position=0)
+        selected_indices = []
+        
+        for i in range(0, num_files_to_process, 2):
+            selected_indices.append(i + random.randint(0, 1))
+        
+        pbar = tqdm(total=len(selected_indices), position=0)
         for i, filepath in enumerate(sorted_raw_paths):
+            if i not in selected_indices:
+                continue
+
             current_pair = i // 2
             current_element = i % 2
             pbar.update(1)
             cnf = parse_dimacs_cnf(filepath)
+            
             if self.graph_type == "base":
                 data = cnf.build_heterogeneous_graph()
             elif self.graph_type == "modified":
                 data = cnf.build_sat_specific_heterogeneous_graph(use_sat_label_as_feature=self.use_sat_label_as_feature)
             elif self.graph_type == "refactored":
                 data = cnf.build_generic_heterogeneous_graph(meta_connected_to_all=self.meta_connected_to_all)
+            
             is_sat = filepath[-8]
             out_path = os.path.join(self.processed_dir, f"data_{current_pair}_{current_element}_sat={is_sat}.pt")
             torch.save(data, out_path, _use_new_zipfile_serialization=False)
@@ -125,7 +135,7 @@ class SatDataset(Dataset):
             print('Done!', file=sys.stderr)
     
     def len(self):
-        return len(self.raw_paths)
+        return len(self.processed_paths)
     
     def get(self, idx: int):
         path = self.processed_paths[idx]
