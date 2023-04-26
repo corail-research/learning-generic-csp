@@ -1,0 +1,217 @@
+For 3 <= n <= 5
+
+Namespace(d=128
+n_rounds=16
+lr_decay_type='exp'
+lr_start=0.0001
+lr_end=1e-06
+lr_decay=0.99
+lr_decay_steps=5
+lr_power=0.5
+l2_weight=1e-08
+clip_val=0.5
+lstm_transfer_fn='relu'
+mlp_transfer_fn='relu'
+final_reducer='mean'
+n_msg_layers=3
+n_vote_layers=3
+tf_seed=0
+np_seed=0
+train_dir='data/train/sr5'
+run_id=100
+restore_id=None
+restore_epoch=None
+n_epochs=10
+n_saves_to_keep=4
+)
+
+
+For 3 =< n <= 20
+
+Namespace(d=128
+n_rounds=26
+lr_decay_type='exp'
+lr_start=0.0001
+lr_end=0.0001
+lr_decay=0.99
+lr_decay_steps=5
+lr_power=0.5
+l2_weight=1e-09
+clip_val=0.5
+lstm_transfer_fn='relu'
+mlp_transfer_fn='relu'
+final_reducer='mean'
+n_msg_layers=3
+n_vote_layers=3
+tf_seed=0
+np_seed=0
+train_dir='data/train/sr5'
+run_id=100
+restore_id=None
+restore_epoch=None
+n_epochs=50
+n_saves_to_keep=4
+)
+
+
+>> Training...
+Namespace(d=128, n_rounds=26, lr_decay_type='exp', lr_start=0.0001, lr_end=0.0001, lr_decay=0.99, lr_decay_steps=5, lr_power=0.5, l2_weight=1e-09, clip_val=0.5, lstm_transfer_fn='relu', mlp_transfer_fn='relu', final_reducer='mean', n_msg_layers=3, n_vote_layers=3, tf_seed=0, np_seed=0, train_dir='data/train/sr5', run_id=100, restore_id=None, restore_epoch=None, n_epochs=50, n_saves_to_keep=4, commit=b'578210dfde5f08b809f8cf4f49c177486e52ca04', hostname=b'LAPTOP-5QV1QSQL')
+['data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl', 'data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl']
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[0] 0.6932 (0.25, 0.25, 0.25, 0.25) ---> Accuracy: 0.50 [445.98s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[1] 0.6932 (0.25, 0.25, 0.25, 0.25) ---> Accuracy: 0.50 [468.71s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[2] 0.6932 (0.25, 0.25, 0.25, 0.25) ---> Accuracy: 0.50 [477.52s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[3] 0.6509 (0.35, 0.15, 0.28, 0.22) ---> Accuracy: 0.58 [458.25s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[4] 0.5722 (0.44, 0.06, 0.25, 0.25) ---> Accuracy: 0.69 [459.62s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[5] 0.5424 (0.46, 0.04, 0.23, 0.27) ---> Accuracy: 0.72 [459.89s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[6] 0.5301 (0.46, 0.04, 0.23, 0.27) ---> Accuracy: 0.74 [460.16s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[7] 0.5222 (0.47, 0.03, 0.22, 0.28) ---> Accuracy: 0.74 [459.42s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[8] 0.5055 (0.47, 0.03, 0.21, 0.29) ---> Accuracy: 0.76 [459.52s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[9] 0.4990 (0.47, 0.03, 0.21, 0.29) ---> Accuracy: 0.76 [460.87s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[10] 0.4924 (0.47, 0.03, 0.20, 0.30) ---> Accuracy: 0.77 [462.94s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[11] 0.4855 (0.47, 0.03, 0.20, 0.30) ---> Accuracy: 0.77 [460.28s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[12] 0.4765 (0.47, 0.03, 0.19, 0.31) ---> Accuracy: 0.78 [460.70s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[13] 0.4739 (0.47, 0.03, 0.19, 0.31) ---> Accuracy: 0.78 [461.50s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[14] 0.4671 (0.48, 0.02, 0.19, 0.31) ---> Accuracy: 0.79 [461.66s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[15] 0.4652 (0.48, 0.02, 0.19, 0.31) ---> Accuracy: 0.79 [457.47s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[16] 0.4518 (0.48, 0.02, 0.18, 0.32) ---> Accuracy: 0.80 [457.57s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[17] 0.4516 (0.48, 0.02, 0.18, 0.32) ---> Accuracy: 0.80 [457.04s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[18] 0.4421 (0.48, 0.02, 0.17, 0.33) ---> Accuracy: 0.81 [455.47s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[19] 0.4398 (0.48, 0.02, 0.17, 0.33) ---> Accuracy: 0.81 [456.77s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[20] 0.4362 (0.48, 0.02, 0.17, 0.33) ---> Accuracy: 0.81 [457.76s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[21] 0.4369 (0.48, 0.02, 0.17, 0.33) ---> Accuracy: 0.81 [458.24s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[22] 0.4294 (0.48, 0.02, 0.17, 0.33) ---> Accuracy: 0.81 [456.77s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[23] 0.4223 (0.48, 0.02, 0.16, 0.34) ---> Accuracy: 0.82 [455.29s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[24] 0.4210 (0.48, 0.02, 0.16, 0.34) ---> Accuracy: 0.82 [457.71s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[25] 0.4253 (0.48, 0.02, 0.17, 0.33) ---> Accuracy: 0.82 [458.55s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[26] 0.4188 (0.48, 0.02, 0.16, 0.34) ---> Accuracy: 0.82 [468.85s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[27] 0.4130 (0.48, 0.02, 0.16, 0.34) ---> Accuracy: 0.83 [458.19s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[28] 0.4164 (0.48, 0.02, 0.16, 0.34) ---> Accuracy: 0.82 [458.88s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[29] 0.4201 (0.48, 0.02, 0.16, 0.34) ---> Accuracy: 0.82 [457.90s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[30] 0.4157 (0.48, 0.02, 0.16, 0.34) ---> Accuracy: 0.82 [457.25s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[31] 0.4034 (0.48, 0.02, 0.15, 0.35) ---> Accuracy: 0.83 [456.80s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[32] 0.4081 (0.48, 0.02, 0.15, 0.35) ---> Accuracy: 0.83 [457.18s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[33] 0.3966 (0.48, 0.02, 0.15, 0.35) ---> Accuracy: 0.84 [456.94s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[34] 0.3958 (0.49, 0.01, 0.15, 0.35) ---> Accuracy: 0.84 [457.97s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[35] 0.3988 (0.49, 0.01, 0.15, 0.35) ---> Accuracy: 0.84 [457.82s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[36] 0.3906 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.84 [459.21s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[37] 0.3944 (0.49, 0.01, 0.15, 0.35) ---> Accuracy: 0.84 [463.14s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[38] 0.3890 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.84 [459.14s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[39] 0.3899 (0.49, 0.01, 0.15, 0.35) ---> Accuracy: 0.84 [460.10s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[40] 0.3882 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.84 [459.99s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[41] 0.3869 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.84 [457.12s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[42] 0.3801 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.85 [456.17s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[43] 0.3940 (0.49, 0.01, 0.15, 0.35) ---> Accuracy: 0.84 [458.75s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[44] 0.3826 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.85 [460.00s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[45] 0.3826 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.84 [457.54s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[46] 0.3775 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.85 [458.80s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[47] 0.3726 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.85 [459.37s]
+Loading data/train/sr5/data_dir=grp1_npb=14000_nb=1417.pkl...
+SAVING MODEL
+[48] 0.3729 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.85 [459.51s]
+Loading data/train/sr5/data_dir=grp2_npb=14000_nb=1414.pkl...
+SAVING MODEL
+[49] 0.3719 (0.49, 0.01, 0.14, 0.36) ---> Accuracy: 0.85 [458.87s]
+>> Validating...
+Namespace(d=128, n_rounds=16, lr_decay_type='exp', lr_start=0.0001, lr_end=0.0001, lr_decay=0.99, lr_decay_steps=5, lr_power=0.5, l2_weight=1e-09, clip_val=0.5, lstm_transfer_fn='relu', mlp_transfer_fn='relu', final_reducer='mean', n_msg_layers=3, n_vote_layers=3, tf_seed=0, np_seed=0, test_dir='data/test/sr5', restore_id=100, restore_epoch=9, run_id=None, n_saves_to_keep=1)
+Model restored from snapshots/run100/model_epoch_9.pt
+['data/test/sr5/data_dir=grp2_npb=14000_nb=1417.pkl', 'data/test/sr5/data_dir=grp1_npb=14000_nb=1414.pkl']
+Loading data/test/sr5/data_dir=grp2_npb=14000_nb=1417.pkl...
+Loading data/test/sr5/data_dir=grp1_npb=14000_nb=1414.pkl...
+data/test/sr5/data_dir=grp2_npb=14000_nb=1417.pkl 0.5924 (ff - 0.43, ft - 0.07, tf - 0.25, tt - 0.25 |---> Accuracy : 0.68)
+data/test/sr5/data_dir=grp1_npb=14000_nb=1414.pkl 0.5810 (ff - 0.44, ft - 0.06, tf - 0.24, tt - 0.26 |---> Accuracy : 0.69)

@@ -11,3 +11,7 @@ sat_data/*
 PyMiniSolvers/*
 wandb/*
 venv/*
+concorde
+qsopt_solver
+*/images*
+src/models/sat/neurosat/data
