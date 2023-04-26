@@ -27,6 +27,8 @@ n_saves_to_keep=4
 
 
 For 3 =< n <= 20
+With :  python3 python/gen_sr_dimacs.py dimacs/$ty/sr5/grp$i 100000 --min_n 3 --max_n 20
+	    python3 python/dimacs_to_data.py dimacs/$ty/sr5/grp$i data/$ty/sr5 14000
 
 Namespace(d=128
 n_rounds=26
