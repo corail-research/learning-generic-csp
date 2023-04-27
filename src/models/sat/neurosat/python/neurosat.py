@@ -22,6 +22,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import time
+
+import wandb
 from confusion import ConfusionMatrix
 from problems_loader import init_problems_loader
 from mlp import MLP, LayerNormLSTMCell
@@ -51,8 +53,6 @@ class NeuroSAT(nn.Module):
         self.LC_msg = MLP(opts, opts.d, repeat_end(opts.d, opts.n_msg_layers, opts.d),device=self.device)
         self.CL_msg = MLP(opts, opts.d, repeat_end(opts.d, opts.n_msg_layers, opts.d),device=self.device)
 
-        # TODO: Recurrent dropout
-
         self.L_update = LayerNormLSTMCell(opts,activation=decode_transfer_fn(opts.lstm_transfer_fn),state_tuple=self.lstm_state_tuple,device=self.device)
         self.C_update = LayerNormLSTMCell(opts,activation=decode_transfer_fn(opts.lstm_transfer_fn),state_tuple=self.lstm_state_tuple,device=self.device)
 
@@ -61,8 +61,6 @@ class NeuroSAT(nn.Module):
         
         self.vote_bias = nn.Parameter(torch.zeros(1,device=self.device))
 
-
-        # TODO: seeds
 
         self.train_problems_loader = None
 
@@ -159,11 +157,14 @@ class NeuroSAT(nn.Module):
 
 
     def save(self, epoch):
-        print('SAVING MODEL')
         self.saver.save(self,epoch)
 
     def restore(self):
-        snapshot = "snapshots/run%d/model_epoch_%d" % (self.opts.restore_id, self.opts.restore_epoch)
+        if self.opts.restore_epoch == -1:
+            epoch_id = 'final'
+        else:
+            epoch_id = self.opts.restore_epoch
+        snapshot = f"snapshots/run{self.opts.restore_id}/model_epoch_{epoch_id}"
         self.saver.restore(self,snapshot)
 
     def build_feed_dict(self, problem):
@@ -234,6 +235,7 @@ class NeuroSAT(nn.Module):
 
 
     def test(self, test_data_dir):
+        print(f"TESTING - {test_data_dir}")
         test_problems_loader = init_problems_loader(test_data_dir)
         results = []
 
@@ -248,9 +250,20 @@ class NeuroSAT(nn.Module):
                 logits, cost = self.rollout(feed_dict=d)
                 epoch_test_cost += cost
                 epoch_test_mat.update(problem.is_sat, logits > 0)
-
+            
             epoch_test_cost /= len(test_problems)
             epoch_test_mat = epoch_test_mat.get_percentages()
+
+            wandb.log({
+                "Validation Accurarcy": epoch_test_mat.tt+ epoch_test_mat.ff,
+                "Validation Unsat accuracy": epoch_test_mat.ff / (epoch_test_mat.ff + epoch_test_mat.ft),
+                "Validation Sat accuracy": epoch_test_mat.tt / (epoch_test_mat.tt + epoch_test_mat.tf),
+                "Validation Sat accuracy": epoch_test_mat.tt / (epoch_test_mat.tt + epoch_test_mat.tf),
+                "Validation Sat f1 score": epoch_test_mat.tt / (epoch_test_mat.tt + 0.5*(epoch_test_mat.tf + epoch_test_mat.ft)),
+                "Validation Unsat f1 score": epoch_test_mat.ff / (epoch_test_mat.ff + 0.5*(epoch_test_mat.tf + epoch_test_mat.ft)),
+                "Validation Loss": epoch_test_cost
+                }
+            )
 
             results.append((test_filename, epoch_test_cost, epoch_test_mat))
 
@@ -363,6 +376,9 @@ class ModelSaver:
         model_path = os.path.join(self.save_dir, f'model_epoch_{epoch}.pt')
         torch.save(model.state_dict(), model_path)
 
+        model_path = os.path.join(self.save_dir, f'model_epoch_final.pt')
+        torch.save(model.state_dict(), model_path)
+
         self.saved_models.append(model_path)
 
         """ if len(self.saved_models) > self.max_to_keep:
@@ -371,8 +387,10 @@ class ModelSaver:
         
 
     def restore(self, model:NeuroSAT, restore_epoch):
-        model_path = f'{restore_epoch}.pt'
+        if restore_epoch == -1:
+            restore_epoch = 'final'
 
+        model_path = f'{restore_epoch}.pt'
 
         if os.path.exists(model_path):
             model_state_dict: nn.Module = torch.load(model_path)

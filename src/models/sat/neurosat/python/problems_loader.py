@@ -32,7 +32,7 @@ class ProblemsLoader(object):
         if not self.has_next():
             self.reset()
         filename = self.filenames[self.next_file_num]
-        print("Loading %s..." % filename)
+        # print("Loading %s..." % filename)
         with open(filename, 'rb') as f:
             problems = pickle.load(f)
         self.next_file_num += 1

@@ -22,6 +22,8 @@ import pickle
 import sys
 import os
 import argparse
+
+import wandb
 from options import add_neurosat_options
 from neurosat import NeuroSAT
 
@@ -32,8 +34,12 @@ parser.add_argument('test_dir', action='store', type=str, help='Directory with d
 parser.add_argument('restore_id', action='store', type=int)
 parser.add_argument('restore_epoch', action='store', type=int)
 parser.add_argument('n_rounds', action='store', type=int)
+parser.add_argument('wandb_id', action='store', type=str)
 
 opts = parser.parse_args()
+
+wandb.init(id=f"{opts.wandb_id}")
+
 setattr(opts, 'run_id', None)
 setattr(opts, 'n_saves_to_keep', 1)
 
