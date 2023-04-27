@@ -2,7 +2,7 @@ import argparse
 import os
 import subprocess
 import wandb
-
+from parse import parse
 from config import CONFIG
 
 
@@ -21,7 +21,14 @@ parser.add_argument('--n_rounds', action='store', dest='n_rounds', type=int, def
 args = parser.parse_args()
 
 config = CONFIG
-config['Training set size'] = len(os.listdir(args.train_dir))
+n_batches = 0
+for file in os.listdir(args.train_dir):
+    parsed = parse("{}npb={}_nb={}.pkl",file)
+    max_nodes_per_batch = parsed[1]
+    n_batches += int(parsed[2])
+
+config['Max nodes per batch'] = int(max_nodes_per_batch)
+config['Number of batches'] = n_batches
 
 run = wandb.init(
     project='neurosat',

@@ -22,7 +22,7 @@ import pickle
 import sys
 import os
 import argparse
-
+from parse import parse
 import wandb
 from config import CONFIG
 from options import add_neurosat_options
@@ -43,8 +43,14 @@ parser.add_argument('--wandb_id', action='store', dest='wandb_id', type=str, def
 opts = parser.parse_args()
 
 config = CONFIG
-config['Training set size'] = len(os.listdir(opts.train_dir))
+n_batches = 0
+for file in os.listdir(opts.train_dir):
+    parsed = parse("{}npb={}_nb={}.pkl",file)
+    max_nodes_per_batch = parsed[1]
+    n_batches += int(parsed[2])
 
+config['Max nodes per batch'] = int(max_nodes_per_batch)
+config['Number of batches'] = n_batches
 run = wandb.init(id=f"{opts.wandb_id}",
                  config=config)
 
