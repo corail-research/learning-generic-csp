@@ -23,7 +23,6 @@ args = parser.parse_args()
 config = CONFIG
 config['Training set size'] = len(os.listdir(args.train_dir))
 
-
 run = wandb.init(
     project='neurosat',
     entity='seapearl',

@@ -42,7 +42,13 @@ parser.add_argument('--wandb_id', action='store', dest='wandb_id', type=str, def
 
 opts = parser.parse_args()
 
-wandb.init(id=f"{opts.wandb_id}")
+config = CONFIG
+config['Training set size'] = len(os.listdir(opts.train_dir))
+
+run = wandb.init(id=f"{opts.wandb_id}",
+                 config=config)
+
+
 
 setattr(opts, 'commit', subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip())
 setattr(opts, 'hostname', subprocess.check_output(['hostname']).strip())
@@ -56,7 +62,6 @@ if not os.path.exists("snapshots/"):
 
 g = NeuroSAT(opts)
 
-config = CONFIG
 
 
 for epoch in range(opts.n_epochs):
