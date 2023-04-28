@@ -26,6 +26,7 @@ def generate_grid_search_parameters(d, lr_start, dropout, n_msg_layers):
                             'np_seed': 0, # Random seed for numpy
                             'dropout': drop # LSTM Dropout
                         })
+    return cfg
 
 d = [128, 256]
 lr_start = [0.0001, 0.001]
