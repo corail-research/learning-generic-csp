@@ -16,14 +16,12 @@
 import numpy as np
 import math
 
-# TODO(dhs): duplication
 def ilit_to_var_sign(x):
     assert(abs(x) > 0)
     var = abs(x) - 1
     sign = x < 0
     return var, sign
 
-# TODO(dhs): duplication
 def ilit_to_vlit(x, n_vars):
     assert(x != 0)
     var, sign = ilit_to_var_sign(x)

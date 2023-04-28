@@ -64,7 +64,6 @@ class NeuroSAT(nn.Module):
         else:
             raise Exception("lr_decay_type must be 'no_decay', 'poly' or 'exp'")
 
-        self.saver = ModelSaver(f"snapshots/run{opts.run_id}",max_to_keep=self.opts.n_saves_to_keep)
 
     def init_random_seeds(self):
         torch.manual_seed(self.opts.torch_seed)
@@ -114,17 +113,6 @@ class NeuroSAT(nn.Module):
         self.predict_cost = torch.mean(self.predict_costs)
 
         self.cost = self.predict_cost
-
-    def save(self, epoch):
-        self.saver.save(self,epoch)
-
-    def restore(self):
-        if self.opts.restore_epoch == -1:
-            epoch_id = 'final'
-        else:
-            epoch_id = self.opts.restore_epoch
-        snapshot = f"snapshots/run{self.opts.restore_id}/model_epoch_{epoch_id}"
-        self.saver.restore(self,snapshot)
 
     def build_feed_dict(self, problem):
         d = {}
@@ -185,7 +173,6 @@ class NeuroSAT(nn.Module):
         epoch_end = time.perf_counter_ns()
 
         learning_rate = self.scheduler.get_last_lr()
-        self.save(epoch)
 
         return (train_filename, epoch_train_cost, epoch_train_mat, learning_rate, epoch_end - epoch_start)
     
@@ -314,52 +301,3 @@ class NeuroSAT(nn.Module):
     def init_lstm_size(self,size):
         self.C_update.set_input_size(size)
         self.L_update.set_input_size(size)
-
-
-class ModelSaver:
-    def __init__(self, save_dir, max_to_keep):
-        self.save_dir = save_dir
-        self.max_to_keep = max_to_keep
-        self.saved_models = []
-
-    def save(self, model, epoch):
-        if not os.path.exists(self.save_dir):
-            os.makedirs(self.save_dir)
-
-        model_path = os.path.join(self.save_dir, f'model_epoch_{epoch}.pt')
-        torch.save(model.state_dict(), model_path)
-
-        model_path = os.path.join(self.save_dir, f'model_epoch_final.pt')
-        torch.save(model.state_dict(), model_path)
-
-        self.saved_models.append(model_path)
-
-        """ if len(self.saved_models) > self.max_to_keep:
-            oldest_model = self.saved_models.pop(0)
-            os.remove(oldest_model) """
-        
-
-    def restore(self, model:NeuroSAT, restore_epoch):
-        if restore_epoch == -1:
-            restore_epoch = 'final'
-
-        model_path = f'{restore_epoch}.pt'
-
-        if os.path.exists(model_path):
-            model_state_dict: nn.Module = torch.load(model_path)
-
-            for key in model_state_dict:
-
-                if 'C_update.lstm_cell.weight_ih' in key:
-                    model.C_update.set_input_size(model_state_dict[key].size()[-1])
-
-                if 'L_update.lstm_cell.weight_ih' in key:
-                    model.L_update.set_input_size(model_state_dict[key].size()[-1])
-
-
-
-            model.load_state_dict(model_state_dict)
-            print(f"Model restored from {model_path}")
-        else:
-            print(f"Model checkpoint not found: {model_path}")
-            raise FileNotFoundError

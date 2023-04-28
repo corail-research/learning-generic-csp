@@ -16,9 +16,7 @@ parser.add_argument('--test_dir', action='store', dest='test_dir', type=str, def
 parser.add_argument('--n_epochs', action='store', dest='n_epochs', type=int, default=1)
 parser.add_argument('--run_id', action='store', dest='run_id', type=int, default=0)
 parser.add_argument('--restore_epoch', action='store', dest='restore_epoch', type=int, default=-1)
-parser.add_argument('--restore_id', action='store', dest='restore_id', type=int, default=None)
 parser.add_argument('--n_rounds', action='store', dest='n_rounds', type=int, default=16)
-parser.add_argument('--n_saves_to_keep', action='store', dest='n_saves_to_keep', type=int, default=4, help='Number of saved models to keep')
 parser.add_argument('--wandb_id', action='store', dest='wandb_id', type=str, default=None, help='Number of saved models to keep')
 opts = parser.parse_args()
 
