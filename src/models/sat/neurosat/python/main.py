@@ -6,7 +6,7 @@ import argparse
 from parse import parse
 import wandb
 from config import CONFIGS
-from options import add_neurosat_options
+# from options import add_neurosat_options
 from neurosat import NeuroSAT
 
 
