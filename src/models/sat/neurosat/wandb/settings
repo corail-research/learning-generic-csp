@@ -1,0 +1,5 @@
+[default]
+entity = seapearl
+project = neurosat
+base_url = https://api.wandb.ai
+
