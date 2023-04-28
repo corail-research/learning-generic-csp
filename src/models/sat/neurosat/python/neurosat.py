@@ -22,23 +22,23 @@ class NeuroSAT(nn.Module):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
-        self.final_reducer = decode_final_reducer(opts.final_reducer)
+        self.final_reducer = decode_final_reducer("mean")
 
         opts = self.opts
 
-        self.L_init = torch.empty((1,opts.d),device=self.device)
-        self.C_init = torch.empty((1,opts.d),device=self.device)
+        self.L_init = torch.empty((1,opts.d), device=self.device)
+        self.C_init = torch.empty((1,opts.d), device=self.device)
         nn.init.normal_(self.L_init)
         nn.init.normal_(self.C_init)
 
 
-        self.LC_msg = MLP(opts, opts.d, repeat_end(opts.d, opts.n_msg_layers, opts.d),device=self.device)
-        self.CL_msg = MLP(opts, opts.d, repeat_end(opts.d, opts.n_msg_layers, opts.d),device=self.device)
+        self.LC_msg = MLP(opts.d, repeat_end(opts.d, opts.n_msg_layers, opts.d), device=self.device)
+        self.CL_msg = MLP(opts.d, repeat_end(opts.d, opts.n_msg_layers, opts.d), device=self.device)
 
-        self.L_update = LayerNormLSTMCell(opts,activation=decode_transfer_fn(opts.lstm_transfer_fn),state_tuple=self.lstm_state_tuple,device=self.device)
-        self.C_update = LayerNormLSTMCell(opts,activation=decode_transfer_fn(opts.lstm_transfer_fn),state_tuple=self.lstm_state_tuple,device=self.device)
+        self.L_update = LayerNormLSTMCell(opts, activation=decode_transfer_fn(opts.lstm_transfer_fn), state_tuple=self.lstm_state_tuple, device=self.device)
+        self.C_update = LayerNormLSTMCell(opts, activation=decode_transfer_fn(opts.lstm_transfer_fn), state_tuple=self.lstm_state_tuple, device=self.device)
 
-        self.L_vote = MLP(opts, opts.d, repeat_end(opts.d, opts.n_vote_layers, 1),device=self.device)
+        self.L_vote = MLP(opts.d, repeat_end(opts.d, opts.n_vote_layers, 1),device=self.device)
         self.vote_bias = nn.Parameter(torch.zeros(1,device=self.device))
         self.train_problems_loader = None
         
@@ -107,8 +107,6 @@ class NeuroSAT(nn.Module):
 
         self.all_votes_batched = torch.reshape(self.all_votes_join, [self.n_batches, self.n_vars_per_batch, 2])
         self.logits = self.final_reducer(self.all_votes_batched) + self.vote_bias
-        # print((self.all_votes > 0).count_nonzero()/self.all_votes.size()[0])
-        # print(self.vote_bias)
 
     def compute_cost(self):
         

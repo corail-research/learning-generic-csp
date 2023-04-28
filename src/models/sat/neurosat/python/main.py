@@ -11,9 +11,6 @@ from neurosat import NeuroSAT
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--train', action=argparse.BooleanOptionalAction, dest="train")
-parser.add_argument('--test', action=argparse.BooleanOptionalAction, dest="test")
-
 parser.add_argument('--train_dir', action='store', dest='train_dir', type=str, default='data/train/sr5')
 parser.add_argument('--test_dir', action='store', dest='test_dir', type=str, default='data/test/sr5')
 parser.add_argument('--n_epochs', action='store', dest='n_epochs', type=int, default=1)
@@ -23,7 +20,6 @@ parser.add_argument('--restore_id', action='store', dest='restore_id', type=int,
 parser.add_argument('--n_rounds', action='store', dest='n_rounds', type=int, default=16)
 parser.add_argument('--n_saves_to_keep', action='store', dest='n_saves_to_keep', type=int, default=4, help='Number of saved models to keep')
 parser.add_argument('--wandb_id', action='store', dest='wandb_id', type=str, default=None, help='Number of saved models to keep')
-
 opts = parser.parse_args()
 
 
@@ -47,7 +43,7 @@ def train_with_config(config):
     if not os.path.exists("snapshots/"):
         os.mkdir("snapshots")
 
-    g = NeuroSAT(opts)
+    g = NeuroSAT(config)
     
     run = wandb.init(
         project='neurosat',

@@ -5,18 +5,6 @@ def repeat_end(val, n, k):
     return [val for i in range(n)] + [k]
 
 
-# Not used?
-""" def reduce_with(vec, sizes, fn, final_shape):
-    n_groups = s.size()zes)[0]
-    start_array = tf.TensorArray(dtype=tf.float32, size=n_groups, infer_shape=False).split(value=vec, lengths=sizes)
-    end_array   = tf.TensorArray(dtype=tf.float32, size=n_groups, infer_shape=True)
-
-    result = tf.while_loop((lambda i, sa, ea: i < n_groups),
-                         (lambda i, sa, ea: (i+1, sa, ea.write(i, fn(sa.read(i))))),
-                         [0, start_array, end_array])[2].stack()
-
-    return tf.reshape(result, final_shape) """
-
 def decode_final_reducer(reducer):
     if reducer == "min":
         return (lambda x: torch.min(x, dim=[1, 2]))

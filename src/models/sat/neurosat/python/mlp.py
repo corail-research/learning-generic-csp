@@ -5,11 +5,9 @@ from util import decode_transfer_fn, repeat_end
 
 
 class MLP(nn.Module):
-    def __init__(self, opts, d_in, d_outs,device):
+    def __init__(self, d_in, d_outs,device):
         super().__init__()
-
-        self.opts = opts
-        self.transfer_fn = decode_transfer_fn(opts.mlp_transfer_fn)
+        self.transfer_fn = decode_transfer_fn("relu")
         self.output_size = d_outs[-1]
 
         dims = [d_in] + d_outs
@@ -18,11 +16,9 @@ class MLP(nn.Module):
             nn.Linear(dims[i], dims[i+1],device=device) for i in range(len(dims)-1)
         ])
 
-
         for layer in self.layers:
             nn.init.xavier_normal_(layer.weight) #Normal or uniform?
             nn.init.zeros_(layer.bias)
-
 
     def forward(self, z):
 
