@@ -1,22 +1,5 @@
-# Copyright 2018 Daniel Selsam. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 from collections import namedtuple
 import numpy as np
-import math
-import random
 import os
 import torch
 import torch.nn as nn
@@ -29,7 +12,6 @@ from problems_loader import init_problems_loader
 from mlp import MLP, LayerNormLSTMCell
 from util import repeat_end, decode_final_reducer, decode_transfer_fn
 from sklearn.cluster import KMeans
-
 
 
 class NeuroSAT(nn.Module):
@@ -57,19 +39,13 @@ class NeuroSAT(nn.Module):
         self.C_update = LayerNormLSTMCell(opts,activation=decode_transfer_fn(opts.lstm_transfer_fn),state_tuple=self.lstm_state_tuple,device=self.device)
 
         self.L_vote = MLP(opts, opts.d, repeat_end(opts.d, opts.n_vote_layers, 1),device=self.device)
-
-        
         self.vote_bias = nn.Parameter(torch.zeros(1,device=self.device))
-
-
         self.train_problems_loader = None
-
         
         self.learning_rate = opts.lr_start
         self.param_list = list(self.LC_msg.parameters()) + list(self.CL_msg.parameters()) \
             + list(self.L_vote.parameters()) + [self.vote_bias] \
-            + list(self.L_update.parameters()) + list(self.C_update.parameters())
-            
+            + list(self.L_update.parameters()) + list(self.C_update.parameters())        
 
         self.optimizer = torch.optim.Adam(self.param_list,lr=self.learning_rate,weight_decay=opts.l2_weight)
 
@@ -80,16 +56,6 @@ class NeuroSAT(nn.Module):
                 total_iters=0,
             )
 
-        elif opts.lr_decay_type == "poly":
-            raise OSError
-            last_epoch = opts.lr_decay_steps + 1 - 1 /(1 - (opts.lr_start/opts.lr_end)**(1/(opts.lr_power * opts.lr_decay_steps)))
-
-            self.scheduler = torch.optim.lr_scheduler.PolynomialLR(
-                optimizer=self.optimizer,
-                power=opts.lr_power,
-                total_iters=opts.lr_decay_steps,
-            )
-
         elif opts.lr_decay_type == "exp":
             self.scheduler = torch.optim.lr_scheduler.ExponentialLR(
                 optimizer=self.optimizer,
@@ -98,10 +64,7 @@ class NeuroSAT(nn.Module):
         else:
             raise Exception("lr_decay_type must be 'no_decay', 'poly' or 'exp'")
 
-
         self.saver = ModelSaver(f"snapshots/run{opts.run_id}",max_to_keep=self.opts.n_saves_to_keep)
-
-
 
     def init_random_seeds(self):
         torch.manual_seed(self.opts.tf_seed)
@@ -154,8 +117,6 @@ class NeuroSAT(nn.Module):
 
         self.cost = self.predict_cost
 
-
-
     def save(self, epoch):
         self.saver.save(self,epoch)
 
@@ -179,8 +140,6 @@ class NeuroSAT(nn.Module):
         return d
 
     def rollout(self, feed_dict, find_sol_data=False):
-
-
         self.n_vars = feed_dict['n_vars']
         self.n_lits = feed_dict['n_lits']
         self.n_clauses = feed_dict['n_clauses']
@@ -232,7 +191,6 @@ class NeuroSAT(nn.Module):
 
         return (train_filename, epoch_train_cost, epoch_train_mat, learning_rate, epoch_end - epoch_start)
     
-
 
     def test(self, test_data_dir):
         print(f"TESTING - {test_data_dir}")
@@ -356,11 +314,8 @@ class NeuroSAT(nn.Module):
         return True
 
     def init_lstm_size(self,size):
-
         self.C_update.set_input_size(size)
         self.L_update.set_input_size(size)
-
-    
 
 
 class ModelSaver:
@@ -410,4 +365,3 @@ class ModelSaver:
         else:
             print(f"Model checkpoint not found: {model_path}")
             raise FileNotFoundError
-

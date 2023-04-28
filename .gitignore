@@ -14,4 +14,6 @@ venv/*
 concorde
 qsopt_solver
 */images*
-src/models/sat/neurosat/data
+src/models/sat/neurosat/data/*
+src/models/sat/generic_sat/data/*
+src/models/sat/generic_sat/wandb/*

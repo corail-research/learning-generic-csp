@@ -135,10 +135,8 @@ def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, l
             yield params
 
 if __name__ == "__main__":
-    search_method = "grid"  # Set to either "grid" or "random"
-    
+    search_method = "random"  # Set to either "grid" or "random"
     test_path = r"./data"
-    test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\data"
 
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
@@ -181,5 +179,3 @@ if __name__ == "__main__":
 
         train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, params["num_epochs"])
         wandb.finish()
-    
-    
