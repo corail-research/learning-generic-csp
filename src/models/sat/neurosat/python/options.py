@@ -41,7 +41,7 @@ def add_neurosat_options(parser):
     parser.add_argument('--n_msg_layers', action='store', dest='n_msg_layers', type=int, default= CONFIG['n_msg_layers'])
     parser.add_argument('--n_vote_layers', action='store', dest='n_vote_layers', type=int, default= CONFIG['n_vote_layers'])
 
-    parser.add_argument('--tf_seed', action='store', dest='tf_seed', type=int, default= CONFIG['tf_seed'])
+    parser.add_argument('--torch_seed', action='store', dest='torch_seed', type=int, default= CONFIG['torch_seed'])
     parser.add_argument('--np_seed', action='store', dest='np_seed', type=int, default= CONFIG['np_seed'])
 
 

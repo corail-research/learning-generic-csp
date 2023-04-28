@@ -67,7 +67,7 @@ class NeuroSAT(nn.Module):
         self.saver = ModelSaver(f"snapshots/run{opts.run_id}",max_to_keep=self.opts.n_saves_to_keep)
 
     def init_random_seeds(self):
-        torch.manual_seed(self.opts.tf_seed)
+        torch.manual_seed(self.opts.torch_seed)
         np.random.seed(self.opts.np_seed)
 
 
