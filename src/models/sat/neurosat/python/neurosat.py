@@ -213,7 +213,7 @@ class NeuroSAT(nn.Module):
             epoch_test_mat = epoch_test_mat.get_percentages()
 
             wandb.log({
-                "Validation Accurarcy": epoch_test_mat.tt+ epoch_test_mat.ff,
+                "Validation Accurracy": epoch_test_mat.tt + epoch_test_mat.ff,
                 "Validation Unsat accuracy": epoch_test_mat.ff / (epoch_test_mat.ff + epoch_test_mat.ft),
                 "Validation Sat accuracy": epoch_test_mat.tt / (epoch_test_mat.tt + epoch_test_mat.tf),
                 "Validation Sat accuracy": epoch_test_mat.tt / (epoch_test_mat.tt + epoch_test_mat.tf),

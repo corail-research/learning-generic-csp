@@ -68,14 +68,12 @@ if not os.path.exists("snapshots/"):
 
 g = NeuroSAT(opts)
 
-
-
 for epoch in range(opts.n_epochs):
     result = g.train_epoch(epoch)
     (efilename, etrain_cost, etrain_mat, lr, etime) = result
     
     wandb.log({
-        "Training Accurarcy": etrain_mat.tt+ etrain_mat.ff,
+        "Training Accurracy": etrain_mat.tt+ etrain_mat.ff,
         "Training Unsat accuracy": etrain_mat.ff / (etrain_mat.ff + etrain_mat.ft),
         "Training Sat accuracy": etrain_mat.tt / (etrain_mat.tt + etrain_mat.tf),
         "Training Sat accuracy": etrain_mat.tt / (etrain_mat.tt + etrain_mat.tf),
