@@ -38,6 +38,7 @@ class Options:
         self.torch_seed = torch_seed
         self.np_seed = np_seed
         self.dropout = dropout
+        self.train_dir = None
 
 
 def generate_grid_search_parameters(d, lr_start, dropout, n_msg_layers):

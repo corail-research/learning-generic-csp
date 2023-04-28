@@ -22,14 +22,12 @@ opts = parser.parse_args()
 
 
 def train_with_config(config):
+    config.train_dir = opts.train_dir
     n_batches = 0
     for file in os.listdir(opts.train_dir):
         parsed = parse("{}npb={}_nb={}.pkl",file)
         max_nodes_per_batch = parsed[1]
         n_batches += int(parsed[2])
-
-    # config['Max nodes per batch'] = int(max_nodes_per_batch)
-    # config['Number of batches'] = n_batches
 
     setattr(opts, 'commit', subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip())
     setattr(opts, 'hostname', subprocess.check_output(['hostname']).strip())
