@@ -14,7 +14,7 @@ class Options:
         lstm_transfer_fn="relu",  # LSTM transfer function
         vote_transfer_fn="relu",  # MLP transfer function
         final_reducer="mean",  # Reducer for literal votes
-        n_layers=3,  # Number of layers in message MLPs
+        n_msg_layers=3,  # Number of layers in message MLPs
         n_vote_layers=3,  # Number of layers in vote MLPs
         torch_seed=0,  # Random seed for torch
         np_seed=0,  # Random seed for numpy
@@ -33,7 +33,7 @@ class Options:
         self.lstm_transfer_fn = lstm_transfer_fn
         self.vote_transfer_fn = vote_transfer_fn
         self.final_reducer = final_reducer
-        self.n_msg_layers = n_layers
+        self.n_msg_layers = n_msg_layers
         self.n_vote_layers = n_vote_layers
         self.torch_seed = torch_seed
         self.np_seed = np_seed
@@ -46,7 +46,7 @@ def generate_grid_search_parameters(d, lr_start, dropout, n_msg_layers):
         for lr in lr_start:
             for drop in dropout:
                 for n_layers in n_msg_layers:
-                    opts = Options(dim, lr, drop, n_layers)
+                    opts = Options(d=dim, lr_start=lr, dropout=drop, n_msg_layers=n_layers)
                     cfg.append(opts)
     return cfg
 
@@ -55,3 +55,5 @@ lr_start = [0.0001, 0.001]
 dropout = [0.1, 0.2]
 n_msg_layers = [3, 4]
 CONFIGS = generate_grid_search_parameters(d, lr_start, dropout, n_msg_layers)
+
+a = 1
