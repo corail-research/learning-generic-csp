@@ -47,14 +47,6 @@ if args.train:
         shell=True,
     )
 
-if args.test:
-
-    subprocess.call(
-        f"python3 python/test.py {args.test_dir} {args.run_id} {args.restore_epoch} {args.n_rounds} {wandb_run_id}",
-        shell=True,
-    )
-
-
 wandb.finish()
 
 
