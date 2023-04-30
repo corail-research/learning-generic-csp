@@ -25,7 +25,6 @@ def add_neurosat_options(parser):
 
     parser.add_argument('--lr_decay_type', action='store', dest='lr_decay_type', type=str, default= CONFIG['lr_decay_type'])
     parser.add_argument('--lr_start', action='store', dest='lr_start', type=float, default= CONFIG['lr_start'])
-    parser.add_argument('--lr_end', action='store', dest='lr_end', type=float, default= CONFIG['lr_end'])
     parser.add_argument('--lr_decay', action='store', dest='lr_decay', type=float, default= CONFIG['lr_decay'])
     parser.add_argument('--lr_decay_steps', action='store', dest='lr_decay_steps', type=float, default= CONFIG['lr_decay_steps'])
     parser.add_argument('--lr_power', action='store', dest='lr_power', type=float, default= CONFIG['lr_power'])
