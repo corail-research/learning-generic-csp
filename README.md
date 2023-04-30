@@ -12,6 +12,9 @@ Expand All
 - src: source code
 - 
 
+## SAT problem
+The implementation for GNNs on the SAT problem can be found in src/models/sat. To complete the setup, you can run the scripts/setup.sh script to install PyMiniSolvers.
+
 ## Setup
 As usual, start by creating a virtual environment and installing the requirements:
 Expand All
