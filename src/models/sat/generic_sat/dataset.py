@@ -77,15 +77,9 @@ class SatDataset(Dataset):
     def process(self):
         sorted_raw_paths = sorted(self.raw_paths)
         num_files_to_process = len(self.raw_paths)
-        selected_indices = []
         
-        for i in range(0, num_files_to_process, 2):
-            selected_indices.append(i + random.randint(0, 1))
-        
-        pbar = tqdm(total=len(selected_indices), position=0)
+        pbar = tqdm(total=num_files_to_process, position=0)
         for i, filepath in enumerate(sorted_raw_paths):
-            if i not in selected_indices:
-                continue
 
             current_pair = i // 2
             current_element = i % 2

@@ -43,12 +43,6 @@ def train_model(model, train_loader, test_loader, optimizer, criterion, num_epoc
         test_losses.append(test_loss)
         test_metrics.append(test_metric)
 
-        if epoch >= 100:
-            last_10_avg_train = np.mean([tm['train/global_acc'] for tm in train_metrics[-10:]])
-            last_10_avg_eval = np.mean([tm['test/global_acc'] for tm in test_metrics[-10:]])
-            if last_10_avg_eval < threshold or last_10_avg_train < threshold:
-                return None, None, None, None
-
         print(f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}")
         print(f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}")
 
@@ -138,16 +132,16 @@ if __name__ == "__main__":
     search_method = "grid"  # Set to either "grid" or "random"
     
     test_path = r"./data"
-    test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\data"
+    test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\generic_sat\data"
 
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
-    hidden_units = [64]
+    hidden_units = [128]
     num_heads = [2, 4]
-    learning_rates = [0.001, 0.0005]
+    learning_rates = [0.00001, 0.000005]
     num_layers = [3]
-    dropout = 0.3
-    num_epochs = 200
+    dropout = 0.1
+    num_epochs = 300
     device = "cuda:0"
 
     dataset = SatDataset(root=test_path, graph_type="refactored", meta_connected_to_all=True, use_sat_label_as_feature=False)
@@ -181,5 +175,3 @@ if __name__ == "__main__":
 
         train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, params["num_epochs"])
         wandb.finish()
-    
-    
