@@ -137,8 +137,8 @@ if __name__ == "__main__":
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
     hidden_units = [128]
-    num_heads = [2, 4]
-    learning_rates = [0.00001, 0.000005]
+    num_heads = [4]
+    learning_rates = [0.000005]
     num_layers = [3]
     dropout = 0.1
     num_epochs = 300
