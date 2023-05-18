@@ -131,22 +131,22 @@ def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, l
 if __name__ == "__main__":
     search_method = "grid"  # Set to either "grid" or "random"
     
-    test_path = r"./data"
-    test_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\generic_sat\data"
+    test_path = r"../data"
 
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
     hidden_units = [128]
-    num_heads = [4]
-    learning_rates = [0.000005]
+    num_heads = [2, 4]
+    learning_rates = [0.00001, 0.000005]
     num_layers = [3]
     dropout = 0.1
     num_epochs = 300
     device = "cuda:0"
 
     dataset = SatDataset(root=test_path, graph_type="refactored", meta_connected_to_all=True, use_sat_label_as_feature=False)
-    train_dataset = dataset[:280]
-    test_dataset = dataset[280:]
+    train_dataset = dataset[:100000]
+    test_dataset = dataset[100000:]
+
     criterion = torch.nn.CrossEntropyLoss(reduction="sum")
     date = str(datetime.now().date())
 
