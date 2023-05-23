@@ -9,7 +9,8 @@ sat_data/*
 *sat=0.pt
 *sat=1.pt
 PyMiniSolvers/*
-wandb/*
+**/wandb/*
+**/__pycache__/*
 venv/*
 concorde
 qsopt_solver
