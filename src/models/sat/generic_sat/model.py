@@ -150,6 +150,7 @@ class GatedUpdate(torch.nn.Module):
 class LSTMConv(MessagePassing):
     def __init__(self, in_channels:Dict, out_channels:Dict, input_per_type:Dict[str, List[str]], device=None, metadata=None, **kwargs):
         super().__init__(aggr='add', **kwargs)
+        self.flow = 'target_to_source'
         self.device = device if device is not None else torch.device('cpu')
         self.gru_cells = torch.nn.ModuleDict()
         for node_type in metadata[0]:
