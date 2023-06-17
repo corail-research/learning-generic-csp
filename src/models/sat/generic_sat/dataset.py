@@ -23,7 +23,8 @@ def _repr(obj) -> str:
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
 class SatDataset(Dataset):
-    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="modified", meta_connected_to_all:bool=False, use_sat_label_as_feature:bool=False):
+    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="modified", 
+                 meta_connected_to_all:bool=False, use_sat_label_as_feature:bool=False, in_memory: bool=True):
         """
         Args:
             root : directory containing the dataset. This directory contains 2 sub-directories: raw (raw data) and processed (processed data)
@@ -39,7 +40,10 @@ class SatDataset(Dataset):
         self.graph_type = graph_type
         self.meta_connected_to_all = meta_connected_to_all
         self.use_sat_label_as_feature = use_sat_label_as_feature
+        self.in_memory = in_memory
         super(SatDataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
+        if self.in_memory:
+            self.data = self.processed_data()
     
     @property
     def raw_file_names(self):
@@ -77,15 +81,9 @@ class SatDataset(Dataset):
     def process(self):
         sorted_raw_paths = sorted(self.raw_paths)
         num_files_to_process = len(self.raw_paths)
-        selected_indices = []
         
-        for i in range(0, num_files_to_process, 2):
-            selected_indices.append(i + random.randint(0, 1))
-        
-        pbar = tqdm(total=len(selected_indices), position=0)
+        pbar = tqdm(total=num_files_to_process, position=0)
         for i, filepath in enumerate(sorted_raw_paths):
-            if i not in selected_indices:
-                continue
 
             current_pair = i // 2
             current_element = i % 2
@@ -133,6 +131,10 @@ class SatDataset(Dataset):
 
         if self.log:
             print('Done!', file=sys.stderr)
+    
+    def processed_data(self) -> List[torch.Tensor]:
+        processed_paths = self.processed_paths
+        return [torch.load(path) for path in processed_paths]
     
     def len(self):
         return len(self.processed_paths)

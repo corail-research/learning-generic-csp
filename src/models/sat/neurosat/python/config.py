@@ -2,7 +2,6 @@ d = 128  # Dimension of variable and clause embeddings
 n_rounds = 26  # Number of rounds of message passing
 lr_decay_type = "exp" # Type of learning rate decay
 lr_start = 0.0001  # Learning rate start
-lr_end = 0.0001  # Learning rate end
 lr_decay = 0.99  # Learning rate decay
 lr_decay_steps = 5  # Learning rate steps decay
 lr_power = 0.5  # Learning rate decay power
@@ -23,7 +22,6 @@ CONFIG = {
     'n_rounds': n_rounds,
     'lr_decay_type': lr_decay_type,
     'lr_start': lr_start,
-    'lr_end': lr_end,
     'lr_decay': lr_decay,
     'lr_decay_steps': lr_decay_steps,
     'lr_power': lr_power,
