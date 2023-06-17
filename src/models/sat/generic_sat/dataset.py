@@ -144,7 +144,3 @@ class SatDataset(Dataset):
         data = torch.load(path)
         
         return data
-
-if __name__ == "__main__":
-    dataset = SatDataset(root=r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\data")
-    a=1

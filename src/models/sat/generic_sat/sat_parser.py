@@ -8,7 +8,6 @@ import torch_geometric.transforms as T
 import torch_geometric.utils as pyg_utils
 import numpy as np
 import matplotlib.pyplot as plt
-# from node2vec import Node2Vec
 
 
 def parse_dimacs_cnf(filepath:str):
@@ -205,6 +204,7 @@ class CNF:
             data["meta", "has_operator", "operator"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(operators))])
              
         # data = self.get_updated_heterodata(data)
+        
         T.ToUndirected()(data)
 
         return data
