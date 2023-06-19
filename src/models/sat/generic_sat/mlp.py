@@ -4,30 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-def repeat_end(val, n, k):
-    return [val for i in range(n)] + [k]
-
-# class MLP(nn.Module):
-#     def __init__(self, d_in, d_outs, device):
-#         super().__init__()
-#         self.transfer_fn = F.relu
-#         self.output_size = d_outs[-1]
-#         dims = [d_in] + d_outs
-#         self.layers = nn.ModuleList([
-#             nn.Linear(dims[i], dims[i+1],device=device) for i in range(len(dims)-1)
-#         ])
-
-#         for layer in self.layers:
-#             nn.init.xavier_normal_(layer.weight) #Normal or uniform?
-#             nn.init.zeros_(layer.bias)
-
-#     def forward(self, z):
-#         x = z
-#         for layer in self.layers[:-1]:
-#             x = self.transfer_fn(layer(x))
-
-#         return self.layers[-1](x)
-
 class MLP(nn.Module):
     def __init__(self, input_dimension, num_layers, output_size, layer_size, device="cuda:0"):
         super().__init__()
