@@ -13,6 +13,7 @@ from torch_geometric.nn.inits import glorot, reset
 from torch_geometric.utils import is_sparse
 from torch_geometric.typing import Adj, Size
 from torch.nn import Dropout
+from torch_scatter import scatter_mean
 from typing import Dict, List
 from mlp import MLP
 
@@ -331,7 +332,7 @@ from mlp import MLP
 
 
 class AdaptedNeuroSAT(torch.nn.Module):
-    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=5):
+    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=5, device="cpu"):
         """
         Args:
             metadata (_type_): metadata for the heterogeneous graph
@@ -344,19 +345,20 @@ class AdaptedNeuroSAT(torch.nn.Module):
         self.out_channels = out_channels
         self.hidden_size = hidden_size
         self.num_passes = num_passes
+        self.device = device
         self.projection_layers = torch.nn.ModuleDict()
         self.mlp_layers = torch.nn.ModuleDict()
+        self.vote = MLP(hidden_size["variable"], 3, 2, hidden_size["variable"], device=device)
         gru_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
-        self.lstm_conv_layers = LSTMConv(gru_hidden_sizes, gru_hidden_sizes, metadata=metadata)
+        self.lstm_conv_layers = LSTMConv(gru_hidden_sizes, gru_hidden_sizes, metadata=metadata, device=device)
         for node_type in metadata[0]:
             self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
-            self.mlp_layers[node_type] = MLP(hidden_size[node_type], 3, hidden_size[node_type], hidden_size[node_type], device="cpu")
+            self.mlp_layers[node_type] = MLP(hidden_size[node_type], 3, hidden_size[node_type], hidden_size[node_type], device=device)
         
-    def forward(self, x_dict, edge_index_dict):
+    def forward(self, x_dict, edge_index_dict, batch_dict):
         x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
         
         for i in range(self.num_passes):
-            # print(f"Pass {i}")
             x_dict = {node_type: self.mlp_layers[node_type](x) for node_type, x in x_dict.items()}
             if i == 0:
                 previous_hidden_state = {node_type: None for node_type, x in x_dict.items()}
@@ -365,10 +367,10 @@ class AdaptedNeuroSAT(torch.nn.Module):
                 previous_hidden_state = {node_type: out[node_type][0] for node_type in x_dict.keys()}
                 previous_cell_state = {node_type: out[node_type][1] for node_type in x_dict.keys()}
             out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state)
-            # print(out)
-            # print(x_dict)
+        raw_votes = self.vote(x_dict["variable"])
+        votes = scatter_mean(raw_votes, batch_dict["variable"], dim=0)
 
-        return x_dict
+        return votes
 
 class LSTMUpdate(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels, num_heads, num_layers, data, dropout_prob=0):
