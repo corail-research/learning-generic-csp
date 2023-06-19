@@ -76,8 +76,6 @@ class NeuroSAT(nn.Module):
             )
 
         elif opts.lr_decay_type == "poly":
-            raise OSError
-            last_epoch = opts.lr_decay_steps + 1 - 1 /(1 - (opts.lr_start/opts.lr_end)**(1/(opts.lr_power * opts.lr_decay_steps)))
 
             self.scheduler = torch.optim.lr_scheduler.PolynomialLR(
                 optimizer=self.optimizer,
