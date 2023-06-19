@@ -7,27 +7,47 @@ import torch.nn.functional as F
 def repeat_end(val, n, k):
     return [val for i in range(n)] + [k]
 
+# class MLP(nn.Module):
+#     def __init__(self, d_in, d_outs, device):
+#         super().__init__()
+#         self.transfer_fn = F.relu
+#         self.output_size = d_outs[-1]
+#         dims = [d_in] + d_outs
+#         self.layers = nn.ModuleList([
+#             nn.Linear(dims[i], dims[i+1],device=device) for i in range(len(dims)-1)
+#         ])
+
+#         for layer in self.layers:
+#             nn.init.xavier_normal_(layer.weight) #Normal or uniform?
+#             nn.init.zeros_(layer.bias)
+
+#     def forward(self, z):
+#         x = z
+#         for layer in self.layers[:-1]:
+#             x = self.transfer_fn(layer(x))
+
+#         return self.layers[-1](x)
+
 class MLP(nn.Module):
-    def __init__(self, d_in, d_outs, device):
+    def __init__(self, input_dimension, num_layers, output_size, layer_size, device="cuda:0"):
         super().__init__()
-        self.transfer_fn = F.relu
-        self.output_size = d_outs[-1]
-        dims = [d_in] + d_outs
+        self.input_dimension = input_dimension
+        self.num_layers = num_layers
+        self.output_size = output_size
+        self.layer_size = layer_size
+        self.device = device
         self.layers = nn.ModuleList([
-            nn.Linear(dims[i], dims[i+1],device=device) for i in range(len(dims)-1)
+            nn.Linear(self.input_dimension, self.layer_size, device=self.device)
         ])
-
-        for layer in self.layers:
-            nn.init.xavier_normal_(layer.weight) #Normal or uniform?
-            nn.init.zeros_(layer.bias)
-
-    def forward(self, z):
-        x = z
+        for i in range(self.num_layers - 1):
+            self.layers.append(nn.Linear(self.layer_size, self.layer_size, device=self.device))
+        self.layers.append(nn.Linear(self.layer_size, self.output_size, device=self.device))
+    
+    def forward(self, x):
         for layer in self.layers[:-1]:
-            x = self.transfer_fn(layer(x))
+            x = F.relu(layer(x))
 
         return self.layers[-1](x)
-
 
 class LayerNormLSTMCell(nn.Module):
     def __init__(self, hidden_channels, activation=torch.tanh, state_tuple=None, device='cuda:0'):

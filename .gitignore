@@ -8,6 +8,8 @@ sat_data/*
 *.dimacs
 *sat=0.pt
 *sat=1.pt
+*test.py
+*test.ipynb
 PyMiniSolvers/*
 **/wandb/*
 **/__pycache__/*
