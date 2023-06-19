@@ -8,5 +8,6 @@ torch==1.13.1+cu117 --extra-index-url https://download.pytorch.org/whl/cu117
 torch_geometric==2.3.1
 tqdm==4.64.0
 wandb==0.13.5
+torchsummary==1.5.1
 torch-scatter -f https://data.pyg.org/whl/torch-1.13.1+cu117.html
 torch-sparse -f https://data.pyg.org/whl/torch-1.13.1+cu117.html
