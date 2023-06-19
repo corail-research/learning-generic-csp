@@ -130,7 +130,6 @@ def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, l
 
 if __name__ == "__main__":
     search_method = "grid"  # Set to either "grid" or "random"
-    
     test_path = r"../data"
 
     # Hyperparameters for grid search or random search
@@ -167,8 +166,10 @@ if __name__ == "__main__":
         )
         
         # model = HGTMeta(params["num_hidden_units"], 2, params["num_heads"], params["num_layers"], train_dataset[0], dropout_prob=params["dropout"])
+        # model = GatedUpdate(params["num_hidden_units"], 2, params["num_heads"], params["num_layers"], train_dataset[0], dropout_prob=params["dropout"])
         model = GatedUpdate(params["num_hidden_units"], 2, params["num_heads"], params["num_layers"], train_dataset[0], dropout_prob=params["dropout"])
         model = model.to(device)
+        # optimizer = torch.optim.Adam(model.param_list,lr=params["learning_rate"],weight_decay=0.0000000001)
         optimizer = torch.optim.Adam(model.parameters(), lr=params["learning_rate"])
         train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], shuffle=False, num_workers=0)
         test_loader = DataLoader(test_dataset, batch_size=params["batch_size"], shuffle=False, num_workers=0)

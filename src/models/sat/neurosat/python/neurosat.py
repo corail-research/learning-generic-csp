@@ -40,7 +40,7 @@ class NeuroSAT(nn.Module):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
         self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
-        self.final_reducer = decode_final_reducer(opts.final_reducer)
+        self.final_reducer = (lambda x: torch.mean(x, dim=[1, 2]))
 
         opts = self.opts
 
@@ -53,18 +53,13 @@ class NeuroSAT(nn.Module):
         self.LC_msg = MLP(opts, opts.d, repeat_end(opts.d, opts.n_msg_layers, opts.d),device=self.device)
         self.CL_msg = MLP(opts, opts.d, repeat_end(opts.d, opts.n_msg_layers, opts.d),device=self.device)
 
-        self.L_update = LayerNormLSTMCell(opts,activation=decode_transfer_fn(opts.lstm_transfer_fn),state_tuple=self.lstm_state_tuple,device=self.device)
-        self.C_update = LayerNormLSTMCell(opts,activation=decode_transfer_fn(opts.lstm_transfer_fn),state_tuple=self.lstm_state_tuple,device=self.device)
+        self.L_update = LayerNormLSTMCell(opts, activation=decode_transfer_fn(opts.lstm_transfer_fn), state_tuple=self.lstm_state_tuple, device=self.device)
+        self.C_update = LayerNormLSTMCell(opts, activation=decode_transfer_fn(opts.lstm_transfer_fn), state_tuple=self.lstm_state_tuple, device=self.device)
 
         self.L_vote = MLP(opts, opts.d, repeat_end(opts.d, opts.n_vote_layers, 1),device=self.device)
-
-        
+    
         self.vote_bias = nn.Parameter(torch.zeros(1,device=self.device))
-
-
-        self.train_problems_loader = None
-
-        
+        self.train_problems_loader = None        
         self.learning_rate = opts.lr_start
         self.param_list = list(self.LC_msg.parameters()) + list(self.CL_msg.parameters()) \
             + list(self.L_vote.parameters()) + [self.vote_bias] \
@@ -99,8 +94,6 @@ class NeuroSAT(nn.Module):
 
         self.saver = ModelSaver(f"snapshots/run{opts.run_id}",max_to_keep=self.opts.n_saves_to_keep)
 
-
-
     def init_random_seeds(self):
         torch.manual_seed(self.opts.tf_seed)
         np.random.seed(self.opts.np_seed)
@@ -111,13 +104,13 @@ class NeuroSAT(nn.Module):
 
     def pass_messages(self):
 
-        denom = torch.sqrt(torch.tensor(self.opts.d,device=self.device,dtype=torch.float))
+        denom = torch.sqrt(torch.tensor(self.opts.d, device=self.device, dtype=torch.float))
 
         L_output = torch.tile(torch.div(self.L_init, denom), [self.n_lits, 1])
         C_output = torch.tile(torch.div(self.C_init, denom), [self.n_clauses, 1])
 
-        L_state = self.lstm_state_tuple(h=L_output, c=torch.zeros([self.n_lits, self.opts.d],device=self.device))
-        C_state = self.lstm_state_tuple(h=C_output, c=torch.zeros([self.n_clauses, self.opts.d],device=self.device))
+        L_state = self.lstm_state_tuple(h=L_output, c=torch.zeros([self.n_lits, self.opts.d], device=self.device))
+        C_state = self.lstm_state_tuple(h=C_output, c=torch.zeros([self.n_clauses, self.opts.d], device=self.device))
 
         i = 0
         while i < self.opts.n_rounds:
@@ -163,7 +156,7 @@ class NeuroSAT(nn.Module):
         else:
             epoch_id = self.opts.restore_epoch
         snapshot = f"snapshots/run{self.opts.restore_id}/model_epoch_{epoch_id}"
-        self.saver.restore(self,snapshot)
+        self.saver.restore(self, snapshot)
 
     def build_feed_dict(self, problem):
         d = {}
