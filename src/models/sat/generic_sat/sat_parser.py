@@ -159,8 +159,8 @@ class CNF:
         """
         # Nodes and node stuff
         constraints = []
-        operators = [[-1] for _ in self.base_variables]
-        meta = [[len(self.clauses), len(self.base_variables)]]
+        operators = [[1] for _ in self.base_variables]
+        # meta = [[len(self.clauses), len(self.base_variables)]]
 
         # Edges and edge stuff
         variable_to_value_edges = self.get_sat_variable_to_domain_edges(self.base_variables)
@@ -168,19 +168,26 @@ class CNF:
         variable_to_constraint_edges = []
         operator_to_constraint_edges = []
         meta_to_constraint_edges = []
-
-        for i, clause in enumerate(self.clauses):
-            current_constraint_index = i
-            constraints.append([1, len(clause.variables)/len(self.base_variables)])
+        
+        seen_clauses = set()
+        clause_id = 0
+        for _, clause in enumerate(self.clauses):
+            sorted_clause = str(sorted(clause.variables))
+            if sorted_clause in seen_clauses:
+                continue
+            seen_clauses.add(sorted_clause)
+            current_constraint_index = clause_id
+            constraints.append([1])
             for variable in clause.variables:
                 variable_index = abs(variable) - 1
                 if variable < 0:
                     if [variable_index, variable_index] not in variable_to_operator_edges:
                         variable_to_operator_edges.append([variable_index, variable_index]) # the operator index is the same as the variable index
                     operator_to_constraint_edges.append([variable_index, current_constraint_index])
-                else:
-                    variable_to_constraint_edges.append([variable_index, current_constraint_index])
+                # else:
+                variable_to_constraint_edges.append([variable_index, current_constraint_index])
             meta_to_constraint_edges.append([0, current_constraint_index])
+            clause_id += 1
         
         data = HeteroData()
         var_tensor = torch.Tensor([[1] for _ in self.base_variables])
@@ -188,20 +195,20 @@ class CNF:
         data["variable"].x = var_tensor
         label = 1 if self.is_sat else 0
         data["variable"].y = torch.tensor([label])
-        data["value"].x = torch.Tensor([[0], [1]])
+        data["value"].x = torch.Tensor([[1, 0], [0, 1]])
         data["operator"].x = torch.Tensor(operators)
         data["constraint"].x = torch.Tensor(constraints)
-        data["meta"].x = torch.Tensor(meta)
+        # data["meta"].x = torch.Tensor(meta)
 
         data["variable", "has_domain", "value"].edge_index = self.build_edge_index_tensor(variable_to_value_edges)
         data["variable", "affected_by", "operator"].edge_index = self.build_edge_index_tensor(variable_to_operator_edges)
         data["variable", "appears_in", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
         data["operator", "connects_variable_to", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
-        data["meta", "has_constraint", "constraint"].edge_index = self.build_edge_index_tensor(meta_to_constraint_edges)
-        if meta_connected_to_all:
-            data["meta", "has_variable", "variable"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(self.base_variables))])
-            data["meta", "has_value", "value"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(2)])
-            data["meta", "has_operator", "operator"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(operators))])
+        # data["meta", "has_constraint", "constraint"].edge_index = self.build_edge_index_tensor(meta_to_constraint_edges)
+        # if meta_connected_to_all:
+        #     data["meta", "has_variable", "variable"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(self.base_variables))])
+        #     data["meta", "has_value", "value"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(2)])
+        #     data["meta", "has_operator", "operator"].edge_index = self.build_edge_index_tensor([[0, i] for i in range(len(operators))])
              
         # data = self.get_updated_heterodata(data)
         
