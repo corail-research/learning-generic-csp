@@ -7,7 +7,7 @@ import random
 import os
 from sklearn.metrics import classification_report
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-from model import SatGNN, HGT, HGTMeta, HGTSATSpecific, GatedUpdate
+from model import AdaptedNeuroSAT
 from dataset import SatDataset
 from torch_geometric.loader import DataLoader
 import multiprocessing
@@ -64,13 +64,18 @@ def process_model(model, optimizer, criterion, loader, mode='train'):
         if mode == 'train':
             optimizer.zero_grad()
         out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
-        loss = criterion(out, data["variable"].y)
+        loss = criterion(out, data["variable"].y.unsqueeze(1).float())
         if mode == 'train':
             loss.backward()
             optimizer.step()
+        
+        if out.size(1) == 1:
+            predicted = (out > 0.5).int()
+            label = data["variable"].y.int()
+        else:
+            predicted = out.argmax(dim=1).cpu()
+            label = data["variable"].y.cpu()
 
-        predicted = out.argmax(dim=1).cpu()
-        label = data["variable"].y.cpu()
         y_true.extend(label.tolist())
         y_pred.extend(predicted.tolist())
 
@@ -142,11 +147,12 @@ if __name__ == "__main__":
     num_epochs = 300
     device = "cuda:0"
 
-    dataset = SatDataset(root=test_path, graph_type="refactored", meta_connected_to_all=True, use_sat_label_as_feature=False)
+    dataset = SatDataset(root=test_path, graph_type="refactored", meta_connected_to_all=False, use_sat_label_as_feature=False)
     train_dataset = dataset[:100000]
     test_dataset = dataset[100000:]
 
-    criterion = torch.nn.CrossEntropyLoss(reduction="sum")
+    # criterion = torch.nn.CrossEntropyLoss(reduction="sum")
+    criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
     date = str(datetime.now().date())
 
     # Generate parameters based on the search method
@@ -160,19 +166,24 @@ if __name__ == "__main__":
     
     for params in search_parameters:
         wandb.init(
-            project=f"generic-graph-rep-sat-{date}-logging-test",
+            project=f"Adapted-neuroSAT-{date}",
             name=f'bs={params["batch_size"]}-hi={params["num_hidden_units"]}-he{params["num_heads"]}-l={params["num_layers"]}-lr={params["learning_rate"]}-dr={dropout}-sat-spec',
             config=params
         )
         
-        # model = HGTMeta(params["num_hidden_units"], 2, params["num_heads"], params["num_layers"], train_dataset[0], dropout_prob=params["dropout"])
-        # model = GatedUpdate(params["num_hidden_units"], 2, params["num_heads"], params["num_layers"], train_dataset[0], dropout_prob=params["dropout"])
-        model = GatedUpdate(params["num_hidden_units"], 2, params["num_heads"], params["num_layers"], train_dataset[0], dropout_prob=params["dropout"])
-        model = model.to(device)
-        # optimizer = torch.optim.Adam(model.param_list,lr=params["learning_rate"],weight_decay=0.0000000001)
-        optimizer = torch.optim.Adam(model.parameters(), lr=params["learning_rate"])
         train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], shuffle=False, num_workers=0)
         test_loader = DataLoader(test_dataset, batch_size=params["batch_size"], shuffle=False, num_workers=0)
+        first_batch_iter = iter(train_loader)
+        first_batch = next(first_batch_iter)
+        metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
 
+        num_hidden_channels = 128
+        input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
+        hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
+        out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
+        model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size)
+        model = model.cuda()
+        optimizer = torch.optim.Adam(model.parameters(),lr=params["learning_rate"],weight_decay=0.0000000001)
+    
         train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, params["num_epochs"])
         wandb.finish()

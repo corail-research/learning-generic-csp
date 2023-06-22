@@ -3,6 +3,7 @@ from collections import namedtuple
 import torch
 from torch.nn import Linear
 from torch.nn import LSTMCell
+import torch.nn.init as init
 import torch.nn.functional as F
 from torch_geometric.nn import SAGEConv, GATConv, HANConv
 from torch_geometric.nn import MeanAggregation
@@ -148,11 +149,15 @@ class LSTMConv(MessagePassing):
             hidden_size = in_channels[node_type]
             self.lstm_cells[node_type] = LSTMCell(input_size, hidden_size, device=self.device)
         
-        # self.reset_parameters()
+        self.reset_parameters()
 
-    # def reset_parameters(self):
-    #     super().reset_parameters()
-    #     glorot(self.gru_cells)
+    def reset_parameters(self):
+        for cell in self.lstm_cells.values():
+            for name, param in cell.named_parameters():
+                if 'weight' in name:
+                    init.xavier_uniform_(param)
+                elif 'bias' in name:
+                    init.constant_(param, 0)
 
     def get_entering_edge_types_per_node_type(self, edge_types, node_types):
         input_per_node_type = {node_type:[]  for node_type in node_types}
@@ -192,9 +197,11 @@ class LSTMConv(MessagePassing):
             hidden_state = previous_hidden_states[node_type]
             cell_state = previous_cell_states[node_type]
             if hidden_state is None:
-                h, c = self.lstm_cells[node_type](h_cat)
+                # h, c = self.lstm_cells[node_type](h_cat)
+                h, c = self.lstm_cells[node_type](h_cat.float())
             else:
-                h, c = self.lstm_cells[node_type](h_cat, (hidden_state, cell_state))
+                # h, c = self.lstm_cells[node_type](h_cat, (hidden_state, cell_state))
+                h, c = self.lstm_cells[node_type](h_cat.float(), (hidden_state, cell_state))
             output[node_type] = (h, c)
 
         return output
@@ -332,7 +339,7 @@ from mlp import MLP
 
 
 class AdaptedNeuroSAT(torch.nn.Module):
-    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=5, device="cpu"):
+    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu"):
         """
         Args:
             metadata (_type_): metadata for the heterogeneous graph
@@ -348,7 +355,7 @@ class AdaptedNeuroSAT(torch.nn.Module):
         self.device = device
         self.projection_layers = torch.nn.ModuleDict()
         self.mlp_layers = torch.nn.ModuleDict()
-        self.vote = MLP(hidden_size["variable"], 3, 2, hidden_size["variable"], device=device)
+        self.vote = MLP(hidden_size["variable"], 2, 1, hidden_size["variable"], device=device)
         gru_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
         self.lstm_conv_layers = LSTMConv(gru_hidden_sizes, gru_hidden_sizes, metadata=metadata, device=device)
         for node_type in metadata[0]:
@@ -357,7 +364,6 @@ class AdaptedNeuroSAT(torch.nn.Module):
         
     def forward(self, x_dict, edge_index_dict, batch_dict):
         x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
-        
         for i in range(self.num_passes):
             x_dict = {node_type: self.mlp_layers[node_type](x) for node_type, x in x_dict.items()}
             if i == 0:
@@ -367,8 +373,9 @@ class AdaptedNeuroSAT(torch.nn.Module):
                 previous_hidden_state = {node_type: out[node_type][0] for node_type in x_dict.keys()}
                 previous_cell_state = {node_type: out[node_type][1] for node_type in x_dict.keys()}
             out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state)
-        raw_votes = self.vote(x_dict["variable"])
-        votes = scatter_mean(raw_votes, batch_dict["variable"], dim=0)
+            x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
+        raw_votes = self.vote(x_dict["constraint"])
+        votes = scatter_mean(raw_votes, batch_dict["constraint"], dim=0)
 
         return votes
 
