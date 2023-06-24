@@ -137,7 +137,7 @@ def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, l
 
 if __name__ == "__main__":
     search_method = "random"  # Set to either "grid" or "random"
-    test_path = r"../data"
+    test_path = r"../data/train"
 
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
