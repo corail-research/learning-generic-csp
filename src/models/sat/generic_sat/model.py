@@ -1,12 +1,9 @@
-from collections import namedtuple
-
 import torch
 from torch.nn import Linear
 from torch.nn import LSTMCell
 import torch.nn.init as init
 import torch.nn.functional as F
-from torch_geometric.nn import SAGEConv, GATConv, HANConv
-from torch_geometric.nn import MeanAggregation
+from torch_geometric.nn import GATConv
 from torch_geometric.nn import HeteroConv, HGTConv
 from torch_geometric.nn import global_mean_pool, global_max_pool, global_add_pool
 from torch_geometric.nn.conv import MessagePassing
@@ -185,14 +182,12 @@ class LSTMConv(MessagePassing):
                 source_node_type, _, _ = edge_type
                 x = x_dict[source_node_type]
                 edge_index = edge_index_dict[edge_type]
-                # target_size = sizes[node_type]
                 size = (sizes[source_node_type][0], sizes[node_type][0])
                 self.propagate(edge_index, size=size, x=x, edge_type=edge_type)
                 # Append the resulting node features to the list of hidden states
                 h_list.append(x_dict[node_type])
             # Concatenate the resulting node features for each node type into a single vector
             h_cat = torch.cat(h_list, dim=1)
-
             # Pass the concatenated vector as the hidden state of the LSTM cell
             hidden_state = previous_hidden_states[node_type]
             cell_state = previous_cell_states[node_type]
@@ -334,9 +329,6 @@ class LSTMConv(MessagePassing):
     def message(self, x_j, edge_index_j):
         return x_j
 
-from typing import Dict
-from mlp import MLP
-
 
 class AdaptedNeuroSAT(torch.nn.Module):
     def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu"):
@@ -356,8 +348,8 @@ class AdaptedNeuroSAT(torch.nn.Module):
         self.projection_layers = torch.nn.ModuleDict()
         self.mlp_layers = torch.nn.ModuleDict()
         self.vote = MLP(hidden_size["variable"], 2, 1, hidden_size["variable"], device=device)
-        gru_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
-        self.lstm_conv_layers = LSTMConv(gru_hidden_sizes, gru_hidden_sizes, metadata=metadata, device=device)
+        lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
+        self.lstm_conv_layers = LSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
         for node_type in metadata[0]:
             self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
             self.mlp_layers[node_type] = MLP(hidden_size[node_type], 3, hidden_size[node_type], hidden_size[node_type], device=device)
@@ -374,8 +366,8 @@ class AdaptedNeuroSAT(torch.nn.Module):
                 previous_cell_state = {node_type: out[node_type][1] for node_type in x_dict.keys()}
             out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state)
             x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
-        raw_votes = self.vote(x_dict["constraint"])
-        votes = scatter_mean(raw_votes, batch_dict["constraint"], dim=0)
+        raw_votes = self.vote(x_dict["variable"])
+        votes = scatter_mean(raw_votes, batch_dict["variable"], dim=0)
 
         return votes
 
