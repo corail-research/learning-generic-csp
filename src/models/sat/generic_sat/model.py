@@ -134,7 +134,10 @@ class GatedUpdate(torch.nn.Module):
 
 
 
-class LSTMConv(MessagePassing):
+class LSTMConvV1(MessagePassing):
+    """This class is used to perform LSTM Convolution in GNNs. It assumes that the input x_dict 
+    has already been passed through a type-specific MLP layer
+    """
     def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, **kwargs):
         super().__init__(aggr='add', **kwargs)
         self.device = device if device is not None else torch.device('cpu')
@@ -329,6 +332,56 @@ class LSTMConv(MessagePassing):
     def message(self, x_j, edge_index_j):
         return x_j
 
+class LSTMConvV2(LSTMConvV1):
+    """This class is used to perform LSTM Convolution in GNNs. It assumes that the input x_dict 
+    has not yet been passed through an MLP layer. Instead, it concatenates the input features 
+    coming from the neighboring nodes before passing them through the MLP.
+    """
+    def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, **kwargs):
+        super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata)
+        self.device = device if device is not None else torch.device('cpu')
+        self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
+        self.input_type_per_node_type = self.get_input_per_node_type(metadata[1], metadata[0])
+        self.lstm_cells = torch.nn.ModuleDict()
+        self.mlp_blocks = torch.nn.ModuleDict()
+        for node_type in metadata[0]:
+            mlp_input_size = sum([in_channels[n_type] for n_type in self.input_type_per_node_type[node_type]])
+            hidden_size = in_channels[node_type]
+            self.mlp_blocks[node_type] = MLP(mlp_input_size, 2, hidden_size, hidden_size, device=self.device)            
+            self.lstm_cells[node_type] = LSTMCell(hidden_size, hidden_size, device=self.device)
+        
+        self.reset_parameters()
+
+    def forward(self, x_dict, edge_index_dict, previous_hidden_states:Dict, previous_cell_states:Dict):
+        # Loop over each node type and each edge type
+        sizes = {node_type: x_dict[node_type].size() for node_type in x_dict.keys()}
+        output = {}
+        for node_type in x_dict.keys():
+            h_list = []
+            for edge_type in self.entering_edges_per_node_type[node_type]:
+                # Perform the message passing for the current node type and edge type
+                source_node_type, _, _ = edge_type
+                x = x_dict[source_node_type]
+                edge_index = edge_index_dict[edge_type]
+                size = (sizes[source_node_type][0], sizes[node_type][0])
+                self.propagate(edge_index, size=size, x=x, edge_type=edge_type)
+                # Append the resulting node features to the list of hidden states
+                h_list.append(x_dict[node_type])
+            # Concatenate the resulting node features for each node type into a single vector
+            h_cat = torch.cat(h_list, dim=1)
+            # Pass the concatenated vector as the hidden state of the LSTM cell
+            hidden_state = previous_hidden_states[node_type]
+            cell_state = previous_cell_states[node_type]
+            lstm_input = self.mlp_blocks[node_type](h_cat)
+            if hidden_state is None:
+                # h, c = self.lstm_cells[node_type](h_cat)
+                h, c = self.lstm_cells[node_type](lstm_input.float())
+            else:
+                # h, c = self.lstm_cells[node_type](h_cat, (hidden_state, cell_state))
+                h, c = self.lstm_cells[node_type](lstm_input.float(), (hidden_state, cell_state))
+            output[node_type] = (h, c)
+
+        return output
 
 class AdaptedNeuroSAT(torch.nn.Module):
     def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu"):
@@ -349,7 +402,7 @@ class AdaptedNeuroSAT(torch.nn.Module):
         self.mlp_layers = torch.nn.ModuleDict()
         self.vote = MLP(hidden_size["variable"], 2, 1, hidden_size["variable"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
-        self.lstm_conv_layers = LSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
+        self.lstm_conv_layers = LSTMConvV1(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
         for node_type in metadata[0]:
             self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
             self.mlp_layers[node_type] = MLP(hidden_size[node_type], 3, hidden_size[node_type], hidden_size[node_type], device=device)
@@ -371,49 +424,44 @@ class AdaptedNeuroSAT(torch.nn.Module):
 
         return votes
 
-class LSTMUpdate(torch.nn.Module):
-    def __init__(self, hidden_channels, out_channels, num_heads, num_layers, data, dropout_prob=0):
-        super().__init__()
-
-        self.lin_dict = torch.nn.ModuleDict()
-        self.gru_layers = torch.nn.ModuleDict()
-        self.mlp_in = torch.nn.ModuleDict()
-        self.mlp_vote = MLP(hidden_channels, num_layers, 2, hidden_channels)
-        for node_type in data.node_types:
-            num_in_features = data[node_type]['x'].size(1)
-            self.lin_dict[node_type] = Linear(num_in_features, hidden_channels)
-            self.gru_layers[node_type] = GRU(hidden_channels, hidden_channels, batch_first=True)
-            self.mlp_in[node_type] = MLP(hidden_channels, num_layers, hidden_channels, hidden_channels)
-
-        self.lin = Linear(hidden_channels * 2, hidden_channels * 2)
-        self.out_layer = torch.nn.Softmax(dim=1)
-        self.dropout_prob = dropout_prob
-        self.dropout = Dropout(dropout_prob)
-
-    def forward(self, x_dict, edge_index_dict, batch_dict):
-        for node_type, x in x_dict.items():
-            x_dict[node_type] = self.lin_dict[node_type](x)
+class AdaptedNeuroSATV2(AdaptedNeuroSAT):
+    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu"):
+        """
+        Args:
+            metadata (_type_): metadata for the heterogeneous graph
+            in_channels (Dict[str, int]): Dict mapping node type to the number of input features
+            out_channels (Dict[str, int]): Dict mapping node type to the number of output features
+            hidden_size (Dict[str, int], optional): Dict mapping node types to number of hidden channels. Defaults to 128.
+        """
+        super(AdaptedNeuroSAT, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.hidden_size = hidden_size
+        self.num_passes = num_passes
+        self.device = device
+        self.projection_layers = torch.nn.ModuleDict()
+        self.vote = MLP(hidden_size["variable"], 2, 1, hidden_size["variable"], device=device)
+        lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
+        self.lstm_conv_layers = LSTMConvV2(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
+        for node_type in metadata[0]:
+            self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
         
-        if self.dropout_prob:
-            for gru in self.gru_layers:
-                x_dict = conv(x_dict, edge_index_dict)
-                x_dict = {key: self.dropout(F.relu(value)) for key, value in x_dict.items()}
-        else:
-            for conv, gru in zip(self.convs, self.gru_layers):
-                x_dict = conv(x_dict, edge_index_dict)
-                x_dict = {key: gru(value.unsqueeze(1))[0].squeeze(1) for key, value in x_dict.items()}
+    def forward(self, x_dict, edge_index_dict, batch_dict):
+        x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
+        for i in range(self.num_passes):
+            if i == 0:
+                previous_hidden_state = {node_type: None for node_type, x in x_dict.items()}
+                previous_cell_state = {node_type: None for node_type, x in x_dict.items()}
+            else:
+                previous_hidden_state = {node_type: out[node_type][0] for node_type in x_dict.keys()}
+                previous_cell_state = {node_type: out[node_type][1] for node_type in x_dict.keys()}
+            out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state)
+            x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
+        raw_votes = self.vote(x_dict["variable"])
+        votes = scatter_mean(raw_votes, batch_dict["variable"], dim=0)
 
-        pooled_constraint = global_mean_pool(x_dict["constraint"], batch_dict["constraint"])
-        pooled_operator = global_mean_pool(x_dict["operator"], batch_dict["operator"])
-        concat = torch.cat((pooled_constraint, pooled_operator), dim=1)
+        return votes
 
-        x = F.relu(self.lin(concat))
-        x = F.dropout(x, p=0.2)
-        x = F.relu(self.lin(x))
-        x = F.dropout(x, p=0.2)
-        x = self.lin_out(x)
-
-        return x
 
 class HGTMeta(torch.nn.Module):
     def __init__(self, hidden_channels, out_channels, num_heads, num_layers, data, dropout_prob=0):

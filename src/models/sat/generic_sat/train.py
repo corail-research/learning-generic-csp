@@ -7,7 +7,7 @@ import random
 import os
 from sklearn.metrics import classification_report
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-from model import AdaptedNeuroSAT
+from model import AdaptedNeuroSAT, AdaptedNeuroSATV2
 from dataset import SatDataset
 from torch_geometric.loader import DataLoader
 import multiprocessing
@@ -184,7 +184,7 @@ if __name__ == "__main__":
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"])
+        model = AdaptedNeuroSATV2(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"])
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params["learning_rate"],weight_decay=0.0000000001)
     
