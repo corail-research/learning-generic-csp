@@ -23,16 +23,15 @@ def _repr(obj) -> str:
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
 class SatDataset(Dataset):
-    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="modified", 
+    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="generic", 
                  meta_connected_to_all:bool=False, use_sat_label_as_feature:bool=False, in_memory: bool=True):
         """
         Args:
             root : directory containing the dataset. This directory contains 2 sub-directories: raw (raw data) and processed (processed data)
             transform (optional): transform to apply to elements of the dataset. Defaults to None.
             pre_transform (optional): Defaults to None.
-            graph_type (str): choice of 'modified' or 'base'. The base version connects nodes in the following way: variable -> operator -> constraint
-                whereas the modified version connects variable -> operator -> variable. Because the modified version needs one negation operator node per negated literal,
-                it results in much more nodes in the graph. In addition to requiring less nodes to encode the problem, the modified version connects positive literals
+            graph_type (str): choice of 'sat_specific', or 'generic'. Because the generic version needs one negation operator node per negated literal,
+                it results in much more nodes in the graph. In addition to requiring less nodes to encode the problem, the sat_specific version connects positive literals
                 to their negation, which gives more structure to the resulting graph.
             meta_connected_to_all (bool): If set to true, the meta node will be connected to all other nodes. Otherwise, only constraints will be
             use_sat_label_as_feature (bool): whether to use the label (sat or unsat) as a feature in the graph. Should be used for testing purposes only
@@ -90,11 +89,9 @@ class SatDataset(Dataset):
             pbar.update(1)
             cnf = parse_dimacs_cnf(filepath)
             
-            if self.graph_type == "base":
-                data = cnf.build_heterogeneous_graph()
-            elif self.graph_type == "modified":
+            if self.graph_type == "sat_specific":
                 data = cnf.build_sat_specific_heterogeneous_graph(use_sat_label_as_feature=self.use_sat_label_as_feature)
-            elif self.graph_type == "refactored":
+            elif self.graph_type == "generic":
                 data = cnf.build_generic_heterogeneous_graph(meta_connected_to_all=self.meta_connected_to_all)
             
             is_sat = filepath[-8]

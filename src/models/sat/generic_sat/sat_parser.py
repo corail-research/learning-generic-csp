@@ -46,57 +46,6 @@ class CNF:
         self.variables = sorted(variables)
         self.base_variables = sorted(base_variables)
     
-    def build_heterogeneous_graph(self, original=True):
-        """Build the modified graph representation; i.e. one where variables (literals) are directly connected to their negated variable (literals)
-
-        Returns:
-            data (torch_geometric.data.HeteroData): graph for the SAT problem
-        """
-        # Nodes and node stuff
-        constraints = [[1, 0]]
-        negation_operator_id = 0
-        operators = []
-
-        # Edges and edge stuff
-        variable_to_value_edges = self.get_sat_variable_to_domain_edges(self.base_variables)
-        variable_to_operator_edges = []
-        variable_to_constraint_edges = []
-        operator_to_constraint_edges = []
-        constraint_to_constraint_edges = []
-
-        for i, clause in enumerate(self.clauses):
-            current_constraint_index = i + 1
-            constraints.append([0, 1])
-            for variable in clause.variables:
-                variable_index = abs(variable) - 1
-                if variable < 0:
-                    operators.append([1])
-                    variable_to_operator_edges.append([variable_index, negation_operator_id])
-                    operator_to_constraint_edges.append([negation_operator_id, current_constraint_index])
-                    negation_operator_id += 1
-                else:
-                    variable_to_constraint_edges.append([variable_index, current_constraint_index])
-            constraint_to_constraint_edges.append([0, current_constraint_index])
-        data = HeteroData()
-
-        var_tensor = torch.Tensor([[1, len(self.base_variables), len(self.clauses)] for _ in self.base_variables])
-
-        data["variable"].x = var_tensor
-        label = [0, 1] if self.is_sat else [1, 0]
-        data["variable"].y = torch.Tensor([label])
-        data["value"].x = torch.Tensor([[0], [1]])
-        data["operator"].x = torch.Tensor([[1] for _ in range(negation_operator_id)])
-        data["constraint"].x = torch.Tensor(constraints)
-
-        data["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(variable_to_value_edges)
-        data["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(variable_to_operator_edges)
-        data["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
-        data["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(operator_to_constraint_edges)
-        data["constraint", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(constraint_to_constraint_edges)
-        T.ToUndirected()(data)
-
-        return data
-    
     def build_sat_specific_heterogeneous_graph(self, use_sat_label_as_feature=False):
         """Build the modified graph representation; i.e. one where variables (literals) are directly connected to their negated variable (literals)
         IMPORTANT: After investigation, it was concluded that this formulation is not generic enough as it leverages SAT-specific structure. 

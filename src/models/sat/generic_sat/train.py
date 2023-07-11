@@ -137,8 +137,7 @@ def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, l
 
 if __name__ == "__main__":
     search_method = "random"  # Set to either "grid" or "random"
-    test_path = r"../data/train"
-
+    data_path = r"../data/train"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
     hidden_units = [128]
@@ -150,7 +149,7 @@ if __name__ == "__main__":
     num_epochs = 400
     device = "cuda:0"
 
-    dataset = SatDataset(root=test_path, graph_type="refactored", meta_connected_to_all=False, use_sat_label_as_feature=False)
+    dataset = SatDataset(root=data_path, graph_type="sat_specific", meta_connected_to_all=False)
     train_dataset = dataset[:18000]
     test_dataset = dataset[18000:]
 

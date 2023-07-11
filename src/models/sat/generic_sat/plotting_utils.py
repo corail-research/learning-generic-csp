@@ -30,7 +30,6 @@ def plot_graph(hetero_data):
     "constraint": "orange"
     }
 
-
     layer_map = {
         "value": 0,
         "variable": 1,
