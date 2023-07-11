@@ -64,7 +64,7 @@ def process_model(model, optimizer, criterion, loader, mode='train'):
         if mode == 'train':
             optimizer.zero_grad()
         out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
-        loss = criterion(out, data["variable"].y.unsqueeze(1).float())
+        loss = criterion(out, data["variable"].y.float())
         if mode == 'train':
             loss.backward()
             optimizer.step()
@@ -153,8 +153,8 @@ if __name__ == "__main__":
     train_dataset = dataset[:18000]
     test_dataset = dataset[18000:]
 
-    # criterion = torch.nn.CrossEntropyLoss(reduction="sum")
-    criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
+    criterion = torch.nn.CrossEntropyLoss(reduction="sum")
+    # criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
     date = str(datetime.now().date())
 
     # Generate parameters based on the search method
