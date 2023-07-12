@@ -366,9 +366,9 @@ class LSTMConvV2(LSTMConvV1):
                 x = self.mlp_blocks[str(edge_type)](x)
                 edge_index = edge_index_dict[edge_type]
                 size = (sizes[source_node_type][0], sizes[node_type][0])
-                self.propagate(edge_index, size=size, x=x, edge_type=edge_type)
+                agg = self.propagate(edge_index, size=size, x=x, edge_type=edge_type)
                 # Append the resulting node features to the list of hidden states
-                h_list.append(x_dict[node_type])
+                h_list.append(agg)
             # Concatenate the resulting node features for each node type into a single vector
             h_cat = torch.cat(h_list, dim=1)
             # Pass the concatenated vector as the hidden state of the LSTM cell
@@ -439,7 +439,7 @@ class AdaptedNeuroSATV2(AdaptedNeuroSAT):
         self.num_passes = num_passes
         self.device = device
         self.projection_layers = torch.nn.ModuleDict()
-        self.vote = MLP(hidden_size["variable"], 2, 2, hidden_size["variable"], device=device)
+        self.vote = MLP(hidden_size["variable"], 2, 1, hidden_size["variable"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
         self.lstm_conv_layers = LSTMConvV2(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
         for node_type in metadata[0]:

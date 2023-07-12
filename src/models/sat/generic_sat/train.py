@@ -136,25 +136,27 @@ def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, l
             yield params
 
 if __name__ == "__main__":
+    import math
     search_method = "random"  # Set to either "grid" or "random"
     data_path = r"../data/train"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
     hidden_units = [128]
     num_heads = [2, 4]
-    learning_rates = [0.00001, 0.0001]
+    learning_rates = [0.00001]
     num_lstm_passes = [26, 30, 32]
     num_layers = [2, 3]
     dropout = 0.1
     num_epochs = 400
     device = "cuda:0"
-
+    train_ratio = 0.8
+    
     dataset = SatDataset(root=data_path, graph_type="sat_specific", meta_connected_to_all=False)
-    train_dataset = dataset[:18000]
-    test_dataset = dataset[18000:]
+    train_dataset = dataset[:math.floor(len(dataset) * train_ratio)]
+    test_dataset = dataset[math.floor(len(dataset) * train_ratio):]
 
-    criterion = torch.nn.CrossEntropyLoss(reduction="sum")
-    # criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
+    # criterion = torch.nn.CrossEntropyLoss(reduction="sum")
+    criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
     date = str(datetime.now().date())
 
     # Generate parameters based on the search method
