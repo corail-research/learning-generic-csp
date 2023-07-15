@@ -144,7 +144,7 @@ if __name__ == "__main__":
     hidden_units = [128]
     num_heads = [2, 4]
     learning_rates = [0.00001]
-    num_lstm_passes = [26, 30, 32]
+    num_lstm_passes = [26]
     num_layers = [2, 3]
     dropout = 0.1
     num_epochs = 400

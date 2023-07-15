@@ -358,25 +358,47 @@ class LSTMConvV2(LSTMConvV1):
         sizes = {node_type: x_dict[node_type].size() for node_type in x_dict.keys()}
         output = {}
         for node_type in x_dict.keys():
-            h_list = []
+            inputs = []
+            hidden_state = previous_hidden_states[node_type]
             for edge_type in self.entering_edges_per_node_type[node_type]:
                 # Perform the message passing for the current node type and edge type
                 source_node_type, _, _ = edge_type
                 x = x_dict[source_node_type]
-                x = self.mlp_blocks[str(edge_type)](x)
-                edge_index = edge_index_dict[edge_type]
-                size = (sizes[source_node_type][0], sizes[node_type][0])
-                agg = self.propagate(edge_index, size=size, x=x, edge_type=edge_type)
-                # Append the resulting node features to the list of hidden states
-                h_list.append(agg)
+                if edge_type == ("variable", "is_negation_of", "variable"):
+                    inputs.append(hidden_state)
+                else:
+                    x = self.mlp_blocks[str(edge_type)](x) # before the layer, x is the result of the projection 
+                    edge_index = edge_index_dict[edge_type]
+                    size = (sizes[source_node_type][0], sizes[node_type][0])
+                    agg = self.propagate(edge_index, size=size, x=x, edge_type=edge_type) # Here, we perform the "add" aggregation after the base features are passed through an MLP
+                    # Append the resulting node features to the list of hidden states
+                    inputs.append(agg)
             # Concatenate the resulting node features for each node type into a single vector
-            h_cat = torch.cat(h_list, dim=1)
-            # Pass the concatenated vector as the hidden state of the LSTM cell
-            hidden_state = previous_hidden_states[node_type]
+            h_cat = torch.cat(inputs, dim=1)            
             if previous_cell_states[node_type] is None:
                 cell_state = torch.zeros_like(hidden_state)
             else:
                 cell_state = previous_cell_states[node_type]
+            """
+            This part is edge-type-dependent: 
+            for lit -> clause, we perform the update in the following way:
+                - The LSTM input is directly the aggregated output of the mlp (agg = self.propagate ...)
+                - The hidden and cell states are the following:
+                    - The initial LSTM cell state is a zeros tensor of the same size as the hidden state
+                    - The initial LSTM hidden state is the result of the initial projection
+                - For the following steps, they are the following:
+                    - The LSTM cell state is the cell state from the previous step
+                    - The LSTM hidden state is the hidden state from the previous step
+            for clause -> lit, we perform the update in the following way:
+                - The LSTM input is the concatenation of the aggregated output of the mlp and the flipped hidden state from the previous step. 
+                  For the first step, the hidden state is the result of the initial projection.
+                - The hidden and cell states are the following:
+                    - The initial LSTM cell state is a zeros tensor of the same size as the hidden state
+                    - The initial LSTM hidden state is the result of the initial projection
+                - For the following steps, they are the following:
+                    - The LSTM cell state is the cell state from the previous step
+                    - The LSTM hidden state is the hidden state from the previous step
+            """ 
             h, c = self.lstm_cells[node_type](h_cat, (hidden_state, cell_state))
             output[node_type] = (h, c)
 

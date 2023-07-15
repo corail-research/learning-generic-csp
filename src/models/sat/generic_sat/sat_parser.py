@@ -57,15 +57,14 @@ class CNF:
         """
         # Nodes and node stuff
         variable_to_index = {var: idx for idx, var in enumerate(self.variables)}
-        constraints = [[1, 0]]
+        constraints = []
 
         # Edges and edge stuff
         variable_to_variable_edges = []
         variable_to_constraint_edges = []
 
-        for i, clause in enumerate(self.clauses):
-            constraint_index = i + 1
-            constraints.append([0, 1])
+        for constraint_index, clause in enumerate(self.clauses):
+            constraints.append([1])
             for variable in clause.variables:
                 variable_index = variable_to_index[variable]
                 if variable < 0:
@@ -82,7 +81,6 @@ class CNF:
         if use_sat_label_as_feature:
             var_tensor = torch.Tensor([[1, self.is_sat] if var > 0 else [-1, self.is_sat] for var in self.variables])
         else:
-            # var_tensor = torch.Tensor([[1] if var > 0 else [-1] for var in self.variables])
             var_tensor = torch.Tensor([[1] for var in self.variables])
 
         data["variable"].x = var_tensor
