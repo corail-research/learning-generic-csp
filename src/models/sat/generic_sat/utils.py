@@ -1,73 +1,134 @@
-import networkx as nx
-import matplotlib.pyplot as plt
+import argparse
+from datetime import datetime
+import wandb
+import torch
 import numpy as np
+import random
+import os
+from sklearn.metrics import classification_report
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 
-def hetero_data_to_networkx(data):
-    G = nx.DiGraph()
+def get_args():
+    parser = argparse.ArgumentParser(description="Your script description here.")
+    parser.add_argument("-path", type=str, default="./data",help="Path to the data directory. Default: ./data")
+    parser.add_argument("-lr", type=float, required=True,help="Learning rate for the optimizer.")
+    parser.add_argument("-batch_size", type=int, required=True, help="Batch size for training.")
+    parser.add_argument("-num_layers", type=int, required=True, help="Number of transformer layers.")
+    parser.add_argument("-num_heads", type=int, required=True, help="Number of attention heads in each transformer layer.")
+    parser.add_argument("-num_epochs", type=int, default=100, help="Number of epochs to train. Default: 100")
+    parser.add_argument("-hidden_size", type=int, required=True, help="Hidden size of the transformer layers.")
+    parser.add_argument("-device", type=str, default="cuda:0", help="Device to use for training. Default: cuda:0")
+    parser.add_argument("-train_bounds", nargs="+", type=int, required=True,help="Start and end indices of the training set.")
+    parser.add_argument("-valid_bounds", nargs="+", type=int, required=True,help="Start and end indices of the validation set.")
+    parser.add_argument("-dropout", type=float, default=0.0, help="Dropout probability. Default: 0.0")
+    args = parser.parse_args()
+    
+    return args
 
-    # Add nodes
-    for node_type in data.node_types:
-        for i in range(data[node_type].num_nodes):
-            G.add_node(f"{node_type}_{i}", node_type=node_type)
+def train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs, threshold=0.6):
+    train_losses, test_losses, train_metrics, test_metrics = [], [], [], []
 
-    # Add edges
-    for edge_key in data.edge_types:
-        src, dst = data[edge_key].edge_index
-        edge_type = edge_key[1]
-        for s, d in zip(src, dst):
-            G.add_edge(f"{edge_key[0]}_{s.item()}", f"{edge_key[2]}_{d.item()}", edge_type=edge_type)
+    for epoch in range(1, num_epochs):
+        train_acc, train_loss, train_metric = process_model(model, optimizer, criterion, train_loader, mode='train')
+        train_losses.append(train_loss)
+        train_metrics.append(train_metric)
 
-    return G
+        test_acc, test_loss, test_metric = process_model(model, None, criterion, test_loader, mode='test')
+        test_losses.append(test_loss)
+        test_metrics.append(test_metric)
 
+        print(f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}")
+        print(f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}")
 
-def get_color_map(num_colors):
-    color_map = plt.get_cmap('tab10')
-    return [color_map(i) for i in np.linspace(0, 1, num_colors)]
+    return train_losses, test_losses, train_metrics, test_metrics
 
-def get_shape_list():
-    return ['o', 's', '^', 'D', 'h', 'p', '*', '8', 'v']
+def process_model(model, optimizer, criterion, loader, mode='train'):
+    assert mode in ['train', 'test'], "Invalid mode, choose either 'train' or 'test'."
 
-def plot_heterogeneous_graph(data, align_nodes=True, spacing=1.5):
-    G = hetero_data_to_networkx(data)
-    if align_nodes:
-        pos = {}
-        type_counter = {}
-        for node in G.nodes:
-            node_type = G.nodes[node]['node_type']
-            if node_type not in type_counter:
-                type_counter[node_type] = 0
-            pos[node] = (type_counter[node_type] * spacing, list(data.node_types).index(node_type) * spacing)
-            type_counter[node_type] += 1
+    if mode == 'train':
+        model.train()
     else:
-        pos = nx.spring_layout(G, seed=42)
+        model.eval()
 
-    node_colors_map = dict(zip(data.node_types, get_color_map(len(data.node_types))))
-    node_shapes_map = dict(zip(data.node_types, get_shape_list()))
-    edge_colors_map = dict(zip([edge_key[1] for edge_key in data.edge_types], get_color_map(len(data.edge_types))))
+    total_loss = 0
+    y_true, y_pred = [], []
 
-    for node_type in data.node_types:
-        node_list = [n for n in G.nodes if G.nodes[n]['node_type'] == node_type]
-        nx.draw_networkx_nodes(G, pos, nodelist=node_list, node_color=node_colors_map[node_type], node_shape=node_shapes_map[node_type])
+    for data in loader:
+        data = data.to(device="cuda:0")
+        if mode == 'train':
+            optimizer.zero_grad()
+            out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
+            loss = criterion(out, data["variable"].y.float())
+            loss.backward()
+            optimizer.step()
+        else:
+            with torch.no_grad():
+                out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
+                loss = criterion(out, data["variable"].y.float())
+        
+        if out.size(1) == 1:
+            predicted = (out > 0).int()
+            label = data["variable"].y.int()
+        else:
+            predicted = out.argmax(dim=1).cpu()
+            label = data["variable"].y.cpu()
 
-    for edge_type, edge_color in edge_colors_map.items():
-        edge_list = [(src, dst) for src, dst, data in G.edges(data=True) if data['edge_type'] == edge_type]
-        nx.draw_networkx_edges(G, pos, edgelist=edge_list, edge_color=edge_color, arrows=True, connectionstyle='arc3,rad=0.2')
+        y_true.extend(label.tolist())
+        y_pred.extend(predicted.tolist())
 
-    nx.draw_networkx_labels(G, pos)
-    plt.axis('off')
-    plt.show()
+        total_loss += loss.item()
 
-def custom_layout(G, data, spacing=1.5):
-    pos = {}
-    type_counter = {}
-    radius = spacing / 2
-    for node in G.nodes:
-        node_type = G.nodes[node]['node_type']
-        if node_type not in type_counter:
-            type_counter[node_type] = 0
-        angle = 2 * np.pi * type_counter[node_type] / data[node_type].num_nodes
-        x_offset = list(data.node_types).index(node_type) * spacing
-        pos[node] = (radius * np.cos(angle) + x_offset, radius * np.sin(angle))
-        type_counter[node_type] += 1
-    return pos
+    report = classification_report(y_true, y_pred, output_dict=True, zero_division=0)
+    metrics = {
+        f"{mode}/global_acc": report['accuracy'],
+        f"{mode}/acc_class_0": report['0']['recall'],
+        f"{mode}/acc_class_1": report['1']['recall'],
+        f"{mode}/f1_class_0": report['0']['f1-score'],
+        f"{mode}/f1_class_1": report['1']['f1-score'],
+        f"{mode}/loss": total_loss / len(y_true)
+    }
+    wandb.log(metrics)
+
+    return report['weighted avg']["precision"], total_loss / len(y_true), metrics
+
+
+def generate_grid_search_parameters(batch_sizes, hidden_units, num_heads, learning_rates, num_layers, dropout, num_epochs, num_lstm_passes):
+    for batch_size in batch_sizes:
+        for num_hidden_units in hidden_units:
+            for heads in num_heads:
+                for lr in learning_rates:
+                    for layers in num_layers:
+                        yield {
+                            "batch_size": batch_size,
+                            "num_hidden_units": num_hidden_units,
+                            "num_heads": heads,
+                            "learning_rate": lr,
+                            "num_layers": layers,
+                            "dropout": dropout,
+                            "num_epochs": num_epochs,
+                            "num_lstm_passes": random.choice(num_lstm_passes)
+                        }
+
+def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, learning_rates, num_layers, dropout, num_epochs, num_lstm_passes):
+    tested_combinations = set()
+    count = 0
+    
+    while count < n:
+        params = {
+            "batch_size": random.choice(batch_sizes),
+            "num_hidden_units": random.choice(hidden_units),
+            "num_heads": random.choice(num_heads),
+            "learning_rate": random.choice(learning_rates),
+            "num_layers": random.choice(num_layers),
+            "dropout": dropout,
+            "num_epochs": num_epochs,
+            "num_lstm_passes": random.choice(num_lstm_passes)
+        }
+        
+        frozen_params = frozenset(params.items())
+        
+        if frozen_params not in tested_combinations:
+            tested_combinations.add(frozen_params)
+            count += 1
+            yield params
