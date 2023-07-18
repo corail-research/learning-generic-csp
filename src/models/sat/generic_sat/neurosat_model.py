@@ -18,7 +18,7 @@ from model import AdaptedNeuroSAT, LSTMConvV1
 
 
 class NeuroSAT(AdaptedNeuroSAT):
-    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu"):
+    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu", flip_inputs:bool=False):
         """
         Args:
             metadata (_type_): metadata for the heterogeneous graph
@@ -35,7 +35,7 @@ class NeuroSAT(AdaptedNeuroSAT):
         self.projection_layers = torch.nn.ModuleDict()
         self.vote = MLP(hidden_size["variable"], 2, 1, hidden_size["variable"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
-        self.lstm_conv_layers = NeuroSatLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
+        self.lstm_conv_layers = NeuroSatLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, flip_inputs=flip_inputs)
         for node_type in metadata[0]:
             self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
         
@@ -48,7 +48,7 @@ class NeuroSAT(AdaptedNeuroSAT):
             else:
                 previous_hidden_state = {node_type: out[node_type][0] for node_type in x_dict.keys()}
                 previous_cell_state = {node_type: out[node_type][1] for node_type in x_dict.keys()}
-            out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state)
+            out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state, batch_dict)
             x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
         raw_votes = self.vote(x_dict["variable"])
         votes = scatter_mean(raw_votes, batch_dict["variable"], dim=0)
@@ -68,6 +68,7 @@ class NeuroSatLSTMConv(LSTMConvV1):
         self.lstm_cells = torch.nn.ModuleDict()
         self.mlp_blocks = torch.nn.ModuleDict()
         self.lstm_sizes = {}
+        self.flip_inputs = kwargs.get("flip_inputs", False)
 
         for node_type in metadata[0]:            
             hidden_size = in_channels[node_type]
@@ -81,7 +82,7 @@ class NeuroSatLSTMConv(LSTMConvV1):
         
         self.reset_parameters()
 
-    def forward(self, x_dict, edge_index_dict, previous_hidden_states:Dict, previous_cell_states:Dict):
+    def forward(self, x_dict, edge_index_dict, previous_hidden_states:Dict, previous_cell_states:Dict, batch_dict: Dict):
         # Loop over each node type and each edge type
         sizes = {node_type: x_dict[node_type].size() for node_type in x_dict.keys()}
         output = {}
@@ -93,7 +94,11 @@ class NeuroSatLSTMConv(LSTMConvV1):
                 source_node_type, _, _ = edge_type
                 x = x_dict[source_node_type]
                 if edge_type == ("variable", "is_negation_of", "variable"):
-                    inputs.append(hidden_state)
+                    if self.flip_inputs:
+                        flipped = self.flip(hidden_state, batch_dict)
+                        inputs.append(flipped)
+                    else:
+                        inputs.append(hidden_state)
                 else:
                     x = self.mlp_blocks[str(edge_type)](x) # before the layer, x is the result of the projection 
                     edge_index = edge_index_dict[edge_type]
@@ -131,3 +136,19 @@ class NeuroSatLSTMConv(LSTMConvV1):
             output[node_type] = (h, c)
 
         return output
+    
+    def flip(self, hidden_state, batch_dict):
+        """Performs the flip operation, as describred in the NeuroSAT paper. This operation replaces -"flips"- the hidden state 
+        of the variable nodes with the hidden state of the negated variable
+        """
+        num_vars_per_instance = torch.bincount(batch_dict["variable"])
+        offset = 0
+        new_index = []
+        for i, num_variables in enumerate(num_vars_per_instance):
+            flipped_indices = torch.arange(offset + num_variables - 1, offset - 1, -1, device=self.device)
+            new_index.append(flipped_indices)
+            offset += num_variables
+        new_index = torch.cat(new_index)
+        flipped = torch.index_select(hidden_state, 0, index=new_index.long())
+
+        return flipped

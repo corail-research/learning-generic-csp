@@ -3,7 +3,7 @@ import wandb
 import torch
 import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-from model import AdaptedNeuroSATV2
+from model import AdaptedNeuroSAT, SatGNN
 from neurosat_model import NeuroSAT
 from dataset import SatDataset
 from torch_geometric.loader import DataLoader
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     
     for params in search_parameters:
         wandb.init(
-            project=f"Adapted-neuroSAT",
+            project=f"SATGNN",
             name=f'bs={params["batch_size"]}-hi={params["num_hidden_units"]}-he{params["num_heads"]}-l={params["num_layers"]}-lr={params["learning_rate"]}-dr={dropout}-sat-spec',
             config=params
         )
@@ -63,7 +63,7 @@ if __name__ == "__main__":
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        model = AdaptedNeuroSATV2(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"])
+        model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device, flip_inputs=True)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params["learning_rate"],weight_decay=0.0000000001)
     
