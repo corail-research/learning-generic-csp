@@ -4,131 +4,18 @@ from torch.nn import LSTMCell
 import torch.nn.init as init
 import torch.nn.functional as F
 from torch_geometric.nn import GATConv
-from torch_geometric.nn import HeteroConv, HGTConv
-from torch_geometric.nn import global_mean_pool, global_max_pool, global_add_pool
+from torch_geometric.nn import HeteroConv
+from torch_geometric.nn import global_mean_pool
 from torch_geometric.nn.conv import MessagePassing
 from torch_geometric.nn.inits import glorot, reset
 from torch_geometric.utils import is_sparse
 from torch_geometric.typing import Adj, Size
 from torch.nn import Dropout
 from torch_scatter import scatter_mean
-from typing import Dict, List
+from typing import Dict
 from mlp import MLP
 
-
-class HGTSATSpecific(torch.nn.Module):
-    def __init__(self, hidden_channels, out_channels, num_heads, num_layers, data, dropout_prob=0):
-        super().__init__()
-
-        self.lin_dict = torch.nn.ModuleDict()
-        for node_type in data.node_types:
-            num_in_features = data[node_type]['x'].size(1)
-            self.lin_dict[node_type] = Linear(num_in_features, hidden_channels)
-
-        self.convs = torch.nn.ModuleList()
-        for _ in range(num_layers):
-            conv = HGTConv(hidden_channels, hidden_channels, data.metadata(), num_heads, group='sum')
-            self.convs.append(conv)
-
-        self.lin = Linear(hidden_channels * 2, out_channels)
-        self.out_layer = torch.nn.Softmax(dim=1)
-        self.dropout_prob = dropout_prob
-        self.dropout = Dropout(dropout_prob)
-
-    def forward(self, x_dict, edge_index_dict, batch_dict):
-        for node_type, x in x_dict.items():
-            x_dict[node_type] = self.lin_dict[node_type](x).relu_()
-        
-        if self.dropout_prob:
-            for conv in self.convs:
-                x_dict = conv(x_dict, edge_index_dict)
-                x_dict = {key: self.dropout(value) for key, value in x_dict.items()}
-
-        else:
-            for conv in self.convs:
-                x_dict = conv(x_dict, edge_index_dict)
-        
-        constraint_pool = global_max_pool(x_dict["constraint"], batch_dict["constraint"])
-        variable_pool = global_max_pool(x_dict["variable"], batch_dict["variable"])
-        x = self.lin(torch.concat((variable_pool, constraint_pool), dim=1))
-        x = self.out_layer(x)
-
-        return x
-
-class HGT(torch.nn.Module):
-    def __init__(self, hidden_channels, out_channels, num_heads, num_layers, data, dropout_prob=0):
-        super().__init__()
-
-        self.lin_dict = torch.nn.ModuleDict()
-        for node_type in data.node_types:
-            num_in_features = data[node_type]['x'].size(1)
-            self.lin_dict[node_type] = Linear(num_in_features, hidden_channels)
-
-        self.convs = torch.nn.ModuleList()
-        for _ in range(num_layers):
-            conv = HGTConv(hidden_channels, hidden_channels, data.metadata(),
-                           num_heads, group='sum')
-            self.convs.append(conv)
-
-        self.lin = Linear(hidden_channels, out_channels)
-        self.out_layer = torch.nn.Softmax(dim=1)
-        self.dropout_prob = dropout_prob
-        self.dropout = Dropout(dropout_prob)
-
-    def forward(self, x_dict, edge_index_dict, batch_dict):
-        for node_type, x in x_dict.items():
-            x_dict[node_type] = self.lin_dict[node_type](x).relu_()
-        
-        if self.dropout_prob:
-            for conv in self.convs:
-                x_dict = conv(x_dict, edge_index_dict)
-                x_dict = {key: self.dropout(value) for key, value in x_dict.items()}
-
-        else:
-            for conv in self.convs:
-                x_dict = conv(x_dict, edge_index_dict)
-        
-        diffs = batch_dict["constraint"].diff()
-        diffs[0] = 1
-        indices = (diffs == 1).nonzero(as_tuple=True)
-        main_constraint = x_dict["constraint"][indices]
-        x = self.lin(main_constraint)
-        x = self.out_layer(x)
-
-        return x
     
-class GatedUpdate(torch.nn.Module):
-    def __init__(self, hidden_channels, out_channels, num_heads, num_conv_layers, data, dropout_prob=0, num_mlp_layers=3):
-        super().__init__()
-
-        self.mlp_input_dict = torch.nn.ModuleDict()
-        self.mlp_output_dict = torch.nn.ModuleDict()
-        for node_type in data.node_types:
-            num_in_features = data[node_type]['x'].size(1)
-            self.mlp_input_dict[node_type] = MLP(in_channels=num_in_features, hidden_channels=hidden_channels, out_channels=hidden_channels, num_layers=num_mlp_layers, dropout=dropout_prob, act="relu")
-            self.mlp_output_dict[node_type] = MLP(in_channels=hidden_channels, hidden_channels=hidden_channels, out_channels=2, num_layers=num_mlp_layers, dropout=dropout_prob, act="relu")
-
-        self.convs = torch.nn.ModuleList()
-        for _ in range(num_conv_layers):
-            conv = HGTConv(hidden_channels, hidden_channels, data.metadata(), num_heads, group='mean')
-            self.convs.append(conv)
-        
-        self.out_layer = torch.nn.Softmax(dim=1)
-        self.dropout_prob = dropout_prob
-        self.dropout = Dropout(dropout_prob)
-
-    def forward(self, x_dict, edge_index_dict, batch_dict):
-        for node_type, x in x_dict.items():
-            x_dict[node_type] = self.mlp_input_dict[node_type](x)
-        
-        # if self.dropout_prob:
-        for conv in self.convs:
-            x_dict = conv(x_dict, edge_index_dict)
-
-        x = self.out_layer(self.mlp_output_dict["variable"](x_dict["variable"]))
-
-        return global_mean_pool(x, batch_dict["variable"])
-
 class LSTMConvV1(MessagePassing):
     """This class is used to perform LSTM Convolution in GNNs. It assumes that the input x_dict 
     has already been passed through a type-specific MLP layer
@@ -483,45 +370,6 @@ class AdaptedNeuroSATV2(AdaptedNeuroSAT):
 
         return votes
 
-class HGTMeta(torch.nn.Module):
-    def __init__(self, hidden_channels, out_channels, num_heads, num_layers, data, dropout_prob=0):
-        super().__init__()
-
-        self.lin_dict = torch.nn.ModuleDict()
-        for node_type in data.node_types:
-            num_in_features = data[node_type]['x'].size(1)
-            self.lin_dict[node_type] = Linear(num_in_features, hidden_channels)
-
-        self.convs = torch.nn.ModuleList()
-        for _ in range(num_layers):
-            conv = HGTConv(hidden_channels, hidden_channels, data.metadata(), num_heads, group='sum')
-            self.convs.append(conv)
-
-        self.lin = Linear(hidden_channels, out_channels)
-        self.out_layer = torch.nn.Softmax(dim=1)
-        self.dropout_prob = dropout_prob
-        self.dropout = Dropout(dropout_prob)
-
-    def forward(self, x_dict, edge_index_dict, batch_dict, filename=None):
-        for node_type, x in x_dict.items():
-            x_dict[node_type] = self.lin_dict[node_type](x).relu_()
-        
-        if self.dropout_prob:
-            for conv in self.convs:
-                x_dict = conv(x_dict, edge_index_dict)
-                x_dict = {key: self.dropout(value) for key, value in x_dict.items()}
-        else:
-            for conv in self.convs:
-                x_dict = conv(x_dict, edge_index_dict)
-
-        diffs = batch_dict["constraint"].diff()
-        diffs[0] = 1
-        indices = (diffs == 1).nonzero(as_tuple=True)
-        main_constraint = x_dict["constraint"][indices]
-        x = self.lin(main_constraint)
-        x = self.out_layer(x)
-
-        return x
 
 class SatGNN(torch.nn.Module):
     def __init__(self, hidden_channels, num_layers):
