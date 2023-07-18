@@ -70,7 +70,7 @@ def process_model(model, optimizer, criterion, loader, mode='train'):
             optimizer.step()
         
         if out.size(1) == 1:
-            predicted = (out > 0.5).int()
+            predicted = (out > 0).int()
             label = data["variable"].y.int()
         else:
             predicted = out.argmax(dim=1).cpu()
