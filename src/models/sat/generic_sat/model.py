@@ -15,13 +15,34 @@ from torch_scatter import scatter_mean
 from typing import Dict
 from mlp import MLP
 
+
+class CustomConvUtils:
+    def __init__(self):
+        pass
     
-class LSTMConvV1(MessagePassing):
+    def get_entering_edge_types_per_node_type(self, edge_types, node_types):
+        input_per_node_type = {node_type:[]  for node_type in node_types}
+        for edge_type in edge_types:
+            _, _, dst_type = edge_type
+            input_per_node_type[dst_type].append(edge_type)
+        return input_per_node_type
+    
+    def get_input_per_node_type(self, edge_types, node_types):
+        input_per_type = {node_type: set() for node_type in node_types}
+        for edge_type in edge_types:
+            src_type, _, dst_type = edge_type
+            input_per_type[dst_type].add(src_type)
+        
+        return input_per_type
+
+
+class LSTMConvV1(MessagePassing, CustomConvUtils):
     """This class is used to perform LSTM Convolution in GNNs. It assumes that the input x_dict 
     has already been passed through a type-specific MLP layer
     """
     def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, **kwargs):
-        super().__init__(aggr='add', **kwargs)
+        MessagePassing.__init__(self, aggr='add', **kwargs)
+        CustomConvUtils.__init__(self)
         self.device = device if device is not None else torch.device('cpu')
         self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
         self.input_type_per_node_type = self.get_input_per_node_type(metadata[1], metadata[0])
@@ -40,21 +61,6 @@ class LSTMConvV1(MessagePassing):
                     init.xavier_uniform_(param)
                 elif 'bias' in name:
                     init.constant_(param, 0)
-
-    def get_entering_edge_types_per_node_type(self, edge_types, node_types):
-        input_per_node_type = {node_type:[]  for node_type in node_types}
-        for edge_type in edge_types:
-            _, _, dst_type = edge_type
-            input_per_node_type[dst_type].append(edge_type)
-        return input_per_node_type
-    
-    def get_input_per_node_type(self, edge_types, node_types):
-        input_per_type = {node_type: set() for node_type in node_types}
-        for edge_type in edge_types:
-            src_type, _, dst_type = edge_type
-            input_per_type[dst_type].add(src_type)
-        
-        return input_per_type
 
     def forward(self, x_dict, edge_index_dict, previous_hidden_states:Dict, previous_cell_states:Dict):
         # Loop over each node type and each edge type
@@ -261,24 +267,55 @@ class SatGNN(torch.nn.Module):
         self.convs = torch.nn.ModuleList()
         for _ in range(num_layers):
             conv = HeteroConv({
-                ("variable", "connected_to", "variable"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
-                ("variable", "rev_connected_to", "variable"): GATConv((-1, -1), hidden_channels, add_self_loops=False), 
-                ("variable", "connected_to", "constraint"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
-                ("constraint", "rev_connected_to", "variable"): GATConv((-1, -1), hidden_channels, add_self_loops=False),
+                ("variable", "is_negation_of", "variable"): GATConv((-1, -1), hidden_channels["variable"], add_self_loops=False),
+                ("variable", "connected_to", "constraint"): GATConv((-1, -1), hidden_channels["variable"], add_self_loops=False), 
+                ("constraint", "rev_connected_to", "variable"): GATConv((-1, -1), hidden_channels["constraint"], add_self_loops=False),
             }, aggr="sum")
-            self.convs.append(conv)        
-        self.lin = Linear(hidden_channels * 2, 2)
-        self.out_layer = torch.nn.Softmax(dim=1)
+            self.convs.append(conv)
+        self.vote_mlp = MLP(hidden_channels["variable"], 2, 1, hidden_channels["variable"])
 
     def forward(self, x_dict, edge_index_dict, batch_dict):
         for conv in self.convs:
             x_dict = conv(x_dict, edge_index_dict)
-            # x_dict = {key: F.dropout(x.relu(), p=0.3, training=self.training) for key, x in x_dict.items()}
+            x_dict = {key: F.dropout(x.relu(), p=0.3, training=self.training) for key, x in x_dict.items()}
         
         variable_pool = global_mean_pool(x_dict["variable"], batch_dict["variable"])
-        constraint_pool = global_mean_pool(x_dict["constraint"], batch_dict["constraint"])
-        concatenated = torch.concat((variable_pool, constraint_pool), dim=1)
-        x = self.lin(concatenated)
-        x = self.out_layer(x)
+        x = self.vote_mlp(variable_pool)
 
         return x
+
+class HeteroGATConv(MessagePassing):
+    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu"):
+        MessagePassing.__init__(self, aggr='add')
+        CustomConvUtils.__init__(self)
+        self.device = device if device is not None else torch.device('cpu')
+        self.device = device if device is not None else torch.device('cpu')
+        self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
+        self.input_type_per_node_type = self.get_input_per_node_type(metadata[1], metadata[0])
+        self.gat_convs = torch.nn.ModuleDict()
+        
+
+    
+    def forward(self, x_dict, edge_index_dict, batch_dict):
+        # Loop over each node type and each edge type
+        sizes = {node_type: x_dict[node_type].size() for node_type in x_dict.keys()}
+        output = {}
+        for node_type in x_dict.keys():
+            h_list = []
+            for edge_type in self.entering_edges_per_node_type[node_type]:
+                # Perform the message passing for the current node type and edge type
+                source_node_type, _, _ = edge_type
+                x = x_dict[source_node_type]
+                edge_index = edge_index_dict[edge_type]
+                size = (sizes[source_node_type][0], sizes[node_type][0])
+                self.propagate(edge_index, size=size, x=x, edge_type=edge_type)
+                # Append the resulting node features to the list of hidden states
+                h_list.append(x_dict[node_type])
+            # Concatenate the resulting node features for each node type into a single vector
+            h_cat = torch.cat(h_list, dim=1)
+            # Pass the concatenated vector as the hidden state of the LSTM cell
+            hidden_state = previous_hidden_states[node_type]
+            cell_state = previous_cell_states[node_type]
+            output[node_type] = (h, c)
+
+        return output

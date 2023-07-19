@@ -1,16 +1,5 @@
 import torch
-from torch.nn import Linear
 from torch.nn import LSTMCell
-import torch.nn.init as init
-import torch.nn.functional as F
-from torch_geometric.nn import GATConv
-from torch_geometric.nn import HeteroConv
-from torch_geometric.nn import global_mean_pool
-from torch_geometric.nn.conv import MessagePassing
-from torch_geometric.nn.inits import glorot, reset
-from torch_geometric.utils import is_sparse
-from torch_geometric.typing import Adj, Size
-from torch.nn import Dropout
 from torch_scatter import scatter_mean
 from typing import Dict
 from mlp import MLP
