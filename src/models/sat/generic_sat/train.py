@@ -19,7 +19,7 @@ if __name__ == "__main__":
     search_method = "random"  # Set to either "grid" or "random"
     data_path = r"../data/train"
     # Hyperparameters for grid search or random search
-    batch_sizes = [512]
+    batch_sizes = [32]
     hidden_units = [128]
     num_heads = [2, 4]
     learning_rates = [0.00001]
@@ -29,7 +29,7 @@ if __name__ == "__main__":
     num_epochs = 400
     device = "cuda:0"
     train_ratio = 0.8
-    samples_per_epoch = 2048
+    samples_per_epoch = 1024
     
     # Generate parameters based on the search method
     if search_method == "grid":
@@ -51,7 +51,7 @@ if __name__ == "__main__":
     for params in search_parameters:
         wandb.init(
             project=f"SATGNN",
-            name=f'bs={params["batch_size"]}-hi={params["num_hidden_units"]}-he{params["num_heads"]}-l={params["num_layers"]}-lr={params["learning_rate"]}-dr={dropout}-sat-spec',
+            name=f'date={date}-bs={params["batch_size"]}-hi={params["num_hidden_units"]}-he{params["num_heads"]}-l={params["num_layers"]}-lr={params["learning_rate"]}-dr={dropout}-sat-spec',
             config=params
         )
         if samples_per_epoch is not None:
@@ -60,7 +60,8 @@ if __name__ == "__main__":
             batches_per_epoch = None
 
         train_sampler = PairSampler(train_dataset, int(params["batch_size"]/2))
-        train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], sampler=train_sampler, num_workers=0)
+        # train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], sampler=train_sampler, num_workers=0)
+        train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], num_workers=0)
         test_loader = DataLoader(test_dataset, batch_size=params["batch_size"], shuffle=False, num_workers=0)
         first_batch_iter = iter(train_loader)
         first_batch = next(first_batch_iter)
@@ -70,7 +71,7 @@ if __name__ == "__main__":
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device, flip_inputs=True)
+        model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device, flip_inputs=False)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params["learning_rate"],weight_decay=0.0000000001)
     
