@@ -80,11 +80,12 @@ class SatDataset(InMemoryDataset):
     def process(self):
         sorted_raw_paths = sorted(self.raw_paths)
         num_files_to_process = len(self.raw_paths)
+        num_digits = len(str(num_files_to_process)) # zero pad the file names so that they are sorted correctly
         
         pbar = tqdm(total=num_files_to_process, position=0)
         for i, filepath in enumerate(sorted_raw_paths):
 
-            current_pair = i // 2
+            current_pair = str(i // 2)
             current_element = i % 2
             pbar.update(1)
             cnf = parse_dimacs_cnf(filepath)
@@ -95,7 +96,7 @@ class SatDataset(InMemoryDataset):
                 data = cnf.build_generic_heterogeneous_graph(meta_connected_to_all=self.meta_connected_to_all)
             
             is_sat = filepath[-8]
-            out_path = os.path.join(self.processed_dir, f"data_{current_pair}_{current_element}_sat={is_sat}.pt")
+            out_path = os.path.join(self.processed_dir, f"data_{current_pair.zfill(num_digits)}_{current_element}_sat={is_sat}.pt")
             torch.save(data, out_path, _use_new_zipfile_serialization=False)
         
         pbar.close()

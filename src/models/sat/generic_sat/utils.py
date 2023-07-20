@@ -81,7 +81,7 @@ def process_model(model, optimizer, criterion, loader, mode='train', batches_per
 
         total_loss += loss.item()
         batch_id += 1
-        if batches_per_epoch is not None and batch_id == batches_per_epoch:
+        if mode == "train" and batches_per_epoch is not None and batch_id == batches_per_epoch:
             break
 
     report = classification_report(y_true, y_pred, output_dict=True, zero_division=0)
@@ -89,13 +89,11 @@ def process_model(model, optimizer, criterion, loader, mode='train', batches_per
         f"{mode}/global_acc": report['accuracy'],
         f"{mode}/acc_class_0": report['0']['recall'],
         f"{mode}/acc_class_1": report['1']['recall'],
-        f"{mode}/f1_class_0": report['0']['f1-score'],
-        f"{mode}/f1_class_1": report['1']['f1-score'],
         f"{mode}/loss": total_loss / len(y_true)
     }
     wandb.log(metrics)
 
-    return report['weighted avg']["precision"], total_loss / len(y_true), metrics
+    return report["accuracy"], total_loss / len(y_true), metrics
 
 
 def generate_grid_search_parameters(batch_sizes, hidden_units, num_heads, learning_rates, num_layers, dropout, num_epochs, num_lstm_passes):
