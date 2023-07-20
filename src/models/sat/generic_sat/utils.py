@@ -150,9 +150,9 @@ class PairSampler(Sampler):
         print(data2.filename[:9])
         print(data3.filename[:9])
 
-        if data1.filename[:9] == data2.filename[:9]:
+        if data1.filename[:-9] == data2.filename[:-9]:
             starting_point = 0
-        elif data2.filename[:9] == data3.filename[:9]:
+        elif data2.filename[:-9] == data3.filename[:-9]:
             starting_point = 1
         else:
             raise ValueError("None of the 3 first elements in the dataset form a pair \n Please check that the dataset is sorted by filename")

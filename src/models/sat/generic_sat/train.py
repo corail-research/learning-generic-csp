@@ -59,9 +59,9 @@ if __name__ == "__main__":
         else:
             batches_per_epoch = None
 
-        train_sampler = PairSampler(train_dataset, int(params["batch_size"]/2))
-        # train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], sampler=train_sampler, num_workers=0)
-        train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], num_workers=0)
+        train_sampler = PairSampler(train_dataset, int(samples_per_epoch/2))
+        train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], sampler=train_sampler, num_workers=0)
+        # train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], num_workers=0)
         test_loader = DataLoader(test_dataset, batch_size=params["batch_size"], shuffle=False, num_workers=0)
         first_batch_iter = iter(train_loader)
         first_batch = next(first_batch_iter)
