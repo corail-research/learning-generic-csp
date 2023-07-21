@@ -63,7 +63,7 @@ class SatDataset(InMemoryDataset):
         r"""The absolute filepaths that must be present in order to skip
         downloading."""
         files = os.listdir(self.raw_dir)
-        sorted_raw_paths = [os.path.join(self.raw_dir, f) for f in files]
+        sorted_raw_paths = sorted([os.path.join(self.raw_dir, f) for f in files])
         return sorted_raw_paths
     
     @property
@@ -71,7 +71,7 @@ class SatDataset(InMemoryDataset):
         r"""The absolute filepaths that must be present in order to skip
         processing."""
         files = os.listdir(self.processed_dir)
-        sorted_processed_paths = [os.path.join(self.processed_dir, f) for f in files]
+        sorted_processed_paths = sorted([os.path.join(self.processed_dir, f) for f in files])
 
         return sorted_processed_paths
 
