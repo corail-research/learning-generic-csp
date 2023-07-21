@@ -146,9 +146,9 @@ class PairSampler(Sampler):
         data1 = self.dataset[0]
         data2 = self.dataset[1]
         data3 = self.dataset[2]
-        print(data1.filename[:9])
-        print(data2.filename[:9])
-        print(data3.filename[:9])
+        print(data1.filename[:-9])
+        print(data2.filename[:-9])
+        print(data3.filename[:-9])
 
         if data1.filename[:-9] == data2.filename[:-9]:
             starting_point = 0

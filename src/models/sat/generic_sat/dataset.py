@@ -63,27 +63,27 @@ class SatDataset(InMemoryDataset):
         r"""The absolute filepaths that must be present in order to skip
         downloading."""
         files = os.listdir(self.raw_dir)
-
-        return [os.path.join(self.raw_dir, f) for f in files]
+        sorted_raw_paths = [os.path.join(self.raw_dir, f) for f in files]
+        return sorted_raw_paths
     
     @property
     def processed_paths(self) -> List[str]:
         r"""The absolute filepaths that must be present in order to skip
-        downloading."""
+        processing."""
         files = os.listdir(self.processed_dir)
+        sorted_processed_paths = [os.path.join(self.processed_dir, f) for f in files]
 
-        return [os.path.join(self.processed_dir, f) for f in files]
+        return sorted_processed_paths
 
     def download(self):
         pass
 
     def process(self):
-        sorted_raw_paths = sorted(self.raw_paths)
         num_files_to_process = len(self.raw_paths)
         num_digits = len(str(num_files_to_process)) # zero pad the file names so that they are sorted correctly
         
         pbar = tqdm(total=num_files_to_process, position=0)
-        for i, filepath in enumerate(sorted_raw_paths):
+        for i, filepath in enumerate(self.raw_paths):
 
             current_pair = str(i // 2)
             current_element = i % 2
