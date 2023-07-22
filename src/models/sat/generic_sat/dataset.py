@@ -1,6 +1,6 @@
 from typing import List
 import torch
-from torch_geometric.data import InMemoryDataset
+from torch_geometric.data import InMemoryDataset, Dataset
 import torch_geometric
 from torch_geometric.data.makedirs import makedirs
 from tqdm import tqdm
@@ -129,6 +129,17 @@ class SatDataset(InMemoryDataset):
 
         if self.log:
             print('Done!', file=sys.stderr)
+    
+    def __getitems__(self, idx):
+        if isinstance(idx[0], list):
+            return [self[i] for i in idx[0]]
+        elif isinstance(idx, slice):
+            start, stop, step = idx.indices(len(self))
+            return [self[i] for i in range(start, stop, step)]
+        elif isinstance(idx, list):
+            return [self[i] for i in idx]
+        else:
+            raise TypeError('Invalid argument type')
     
     def processed_data(self) -> List[torch.Tensor]:
         processed_paths = self.processed_paths

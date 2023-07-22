@@ -1,5 +1,4 @@
 import argparse
-from datetime import datetime
 import wandb
 import torch
 import numpy as np
@@ -137,18 +136,23 @@ def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, l
             yield params
 
 class PairSampler(Sampler):
-    def __init__(self, dataset, num_pairs):
+    def __init__(self, dataset, num_pairs, max_nodes_per_batch=12000):
         self.dataset = dataset
         self.num_pairs = num_pairs
+        self.max_nodes_per_batch = max_nodes_per_batch
         self.pair_list = self.compute_pair_list()
+        self.num_nodes_in_pair = [
+            (
+                self.compute_num_nodes(self.dataset[i]),
+                self.compute_num_nodes(self.dataset[j])
+            ) 
+            for i, j in self.pair_list
+        ]
 
     def compute_pair_list(self):
         data1 = self.dataset[0]
         data2 = self.dataset[1]
         data3 = self.dataset[2]
-        print(data1.filename[:-9])
-        print(data2.filename[:-9])
-        print(data3.filename[:-9])
 
         if data1.filename[:-9] == data2.filename[:-9]:
             starting_point = 0
@@ -165,13 +169,32 @@ class PairSampler(Sampler):
         return pair_list
 
     def __iter__(self):
-        # Randomly sample pairs from the pair list
-        selected_pairs = random.sample(self.pair_list, self.num_pairs)
+        # Shuffle the pair list
+        random.shuffle(self.pair_list)
 
-        # Yield the indices of the selected pairs
-        for pair in selected_pairs:
-            yield pair[0]
-            yield pair[1]
+        # Create batches of pairs until the total number of nodes in the batch exceeds self.max_nodes_per_batch
+        batch = []
+        batch_num_nodes = 0
+        for i, pair in enumerate(self.pair_list):
+            pair_num_nodes = self.num_nodes_in_pair[i][0] + self.num_nodes_in_pair[i][1]
+            if batch_num_nodes + pair_num_nodes > self.max_nodes_per_batch:
+                yield batch
+                batch = []
+                batch_num_nodes = 0
+            batch.extend([pair[0], pair[1]])
+            batch_num_nodes += pair_num_nodes
+            if i >= self.num_pairs:
+                break
+        if len(batch) > 0:
+            yield batch
 
     def __len__(self):
         return self.num_pairs * 2
+    
+    def compute_num_nodes(self, sample):
+        """Compute the number of nodes in a sample instance
+        """
+        num_nodes = 0
+        for _, node_features in sample.x_dict.items():
+            num_nodes += len(node_features)
+        return num_nodes

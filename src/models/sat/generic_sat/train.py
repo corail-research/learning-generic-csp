@@ -29,7 +29,7 @@ if __name__ == "__main__":
     num_epochs = 400
     device = "cuda:0"
     train_ratio = 0.8
-    samples_per_epoch = 1024
+    samples_per_epoch = 2048
     
     # Generate parameters based on the search method
     if search_method == "grid":
@@ -60,10 +60,10 @@ if __name__ == "__main__":
             batches_per_epoch = None
 
         train_sampler = PairSampler(train_dataset, int(samples_per_epoch/2))
-        train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], sampler=train_sampler, num_workers=0)
-        # train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], num_workers=0)
-        test_loader = DataLoader(test_dataset, batch_size=params["batch_size"], shuffle=False, num_workers=0)
-        first_batch_iter = iter(train_loader)
+        # train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
+        train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], num_workers=0)
+        test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
+        first_batch_iter = iter(test_loader)
         first_batch = next(first_batch_iter)
         metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
 
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device, flip_inputs=False)
+        model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device, flip_inputs=True)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params["learning_rate"],weight_decay=0.0000000001)
     
