@@ -41,6 +41,8 @@ class SatDataset(InMemoryDataset):
         self.use_sat_label_as_feature = use_sat_label_as_feature
         self.in_memory = in_memory
         super(SatDataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
+        self.sorted_raw_paths = None
+        self.sorted_processed_paths = None
         if self.in_memory:
             self.data = self.processed_data()
     
@@ -62,21 +64,20 @@ class SatDataset(InMemoryDataset):
     def raw_paths(self) -> List[str]:
         r"""The absolute filepaths that must be present in order to skip
         downloading."""
-        files = os.listdir(self.raw_dir)
-        sorted_raw_paths = sorted([os.path.join(self.raw_dir, f) for f in files])
-        return sorted_raw_paths
+        if self.sorted_raw_paths is None:
+            files = os.listdir(self.raw_dir)
+            self.sorted_raw_paths = sorted([os.path.join(self.raw_dir, f) for f in files])
+        return self.sorted_raw_paths
     
     @property
     def processed_paths(self) -> List[str]:
         r"""The absolute filepaths that must be present in order to skip
         processing."""
-        files = os.listdir(self.processed_dir)
-        sorted_processed_paths = sorted([os.path.join(self.processed_dir, f) for f in files])
+        if self.sorted_processed_paths is None:
+            files = os.listdir(self.processed_dir)
+            self.sorted_processed_paths = sorted([os.path.join(self.processed_dir, f) for f in files])
 
-        return sorted_processed_paths
-
-    def download(self):
-        pass
+        return self.sorted_processed_paths
 
     def process(self):
         num_files_to_process = len(self.raw_paths)
@@ -102,25 +103,10 @@ class SatDataset(InMemoryDataset):
         pbar.close()
     
     def _process(self):
-        f = os.path.join(self.processed_dir, 'pre_transform.pt')
-        if os.path.exists(f) and torch.load(f) != _repr(self.pre_transform):
-            warnings.warn(
-                f"The `pre_transform` argument differs from the one used in "
-                f"the pre-processed version of this dataset. If you want to "
-                f"make use of another pre-processing technique, make sure to "
-                f"delete '{self.processed_dir}' first")
-
-        f = os.path.join(self.processed_dir, 'pre_filter.pt')
-        if os.path.exists(f) and torch.load(f) != _repr(self.pre_filter):
-            warnings.warn(
-                "The `pre_filter` argument differs from the one used in "
-                "the pre-processed version of this dataset. If you want to "
-                "make use of another pre-fitering technique, make sure to "
-                "delete '{self.processed_dir}' first")
-
-        if files_exist(self.processed_paths):  # pragma: no cover
+        # if files_exist(self.processed_paths):  # pragma: no cover
+        #     return
+        if True:
             return
-
         if self.log:
             print('Processing...', file=sys.stderr)
 

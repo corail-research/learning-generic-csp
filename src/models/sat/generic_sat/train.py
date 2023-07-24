@@ -3,8 +3,8 @@ import wandb
 import torch
 import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-from model import AdaptedNeuroSAT, SatGNN
-import random
+import cProfile
+import pstats
 from neurosat_model import NeuroSAT
 from dataset import SatDataset
 from torch_geometric.loader import DataLoader
@@ -22,11 +22,11 @@ if __name__ == "__main__":
     batch_sizes = [32]
     hidden_units = [128]
     num_heads = [2, 4]
-    learning_rates = [0.00001]
+    learning_rates = [0.0001]
     num_lstm_passes = [26]
     num_layers = [2, 3]
     dropout = 0.1
-    num_epochs = 400
+    num_epochs = 100
     device = "cuda:0"
     train_ratio = 0.8
     samples_per_epoch = 2048
@@ -59,9 +59,9 @@ if __name__ == "__main__":
         else:
             batches_per_epoch = None
 
-        train_sampler = PairSampler(train_dataset, int(samples_per_epoch/2))
-        # train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
-        train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], num_workers=0)
+        train_sampler = PairSampler(train_dataset, int(samples_per_epoch/2), 12000)
+        train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
+        # train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], num_workers=0)
         test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
         first_batch_iter = iter(test_loader)
         first_batch = next(first_batch_iter)
@@ -75,5 +75,11 @@ if __name__ == "__main__":
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params["learning_rate"],weight_decay=0.0000000001)
     
-        train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, params["num_epochs"], batches_per_epoch=batches_per_epoch)
+        # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, params["num_epochs"], batches_per_epoch=batches_per_epoch)
+        profile = cProfile.Profile()
+        profile.run('train_model(model, train_loader, test_loader, optimizer, criterion, params["num_epochs"], batches_per_epoch=batches_per_epoch)')
+
+        stats = pstats.Stats(profile)
+        stats.sort_stats('tottime')
+        stats.print_stats()
         wandb.finish()

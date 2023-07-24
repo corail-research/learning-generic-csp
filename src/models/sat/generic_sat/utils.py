@@ -43,7 +43,7 @@ def train_model(model, train_loader, test_loader, optimizer, criterion, num_epoc
 
     return train_losses, test_losses, train_metrics, test_metrics
 
-def process_model(model, optimizer, criterion, loader, mode='train', batches_per_epoch=None):
+def process_model(model, optimizer, criterion, loader, mode='train', batches_per_epoch=None, model_path=None):
     assert mode in ['train', 'test'], "Invalid mode, choose either 'train' or 'test'."
 
     if mode == 'train':
