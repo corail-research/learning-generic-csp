@@ -26,15 +26,15 @@ def get_args():
     
     return args
 
-def train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs, batches_per_epoch=None, threshold=0.6):
+def train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs, samples_per_epoch=None, threshold=0.6):
     train_losses, test_losses, train_metrics, test_metrics = [], [], [], []
 
     for epoch in range(1, num_epochs):
-        train_acc, train_loss, train_metric = process_model(model, optimizer, criterion, train_loader, mode='train', batches_per_epoch=batches_per_epoch)
+        train_acc, train_loss, train_metric = process_model(model, optimizer, criterion, train_loader, mode='train', samples_per_epoch=samples_per_epoch)
         train_losses.append(train_loss)
         train_metrics.append(train_metric)
 
-        test_acc, test_loss, test_metric = process_model(model, None, criterion, test_loader, mode='test', batches_per_epoch=batches_per_epoch)
+        test_acc, test_loss, test_metric = process_model(model, None, criterion, test_loader, mode='test', samples_per_epoch=samples_per_epoch)
         test_losses.append(test_loss)
         test_metrics.append(test_metric)
 
@@ -43,7 +43,7 @@ def train_model(model, train_loader, test_loader, optimizer, criterion, num_epoc
 
     return train_losses, test_losses, train_metrics, test_metrics
 
-def process_model(model, optimizer, criterion, loader, mode='train', batches_per_epoch=None, model_path=None):
+def process_model(model, optimizer, criterion, loader, mode='train', samples_per_epoch=None, model_path=None):
     assert mode in ['train', 'test'], "Invalid mode, choose either 'train' or 'test'."
 
     if mode == 'train':
@@ -54,7 +54,7 @@ def process_model(model, optimizer, criterion, loader, mode='train', batches_per
     total_loss = 0
     y_true, y_pred = [], []
     
-    batch_id = 0
+    num_samples = 0
     for data in loader:
         data = data.to(device="cuda:0")
         if mode == 'train':
@@ -79,8 +79,8 @@ def process_model(model, optimizer, criterion, loader, mode='train', batches_per
         y_pred.extend(predicted.tolist())
 
         total_loss += loss.item()
-        batch_id += 1
-        if mode == "train" and batches_per_epoch is not None and batch_id == batches_per_epoch:
+        num_samples += len(label)
+        if mode == "train" and samples_per_epoch is not None and num_samples >= samples_per_epoch:
             break
 
     report = classification_report(y_true, y_pred, output_dict=True, zero_division=0)
@@ -136,9 +136,8 @@ def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, l
             yield params
 
 class PairSampler(Sampler):
-    def __init__(self, dataset, num_pairs, max_nodes_per_batch=12000):
+    def __init__(self, dataset, max_nodes_per_batch=12000):
         self.dataset = dataset
-        self.num_pairs = num_pairs
         self.max_nodes_per_batch = max_nodes_per_batch
         self.pair_list = self.compute_pair_list()
         self.num_nodes_in_pair = [
@@ -183,8 +182,6 @@ class PairSampler(Sampler):
                 batch_num_nodes = 0
             batch.extend([pair[0], pair[1]])
             batch_num_nodes += pair_num_nodes
-            if i >= self.num_pairs:
-                break
         if len(batch) > 0:
             yield batch
 
