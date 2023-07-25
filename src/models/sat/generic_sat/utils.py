@@ -60,20 +60,20 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
         if mode == 'train':
             optimizer.zero_grad()
             out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
+            if out.size(1) == 1:
+                out = out.squeeze(1)
             loss = criterion(out, data["variable"].y.float())
             loss.backward()
             optimizer.step()
         else:
             with torch.no_grad():
                 out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
+                if out.size(1) == 1:
+                    out = out.squeeze(1)
                 loss = criterion(out, data["variable"].y.float())
         
-        if out.size(1) == 1:
-            predicted = (out > 0).int()
-            label = data["variable"].y.int()
-        else:
-            predicted = out.argmax(dim=1).cpu()
-            label = data["variable"].y.cpu()
+        predicted = (out > 0).int()
+        label = data["variable"].y.int()
 
         y_true.extend(label.tolist())
         y_pred.extend(predicted.tolist())

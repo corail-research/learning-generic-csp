@@ -46,12 +46,15 @@ class LSTMConvV1(MessagePassing, CustomConvUtils):
         self.device = device if device is not None else torch.device('cpu')
         self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
         self.input_type_per_node_type = self.get_input_per_node_type(metadata[1], metadata[0])
+        self.input_sizes = {}
+        self.mlp_blocks = torch.nn.ModuleDict()
         self.lstm_cells = torch.nn.ModuleDict()
         for node_type in metadata[0]:
             input_size = sum([in_channels[n_type] for n_type in self.input_type_per_node_type[node_type]])
+            self.input_sizes[node_type] = input_size
             hidden_size = in_channels[node_type]
             self.lstm_cells[node_type] = LSTMCell(input_size, hidden_size, device=self.device)
-        
+            self.mlp_blocks[node_type] = MLP(input_size, 2, input_size, hidden_size, device=self.device)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -74,19 +77,18 @@ class LSTMConvV1(MessagePassing, CustomConvUtils):
                 x = x_dict[source_node_type]
                 edge_index = edge_index_dict[edge_type]
                 size = (sizes[source_node_type][0], sizes[node_type][0])
-                self.propagate(edge_index, size=size, x=x, edge_type=edge_type)
+                agg = self.propagate(edge_index, size=size, x=x, edge_type=edge_type)
                 # Append the resulting node features to the list of hidden states
-                h_list.append(x_dict[node_type])
+                h_list.append(agg)
             # Concatenate the resulting node features for each node type into a single vector
             h_cat = torch.cat(h_list, dim=1)
+            h_cat = self.mlp_blocks[node_type](h_cat)
             # Pass the concatenated vector as the hidden state of the LSTM cell
             hidden_state = previous_hidden_states[node_type]
             cell_state = previous_cell_states[node_type]
             if hidden_state is None:
-                # h, c = self.lstm_cells[node_type](h_cat)
                 h, c = self.lstm_cells[node_type](h_cat.float())
             else:
-                # h, c = self.lstm_cells[node_type](h_cat, (hidden_state, cell_state))
                 h, c = self.lstm_cells[node_type](h_cat.float(), (hidden_state, cell_state))
             output[node_type] = (h, c)
 
@@ -221,7 +223,7 @@ class LSTMConvV1(MessagePassing, CustomConvUtils):
         return x_j
 
 class AdaptedNeuroSAT(torch.nn.Module):
-    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu"):
+    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=26, device="cpu"):
         """
         Args:
             metadata (_type_): metadata for the heterogeneous graph
@@ -236,18 +238,15 @@ class AdaptedNeuroSAT(torch.nn.Module):
         self.num_passes = num_passes
         self.device = device
         self.projection_layers = torch.nn.ModuleDict()
-        self.mlp_layers = torch.nn.ModuleDict()
-        self.vote = MLP(hidden_size["variable"], 2, 2, hidden_size["variable"], device=device)
+        self.vote = MLP(hidden_size["variable"], 2, 1, hidden_size["variable"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
         self.lstm_conv_layers = LSTMConvV1(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
         for node_type in metadata[0]:
-            self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
-            self.mlp_layers[node_type] = MLP(hidden_size[node_type], 3, hidden_size[node_type], hidden_size[node_type], device=device)
-        
+            self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])        
+    
     def forward(self, x_dict, edge_index_dict, batch_dict):
         x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
         for i in range(self.num_passes):
-            x_dict = {node_type: self.mlp_layers[node_type](x) for node_type, x in x_dict.items()}
             if i == 0:
                 previous_hidden_state = {node_type: None for node_type, x in x_dict.items()}
                 previous_cell_state = {node_type: None for node_type, x in x_dict.items()}
