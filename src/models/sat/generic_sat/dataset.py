@@ -40,9 +40,10 @@ class SatDataset(InMemoryDataset):
         self.meta_connected_to_all = meta_connected_to_all
         self.use_sat_label_as_feature = use_sat_label_as_feature
         self.in_memory = in_memory
-        super(SatDataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
         self.sorted_raw_paths = None
         self.sorted_processed_paths = None
+        super(SatDataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
+
         if self.in_memory:
             self.data = self.processed_data()
     
@@ -80,6 +81,8 @@ class SatDataset(InMemoryDataset):
         return self.sorted_processed_paths
 
     def process(self):
+        if self.sorted_raw_paths is None:
+            self.raw_paths
         num_files_to_process = len(self.raw_paths)
         num_digits = len(str(num_files_to_process)) # zero pad the file names so that they are sorted correctly
         
@@ -103,9 +106,7 @@ class SatDataset(InMemoryDataset):
         pbar.close()
     
     def _process(self):
-        # if files_exist(self.processed_paths):  # pragma: no cover
-        #     return
-        if True:
+        if len(os.listdir(self.processed_dir)) != 0:
             return
         if self.log:
             print('Processing...', file=sys.stderr)
