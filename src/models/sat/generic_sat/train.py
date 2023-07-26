@@ -1,35 +1,37 @@
 from datetime import datetime
 import wandb
 import torch
+from torch.optim.lr_scheduler import LambdaLR
 import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 import cProfile
 import pstats
+from model import AdaptedNeuroSAT
 from neurosat_model import NeuroSAT
 from dataset import SatDataset
 from torch_geometric.loader import DataLoader
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
-
-
-from utils import generate_grid_search_parameters, generate_random_search_parameters, train_model, PairSampler
+from utils import generate_grid_search_parameters, generate_random_search_parameters, train_model
+from pytorch_utils import PairSampler, GradualWarmupScheduler
 
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    data_path = r"../data/train_mid"
+    data_path = r"../sat_spec_data/train_mid"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
     hidden_units = [128]
     num_heads = [2, 4]
-    learning_rates = [0.000]
+    learning_rates = [0.00002]
     num_lstm_passes = [26]
-    num_layers = [2, 3]
+    num_layers = [2]
     dropout = 0.1
-    num_epochs = 100
+    num_epochs = 200
     device = "cuda:0"
     train_ratio = 0.8
     samples_per_epoch = 4096
+    
     
     # Generate parameters based on the search method
     if search_method == "grid":
@@ -40,7 +42,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid search_method. Must be 'grid' or 'random'")
     
-    dataset = SatDataset(root=data_path, graph_type="sat_specific", meta_connected_to_all=False)
+    dataset = SatDataset(root=data_path, graph_type="generic", meta_connected_to_all=False)
     train_dataset = dataset[:math.floor(len(dataset) * train_ratio)]
     test_dataset = dataset[math.floor(len(dataset) * train_ratio):]
             
@@ -49,12 +51,6 @@ if __name__ == "__main__":
     date = str(datetime.now().date())
 
     for params in search_parameters:
-        wandb.init(
-            project=f"SATGNN",
-            name=f'date={date}-bs={params["batch_size"]}-hi={params["num_hidden_units"]}-he{params["num_heads"]}-l={params["num_layers"]}-lr={params["learning_rate"]}-dr={dropout}-sat-spec',
-            config=params
-        )
-
         train_sampler = PairSampler(train_dataset, 12000)
         train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         # train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], num_workers=0)
@@ -67,15 +63,28 @@ if __name__ == "__main__":
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device, flip_inputs=True)
+        # model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device, flip_inputs=True)
+        model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device)
         model = model.cuda()
-        optimizer = torch.optim.Adam(model.parameters(),lr=params["learning_rate"],weight_decay=0.0000000001)
-    
+        optimizer = torch.optim.Adam(model.parameters(),lr=params["learning_rate"], weight_decay=0.000001)
+        after_scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: 0.8 ** (epoch // 20))
+        scheduler_warmup = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=5, after_scheduler=after_scheduler)
+
+        if type(model) == AdaptedNeuroSAT:
+            group = "generic"
+        else:
+            group = "sat_specific"
+        wandb.init(
+            project=f"SATGNN",
+            name=f'date={date}-bs={params["batch_size"]}-hi={params["num_hidden_units"]}-he{params["num_heads"]}-l={params["num_layers"]}-lr={params["learning_rate"]}-dr={dropout}-sat-spec',
+            config=params,
+            group=group
+        )
         # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch)
         profile = cProfile.Profile()
-        profile.run('train_model(model, train_loader, test_loader, optimizer, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch)')
+        profile.run('train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch)')
 
         stats = pstats.Stats(profile)
         stats.sort_stats('tottime')
         stats.print_stats()
-        wandb.finish()
+        wandb.finish() 

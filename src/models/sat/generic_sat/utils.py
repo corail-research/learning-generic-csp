@@ -1,11 +1,9 @@
 import argparse
 import wandb
 import torch
-import numpy as np
 import random
 import os
 from sklearn.metrics import classification_report
-from torch.utils.data import Sampler
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 
@@ -26,10 +24,11 @@ def get_args():
     
     return args
 
-def train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs, samples_per_epoch=None, threshold=0.6):
+def train_model(model, train_loader, test_loader, optimizer, scheduler, criterion, num_epochs, samples_per_epoch=None, threshold=0.6):
     train_losses, test_losses, train_metrics, test_metrics = [], [], [], []
 
     for epoch in range(1, num_epochs):
+        scheduler.step(epoch)
         train_acc, train_loss, train_metric = process_model(model, optimizer, criterion, train_loader, mode='train', samples_per_epoch=samples_per_epoch)
         train_losses.append(train_loss)
         train_metrics.append(train_metric)
@@ -134,64 +133,3 @@ def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, l
             tested_combinations.add(frozen_params)
             count += 1
             yield params
-
-class PairSampler(Sampler):
-    def __init__(self, dataset, max_nodes_per_batch=12000):
-        self.dataset = dataset
-        self.max_nodes_per_batch = max_nodes_per_batch
-        self.pair_list = self.compute_pair_list()
-        self.num_nodes_in_pair = [
-            (
-                self.compute_num_nodes(self.dataset[i]),
-                self.compute_num_nodes(self.dataset[j])
-            ) 
-            for i, j in self.pair_list
-        ]
-
-    def compute_pair_list(self):
-        data1 = self.dataset[0]
-        data2 = self.dataset[1]
-        data3 = self.dataset[2]
-
-        if data1.filename[:-9] == data2.filename[:-9]:
-            starting_point = 0
-        elif data2.filename[:-9] == data3.filename[:-9]:
-            starting_point = 1
-        else:
-            raise ValueError("None of the 3 first elements in the dataset form a pair \n Please check that the dataset is sorted by filename")
-        
-        # Create a list of all the pairs of data in the dataset
-        pair_list = []
-        for i in range(starting_point, len(self.dataset), 2):
-            pair_list.append((i, i+1))
-
-        return pair_list
-
-    def __iter__(self):
-        # Shuffle the pair list
-        random.shuffle(self.pair_list)
-
-        # Create batches of pairs until the total number of nodes in the batch exceeds self.max_nodes_per_batch
-        batch = []
-        batch_num_nodes = 0
-        for i, pair in enumerate(self.pair_list):
-            pair_num_nodes = self.num_nodes_in_pair[i][0] + self.num_nodes_in_pair[i][1]
-            if batch_num_nodes + pair_num_nodes > self.max_nodes_per_batch:
-                yield batch
-                batch = []
-                batch_num_nodes = 0
-            batch.extend([pair[0], pair[1]])
-            batch_num_nodes += pair_num_nodes
-        if len(batch) > 0:
-            yield batch
-
-    def __len__(self):
-        return self.num_pairs * 2
-    
-    def compute_num_nodes(self, sample):
-        """Compute the number of nodes in a sample instance
-        """
-        num_nodes = 0
-        for _, node_features in sample.x_dict.items():
-            num_nodes += len(node_features)
-        return num_nodes
