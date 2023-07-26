@@ -1,7 +1,6 @@
 import argparse
 import wandb
 import torch
-import random
 import os
 from sklearn.metrics import classification_report
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
@@ -92,44 +91,3 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
     wandb.log(metrics)
 
     return report["accuracy"], total_loss / len(y_true), metrics
-
-
-def generate_grid_search_parameters(batch_sizes, hidden_units, num_heads, learning_rates, num_layers, dropout, num_epochs, num_lstm_passes):
-    for batch_size in batch_sizes:
-        for num_hidden_units in hidden_units:
-            for heads in num_heads:
-                for lr in learning_rates:
-                    for layers in num_layers:
-                        yield {
-                            "batch_size": batch_size,
-                            "num_hidden_units": num_hidden_units,
-                            "num_heads": heads,
-                            "learning_rate": lr,
-                            "num_layers": layers,
-                            "dropout": dropout,
-                            "num_epochs": num_epochs,
-                            "num_lstm_passes": random.choice(num_lstm_passes)
-                        }
-
-def generate_random_search_parameters(n, batch_sizes, hidden_units, num_heads, learning_rates, num_layers, dropout, num_epochs, num_lstm_passes):
-    tested_combinations = set()
-    count = 0
-    
-    while count < n:
-        params = {
-            "batch_size": random.choice(batch_sizes),
-            "num_hidden_units": random.choice(hidden_units),
-            "num_heads": random.choice(num_heads),
-            "learning_rate": random.choice(learning_rates),
-            "num_layers": random.choice(num_layers),
-            "dropout": dropout,
-            "num_epochs": num_epochs,
-            "num_lstm_passes": random.choice(num_lstm_passes)
-        }
-        
-        frozen_params = frozenset(params.items())
-        
-        if frozen_params not in tested_combinations:
-            tested_combinations.add(frozen_params)
-            count += 1
-            yield params
