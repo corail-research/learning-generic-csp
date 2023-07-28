@@ -13,7 +13,7 @@ from torch_geometric.typing import Adj, Size
 from torch.nn import Dropout
 from torch_scatter import scatter_mean
 from typing import Dict
-from mlp import MLP
+from .mlp import MLP
 
 
 class CustomConvUtils:

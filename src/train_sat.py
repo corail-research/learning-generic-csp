@@ -6,29 +6,30 @@ import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 import cProfile
 import pstats
-from model import AdaptedNeuroSAT
-from neurosat_model import NeuroSAT
-from dataset import SatDataset
+from models.sat.generic_sat.model import AdaptedNeuroSAT
+from models.sat.generic_sat.neurosat_model import NeuroSAT
+from models.sat.generic_sat.dataset import SatDataset
 from torch_geometric.loader import DataLoader
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
-from utils import train_model
-from config import ExperimentConfig
-from pytorch_utils import PairSampler, GradualWarmupScheduler
+
+from models.common.training_utils import train_model
+from models.sat.generic_sat.config import ExperimentConfig
+from models.common.pytorch_utils import PairSampler, GradualWarmupScheduler
 
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    data_path = r"../sat_spec_data/train_mid"
+    data_path = r"./src/models/sat/sat_spec_data/train_mid"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
-    hidden_units = [128]
-    num_heads = [2, 4]
+    hidden_units = [64]
+    num_heads = [2]
     learning_rates = [0.00002]
     num_lstm_passes = [26]
     num_layers = [2]
     dropout = [0.1]
-    num_epochs = 2
+    num_epochs = 400
     device = "cuda:0"
     train_ratio = 0.8
     samples_per_epoch = [4096]

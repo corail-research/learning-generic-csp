@@ -1,10 +1,8 @@
-
-import sys, os, argparse, time, datetime
+import os, argparse, time, datetime
 import numpy as np
 import random
 import networkx as nx
 from concorde.tsp import TSPSolver
-# import subprocess
 
 
 
@@ -106,7 +104,7 @@ def create_dataset(path, nmin, nmax, conn_min=1, conn_max=1, samples=1000, dista
     for i in range(samples):
         n = random.randint(nmin,nmax)
         # Create graph
-        Ma,Mw,route,nodes = create_graph(n, np.random.uniform(conn_min,conn_max), distances=distances, metric=metric)
+        Ma, Mw, route, nodes = create_graph(n, np.random.uniform(conn_min,conn_max), distances=distances, metric=metric)
 
         # Write graph to file
         write_graph(Ma,Mw, filepath="{}/{}.graph".format(path,i), route=route)

@@ -4,12 +4,10 @@ from torch_geometric.data import InMemoryDataset, Dataset
 import torch_geometric
 from torch_geometric.data.makedirs import makedirs
 from tqdm import tqdm
-from sat_parser import parse_dimacs_cnf
+from .sat_parser import parse_dimacs_cnf
 import re
 import os
 import sys
-import warnings
-import random
 
 def files_exist(files: List[str]) -> bool:
     # NOTE: We return `False` in case `files` is empty, leading to a
