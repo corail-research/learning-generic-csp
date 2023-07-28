@@ -6,15 +6,15 @@ import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 import cProfile
 import pstats
-from models.sat.generic_sat.model import AdaptedNeuroSAT
-from models.sat.generic_sat.neurosat_model import NeuroSAT
-from models.sat.generic_sat.dataset import SatDataset
+from models.sat.model import AdaptedNeuroSAT
+from models.sat.neurosat_model import NeuroSAT
+from models.sat.dataset import SatDataset
 from torch_geometric.loader import DataLoader
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
 
 from models.common.training_utils import train_model
-from models.sat.generic_sat.config import ExperimentConfig
+from models.sat.config import ExperimentConfig
 from models.common.pytorch_utils import PairSampler, GradualWarmupScheduler
 
 if __name__ == "__main__":

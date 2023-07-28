@@ -1,55 +1,30 @@
-# Copyright 2018 Daniel Selsam. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 import numpy as np
 import torch
 import torch.nn as nn
-from util import decode_transfer_fn, repeat_end
+import torch.nn.functional as F
 
 
 class MLP(nn.Module):
-    def __init__(self, opts, d_in, d_outs,device):
+    def __init__(self, input_dimension, num_layers, output_size, layer_size, device="cuda:0"):
         super().__init__()
-
-        self.opts = opts
-        self.transfer_fn = decode_transfer_fn(opts.mlp_transfer_fn)
-        self.output_size = d_outs[-1]
-
-        dims = [d_in] + d_outs
-
+        self.input_dimension = input_dimension
+        self.num_layers = num_layers
+        self.output_size = output_size
+        self.layer_size = layer_size
+        self.device = device
         self.layers = nn.ModuleList([
-            nn.Linear(dims[i], dims[i+1],device=device) for i in range(len(dims)-1)
+            nn.Linear(self.input_dimension, self.layer_size, device=self.device)
         ])
-
-
-        for layer in self.layers:
-            nn.init.xavier_normal_(layer.weight) #Normal or uniform?
-            nn.init.zeros_(layer.bias)
-
-
-    def forward(self, z):
-
-        x = z
+        for i in range(self.num_layers - 1):
+            self.layers.append(nn.Linear(self.layer_size, self.layer_size, device=self.device))
+        self.layers.append(nn.Linear(self.layer_size, self.output_size, device=self.device))
+    
+    def forward(self, x):
         for layer in self.layers[:-1]:
-            x = self.transfer_fn(layer(x))
+            x = F.relu(layer(x))
 
         return self.layers[-1](x)
-    
 
-
-#TODO: recurrent dropout
 class LayerNormLSTMCell(nn.Module):
     def __init__(self, opts, activation=torch.tanh, state_tuple=None,device='cpu'):
         super().__init__()
@@ -99,4 +74,3 @@ class LayerNormLSTMCell(nn.Module):
         hy = self.dropout(hy)
 
         return self.state_tuple(h=hy, c=cy)
-
