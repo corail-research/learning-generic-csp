@@ -5,7 +5,6 @@ import networkx as nx
 from concorde.tsp import TSPSolver
 
 
-
 def solve(Ma, Mw):
     """
         Invokes Concorde to solve a TSP instance
@@ -13,9 +12,6 @@ def solve(Ma, Mw):
         Uses Python's Redirector library to prevent Concorde from printing
         unsufferably verbose messages
     """
-    # STDOUT = 1
-    # STDERR = 2
-
     # Write graph on a temporary file
     write_graph(Ma, Mw, filepath='tmp', int_weights=True)
     # Solve TSP on graph
@@ -39,7 +35,7 @@ def solve(Ma, Mw):
     if any([ Ma[i,j] == 0 for (i,j) in zip(list(solution.tour),list(solution.tour)[1:]+list(solution.tour)[:1]) ]):
         return None
     else:
-        return list(solution.tour)
+        return list(solution.tour), solution.optimal_value
 
 def create_graph(n, connectivity, distances='euc_2D', metric=True):
 
@@ -88,11 +84,11 @@ def create_graph(n, connectivity, distances='euc_2D', metric=True):
         Ma[i,j] = Ma[j,i] = 1
 
     # Solve
-    route = solve(Ma,Mw)
+    route, optimal_value = solve(Ma,Mw)
     if route is None:
         raise Exception('Unsolvable')
     
-    return np.triu(Ma), Mw, route, nodes
+    return np.triu(Ma), Mw, route, optimal_value, nodes
 
 def create_dataset(path, nmin, nmax, conn_min=1, conn_max=1, samples=1000, distances='euc_2D', metric=True):
 
@@ -104,10 +100,10 @@ def create_dataset(path, nmin, nmax, conn_min=1, conn_max=1, samples=1000, dista
     for i in range(samples):
         n = random.randint(nmin,nmax)
         # Create graph
-        Ma, Mw, route, nodes = create_graph(n, np.random.uniform(conn_min,conn_max), distances=distances, metric=metric)
+        Ma, Mw, route, optimal_value, nodes = create_graph(n, np.random.uniform(conn_min,conn_max), distances=distances, metric=metric)
 
         # Write graph to file
-        write_graph(Ma,Mw, filepath="{}/{}.graph".format(path,i), route=route)
+        write_graph(Ma,Mw, filepath="{}/{}.graph".format(path,i), route=route, optimal_value=optimal_value)
 
         # Report progress
         if (i-1) % (samples//20) == 0:
@@ -115,7 +111,7 @@ def create_dataset(path, nmin, nmax, conn_min=1, conn_max=1, samples=1000, dista
             remaining_time = (samples-i)*elapsed_time/(i+1)
             print('Dataset creation {}% Complete. Remaining time at this rate: {}'.format(int(100*i/samples), str(datetime.timedelta(seconds=remaining_time))), flush=True)
 
-def write_graph(Ma, Mw, filepath, route=None, int_weights=False, bins=10**6):
+def write_graph(Ma, Mw, filepath, route=None, optimal_value=None, int_weights=False, bins=10**6):
     with open(filepath,"w") as out:
 
         n, m = Ma.shape[0], len(np.nonzero(Ma)[0])
@@ -146,7 +142,8 @@ def write_graph(Ma, Mw, filepath, route=None, int_weights=False, bins=10**6):
             # Write route
             out.write('TOUR_SECTION:\n')
             out.write('{}\n'.format(' '.join([str(x) for x in route])))
-
+            out.write('OPTIMAL_VALUE:\n')
+            out.write('{}\n'.format(' '.join([str(optimal_value/float(bins))])))
         out.write('EOF\n')
 
 if __name__ == '__main__':
@@ -156,10 +153,10 @@ if __name__ == '__main__':
     parser.add_argument('-seed', type=int, default=42, help='RNG seed for Python, Numpy and Tensorflow')
     parser.add_argument('-distances', default='euc_2D', help='What type of distances? (euc_2D or random)')
     parser.add_argument('--metric', const=False, default=True, action='store_const', help='Create metric instances?')
-    parser.add_argument('-samples', default=2**10, type=int, help='How many samples?')
-    parser.add_argument('-path', help='Save path', required=True)
-    parser.add_argument('-nmin', default=20, type=int, help='Min. number of vertices')
-    parser.add_argument('-nmax', default=40, type=int, help='Max. number of vertices')
+    parser.add_argument('-samples', default=2**5, type=int, help='How many samples?')
+    parser.add_argument('-path', default="data", help='Save path', required=True)
+    parser.add_argument('-nmin', default=10, type=int, help='Min. number of vertices')
+    parser.add_argument('-nmax', default=11, type=int, help='Max. number of vertices')
     parser.add_argument('-cmin', default=1, type=float, help='Min. connectivity')
     parser.add_argument('-cmax', default=1, type=float, help='Max. connectivity')
     parser.add_argument('-bins', default=10**6, help='Quantize edge weights in how many bins?')
