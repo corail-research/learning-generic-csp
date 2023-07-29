@@ -8,6 +8,7 @@ sat_data/*
 *.dimacs
 *sat=0.pt
 *sat=1.pt
+*.graph
 *test.py
 *test.ipynb
 PyMiniSolvers/*
