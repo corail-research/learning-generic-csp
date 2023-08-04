@@ -107,8 +107,8 @@ class TSPInstance:
         data_negative["city"].x = torch.Tensor(cities)
         data_negative["arc"].x = torch.Tensor(arc_features_negative)
         data_negative["city", "connected_to", "arc"].edge_index = self.build_edge_index_tensor(arcs)
-        data_positive.filename = self.filename
-        data_positive.label = 0
+        data_negative.filename = self.filename
+        data_negative.label = 0
         T.ToUndirected()(data_negative)
 
         return data_positive, data_negative

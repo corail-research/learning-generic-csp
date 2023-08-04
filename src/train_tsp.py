@@ -6,21 +6,20 @@ import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 import cProfile
 import pstats
-from models.sat.model import AdaptedNeuroSAT
-from models.sat.neurosat_model import NeuroSAT
-from models.sat.dataset import SatDataset
+from models.decision_tsp.base_model import GNNTSP
+from models.decision_tsp.dataset import DTSPDataset
 from torch_geometric.loader import DataLoader
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
 
 from models.common.training_utils import train_model
-from models.sat.config import ExperimentConfig
+from models.decision_tsp.config import ExperimentConfig
 from models.common.pytorch_utils import PairSampler, GradualWarmupScheduler
 
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    data_path = r"./src/models/sat/sat_spec_data/train_mid"
+    data_path = r"./src/models/decision_tsp/data"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
     hidden_units = [64]
@@ -72,9 +71,9 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid search_method. Must be 'grid' or 'random'")
     if experiment_config.generic_representation:
-        dataset = SatDataset(root=experiment_config.data_path, graph_type="generic", meta_connected_to_all=False)
+        dataset = DTSPDataset(root=experiment_config.data_path, graph_type="generic", meta_connected_to_all=False)
     else:
-        dataset = SatDataset(root=experiment_config.data_path, graph_type="sat_specific", meta_connected_to_all=False)
+        dataset = DTSPDataset(root=experiment_config.data_path, graph_type="dtsp_specific", meta_connected_to_all=False)
     train_dataset = dataset[:math.floor(len(dataset) * experiment_config.train_ratio)]
     test_dataset = dataset[math.floor(len(dataset) * experiment_config.train_ratio):]
             
@@ -96,19 +95,19 @@ if __name__ == "__main__":
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device, flip_inputs=params.flip_inputs)
-        # model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
+        # model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device, flip_inputs=True)
+        model = GNNTSP(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params.learning_rate, weight_decay=params.weight_decay)
         after_scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: experiment_config.lr_decay_factor ** (epoch // experiment_config.num_epochs_lr_decay))
         warmup_scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=experiment_config.num_epochs_lr_warmup, after_scheduler=after_scheduler)
 
-        if type(model) == AdaptedNeuroSAT:
+        if type(model) == GNNTSP:
             group = "generic"
         else:
-            group = "sat_specific"
+            group = "dtsp_specific"
         wandb.init(
-            project=f"SATGNN",
+            project=f"TSP-GNN",
             config=params,
             group=group
         )

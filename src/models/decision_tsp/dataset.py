@@ -1,4 +1,4 @@
-from instance_parser import TSPInstance
+from .instance_parser import TSPInstance
 from typing import List
 import torch
 from torch_geometric.data import InMemoryDataset, Dataset
@@ -91,10 +91,10 @@ class DTSPDataset(InMemoryDataset):
             
             filename_true = f"data_{str(current_pair).zfill(num_digits)}_{0}.pt"
             out_path_true = os.path.join(self.processed_dir, filename_true)
-            torch.save(data, out_path_true, _use_new_zipfile_serialization=False)
+            torch.save(data[0], out_path_true, _use_new_zipfile_serialization=False)
             filename_false = f"data_{str(current_pair).zfill(num_digits)}_{1}.pt"
             out_path_false = os.path.join(self.processed_dir, filename_false)
-            torch.save(data, out_path_false, _use_new_zipfile_serialization=False)
+            torch.save(data[1], out_path_false, _use_new_zipfile_serialization=False)
         
         pbar.close()
     
