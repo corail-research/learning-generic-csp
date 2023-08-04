@@ -96,8 +96,8 @@ if __name__ == "__main__":
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        # model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device, flip_inputs=True)
-        model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
+        model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device, flip_inputs=params.flip_inputs)
+        # model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params.learning_rate, weight_decay=params.weight_decay)
         after_scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: experiment_config.lr_decay_factor ** (epoch // experiment_config.num_epochs_lr_decay))
@@ -107,11 +107,11 @@ if __name__ == "__main__":
             group = "generic"
         else:
             group = "sat_specific"
-        wandb.init(
-            project=f"SATGNN",
-            config=params,
-            group=group
-        )
+        # wandb.init(
+        #     project=f"SATGNN",
+        #     config=params,
+        #     group=group
+        # )
         # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch)
         profile = cProfile.Profile()
         profile.run('train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch)')
