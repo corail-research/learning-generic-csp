@@ -1,4 +1,4 @@
-from .instance_parser import TSPInstance
+from instance_parser import TSPInstance
 from typing import List
 import torch
 from torch_geometric.data import InMemoryDataset, Dataset
@@ -20,7 +20,7 @@ def _repr(obj) -> str:
         return 'None'
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
-class SatDataset(InMemoryDataset):
+class DTSPDataset(InMemoryDataset):
     def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="dtsp_specific", 
                  meta_connected_to_all:bool=False, target_deviation=0.02, in_memory: bool=True):
         """
@@ -36,8 +36,8 @@ class SatDataset(InMemoryDataset):
         self.in_memory = in_memory
         self.sorted_raw_paths = None
         self.sorted_processed_paths = None
-        super(SatDataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
         self.target_deviation = target_deviation
+        super(DTSPDataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
         if self.in_memory:
             self.data = self.processed_data()
     
@@ -89,10 +89,12 @@ class SatDataset(InMemoryDataset):
             elif self.graph_type == "generic":
                 raise NotImplementedError
             
-            out_path1 = os.path.join(self.processed_dir, f"data_{current_pair.zfill(num_digits)}_{0}.pt")
-            torch.save(data, out_path1, _use_new_zipfile_serialization=False)
-            out_path2 = os.path.join(self.processed_dir, f"data_{current_pair.zfill(num_digits)}_{1}.pt")
-            torch.save(data, out_path2, _use_new_zipfile_serialization=False)
+            filename_true = f"data_{str(current_pair).zfill(num_digits)}_{0}.pt"
+            out_path_true = os.path.join(self.processed_dir, filename_true)
+            torch.save(data, out_path_true, _use_new_zipfile_serialization=False)
+            filename_false = f"data_{str(current_pair).zfill(num_digits)}_{1}.pt"
+            out_path_false = os.path.join(self.processed_dir, filename_false)
+            torch.save(data, out_path_false, _use_new_zipfile_serialization=False)
         
         pbar.close()
     
@@ -131,3 +133,7 @@ class SatDataset(InMemoryDataset):
         data = torch.load(path)
         
         return data
+
+if __name__ == "__main__":
+    data_path = "./data"
+    dataset = DTSPDataset(root=data_path, graph_type="dtsp_specific", meta_connected_to_all=False)
