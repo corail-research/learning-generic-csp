@@ -2,8 +2,8 @@ import torch
 from torch.nn import LSTMCell
 from torch_scatter import scatter_mean
 from typing import Dict
-from .mlp import MLP
-from .model import AdaptedNeuroSAT, LSTMConvV1
+from ..common.mlp import MLP
+from ..common.lstm_conv import AdaptedNeuroSAT, LSTMConvV1
 
 
 class GNNTSP(AdaptedNeuroSAT):
