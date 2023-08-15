@@ -1,8 +1,9 @@
 Cython==0.29.28
+grinpy
 matplotlib==3.5.1
 networkx==3.0
 numpy==1.22.0
-ortools==6.10
+ortools==8.0.8283
 pandas==1.4.2
 pycosat==0.6.3
 pysat==0.1.3

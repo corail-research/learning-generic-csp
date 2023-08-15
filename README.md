@@ -10,16 +10,18 @@ Expand All
 - examples: contains jupyter notebooks with code examples for some problems
 - sample_problems: contains some problem instances, as expressed with the XCSP3 format
 - src: source code
-- 
 
 ## SAT problem
 The implementation for GNNs on the SAT problem can be found in src/models/sat. To complete the setup, you can run the scripts/setup.sh script to install PyMiniSolvers.
 
 ## Setup
-As usual, start by creating a virtual environment and installing the requirements:
-Expand All
-	@@ -31,5 +25,8 @@ As usual, start by creating a virtual environment and installing the requirement
-```
+As usual, start by creating a virtual environment and installing the requirements.
+
+There are some aadditional installs you will need for this to be completely turn-key:
+
+- Microsoft C++ Build Tools (https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+
+
 Then, check which GPUs are available and adjust your runs with this command:
 ```
 CUDA_VISIBLE_DEVICES=[device-you-want-to-use] python3 -u [your-training-script]
