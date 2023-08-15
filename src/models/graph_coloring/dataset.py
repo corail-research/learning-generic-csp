@@ -135,7 +135,7 @@ def gen_matrix(N, prob):
     return Ma
 
 def degree_ranking(Ma):
-    G = nx.from_numpy_matrix(Ma)
+    G = nx.from_numpy_array(Ma)
     deg = np.asarray(gp.degree_sequence(G))
     deg = (np.amax(deg)+1) - deg  # higher degree comes first
     deg_rank = np.argsort(deg)
@@ -182,9 +182,9 @@ if __name__ == '__main__':
     # Define argument parser
     parser = argparse.ArgumentParser(description='Process some integers.')
     parser.add_argument('-samples', default=2**15, type=int, help='How many samples?')
-    parser.add_argument('-path', default='adversarial-training', type=str, help='Save path', required=True)
-    parser.add_argument('-nmin', default=40, type=int, help='Min. number of vertices')
-    parser.add_argument('-nmax', default=60, type=int, help='Max. number of vertices')
+    parser.add_argument('-path', default='data', type=str, help='Save path')
+    parser.add_argument('-nmin', default=4, type=int, help='Min. number of vertices')
+    parser.add_argument('-nmax', default=10, type=int, help='Max. number of vertices')
     parser.add_argument('--train', action='store_true', help='To define the seed')
 
     # Parse arguments from command line
