@@ -6,7 +6,7 @@ import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 import cProfile
 import pstats
-from models.sat.model import AdaptedNeuroSAT
+from models.common.lstm_conv import AdaptedNeuroSAT
 from models.sat.neurosat_model import NeuroSAT
 from models.sat.dataset import SatDataset
 from torch_geometric.loader import DataLoader
