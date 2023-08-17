@@ -4,7 +4,10 @@ from torch_geometric.data import InMemoryDataset, Dataset
 import torch_geometric
 from torch_geometric.data.makedirs import makedirs
 from tqdm import tqdm
-from .sat_parser import parse_dimacs_cnf
+try:
+    from .sat_parser import parse_dimacs_cnf
+except ImportError:
+    from sat_parser import parse_dimacs_cnf
 import re
 import os
 import sys
