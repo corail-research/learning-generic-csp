@@ -62,6 +62,8 @@ class LSTMConvV1(MessagePassing, CustomConvUtils):
         for cell in self.lstm_cells.values():
             for name, param in cell.named_parameters():
                 if 'weight' in name:
+                    if param.dim() < 2:
+                        continue
                     init.xavier_uniform_(param)
                 elif 'bias' in name:
                     init.constant_(param, 0)

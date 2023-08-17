@@ -26,37 +26,38 @@ class MLP(nn.Module):
         return self.layers[-1](x)
 
 class LayerNormLSTMCell(nn.Module):
-    def __init__(self, hidden_size, activation=torch.tanh, state_tuple=None, device='cpu'):
+    def __init__(self, input_size, hidden_size, activation=torch.tanh, state_tuple=None, lstm_cell=None, device='cpu'):
         super().__init__()
         self.activation = activation
+        self.input_size = input_size
         self.hidden_size = hidden_size
-        self.lstm_cell = None
-        self.ln_ih = None
-        self.ln_hh = None
-        self.ln_ho = None
-        self.state_tuple = state_tuple
         self.device = device
+        self.lstm_cell = nn.LSTMCell(input_size, hidden_size, device=self.device)
+        self.ln_ih = nn.LayerNorm(self.hidden_size * 4, device=self.device)
+        self.ln_hh = nn.LayerNorm(self.hidden_size * 4,device=self.device)
+        self.ln_ho = nn.LayerNorm(self.hidden_size,device=self.device)
+        self.state_tuple = state_tuple
         self.dropout = nn.Dropout(0.1) #FIXME: recurrent dropout
 
 
-    def infer_size(self,x):
-        self.input_size = x.size(-1)
-        self.lstm_cell = nn.LSTMCell(self.input_size, self.hidden_size,device=self.device)
-        self.ln_ih = nn.LayerNorm(self.hidden_size * 4,device=self.device)
-        self.ln_hh = nn.LayerNorm(self.hidden_size * 4,device=self.device)
-        self.ln_ho = nn.LayerNorm(self.hidden_size,device=self.device)
+    # def infer_size(self,x):
+    #     self.input_size = x.size(-1)
+    #     self.lstm_cell = nn.LSTMCell(self.input_size, self.hidden_size,device=self.device)
+    #     self.ln_ih = nn.LayerNorm(self.hidden_size * 4,device=self.device)
+    #     self.ln_hh = nn.LayerNorm(self.hidden_size * 4,device=self.device)
+    #     self.ln_ho = nn.LayerNorm(self.hidden_size,device=self.device)
 
-    def set_input_size(self,size):
-        self.input_size = size
-        self.lstm_cell = nn.LSTMCell(self.input_size, self.hidden_size,device=self.device)
-        self.ln_ih = nn.LayerNorm(self.hidden_size * 4,device=self.device)
-        self.ln_hh = nn.LayerNorm(self.hidden_size * 4,device=self.device)
-        self.ln_ho = nn.LayerNorm(self.hidden_size,device=self.device)
+    # def set_input_size(self,size):
+    #     self.input_size = size
+    #     self.lstm_cell = nn.LSTMCell(self.input_size, self.hidden_size,device=self.device)
+    #     self.ln_ih = nn.LayerNorm(self.hidden_size * 4,device=self.device)
+    #     self.ln_hh = nn.LayerNorm(self.hidden_size * 4,device=self.device)
+    #     self.ln_ho = nn.LayerNorm(self.hidden_size,device=self.device)
 
     def forward(self, inputs, state):
 
-        if self.lstm_cell is None:
-            self.infer_size(inputs)
+        # if self.lstm_cell is None:
+        #     self.infer_size(inputs)
         
         hx, cx = state
         i2h = inputs @ self.lstm_cell.weight_ih.t()
