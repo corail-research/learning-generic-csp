@@ -2,7 +2,7 @@ import torch
 from torch.nn import LSTMCell
 from torch_scatter import scatter_mean
 from typing import Dict
-from ..common.mlp import MLP
+from ..common.pytorch_models import MLP
 from ..common.lstm_conv import AdaptedNeuroSAT, LSTMConvV1
 
 
@@ -96,26 +96,6 @@ class DTSPLSTMConv(LSTMConvV1):
                 cell_state = torch.zeros_like(hidden_state)
             else:
                 cell_state = previous_cell_states[node_type]
-            """
-            This part is edge-type-dependent: 
-            for lit -> clause, we perform the update in the following way:
-                - The LSTM input is directly the aggregated output of the mlp (agg = self.propagate ...)
-                - The hidden and cell states are the following:
-                    - The initial LSTM cell state is a zeros tensor of the same size as the hidden state
-                    - The initial LSTM hidden state is the result of the initial projection
-                - For the following steps, they are the following:
-                    - The LSTM cell state is the cell state from the previous step
-                    - The LSTM hidden state is the hidden state from the previous step
-            for clause -> lit, we perform the update in the following way:
-                - The LSTM input is the concatenation of the aggregated output of the mlp and the flipped hidden state from the previous step. 
-                  For the first step, the hidden state is the result of the initial projection.
-                - The hidden and cell states are the following:
-                    - The initial LSTM cell state is a zeros tensor of the same size as the hidden state
-                    - The initial LSTM hidden state is the result of the initial projection
-                - For the following steps, they are the following:
-                    - The LSTM cell state is the cell state from the previous step
-                    - The LSTM hidden state is the hidden state from the previous step
-            """ 
             h, c = self.lstm_cells[node_type](h_cat, (hidden_state, cell_state))
             output[node_type] = (h, c)
 

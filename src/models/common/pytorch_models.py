@@ -26,10 +26,10 @@ class MLP(nn.Module):
         return self.layers[-1](x)
 
 class LayerNormLSTMCell(nn.Module):
-    def __init__(self, opts, activation=torch.tanh, state_tuple=None,device='cpu'):
+    def __init__(self, hidden_size, activation=torch.tanh, state_tuple=None, device='cpu'):
         super().__init__()
         self.activation = activation
-        self.hidden_size = opts.d
+        self.hidden_size = hidden_size
         self.lstm_cell = None
         self.ln_ih = None
         self.ln_hh = None

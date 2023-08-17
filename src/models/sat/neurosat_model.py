@@ -2,7 +2,7 @@ import torch
 from torch.nn import LSTMCell
 from torch_scatter import scatter_mean
 from typing import Dict
-from ..common.mlp import MLP
+from ..common.pytorch_models import MLP, LayerNormLSTMCell
 from ..common.lstm_conv import AdaptedNeuroSAT, LSTMConvV1
 
 
@@ -67,7 +67,8 @@ class NeuroSatLSTMConv(LSTMConvV1):
                 self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, 2, hidden_size, hidden_size, device=self.device)
             lstm_input_size = sum([in_channels[src_node_type] for src_node_type in self.input_type_per_node_type[node_type]])            
             self.lstm_sizes[node_type] = lstm_input_size
-            self.lstm_cells[node_type] = LSTMCell(lstm_input_size, hidden_size, device=self.device)
+            self.lstm_cells[node_type] = LayerNormLSTMCell()
+            # self.lstm_cells[node_type] = LSTMCell(lstm_input_size, hidden_size, device=self.device)
         
         self.reset_parameters()
 

@@ -13,7 +13,7 @@ from torch_geometric.typing import Adj, Size
 from torch.nn import Dropout
 from torch_scatter import scatter_mean
 from typing import Dict
-from .mlp import MLP
+from .pytorch_models import MLP
 
 
 class CustomConvUtils:
@@ -37,8 +37,7 @@ class CustomConvUtils:
 
 
 class LSTMConvV1(MessagePassing, CustomConvUtils):
-    """This class is used to perform LSTM Convolution in GNNs. It assumes that the input x_dict 
-    has already been passed through a type-specific MLP layer
+    """This class is used to perform LSTM Convolution in GNNs.
     """
     def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, **kwargs):
         MessagePassing.__init__(self, aggr='add', **kwargs)
