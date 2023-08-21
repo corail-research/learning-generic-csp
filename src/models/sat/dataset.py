@@ -23,7 +23,7 @@ def _repr(obj) -> str:
         return 'None'
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
-class SatDataset(InMemoryDataset):
+class SatDataset(Dataset):
     def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="generic", 
                  meta_connected_to_all:bool=False, use_sat_label_as_feature:bool=False, in_memory: bool=True):
         """

@@ -39,12 +39,8 @@ class NeuroSAT(AdaptedNeuroSAT):
         x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
         for i in range(self.num_passes):
             if i == 0:
-                # previous_hidden_state = {node_type: value for node_type, value in x_dict.items()}
-                # previous_cell_state = {node_type: None for node_type, x in x_dict.items()}
                 previous_state_tuple = {node_type: self.lstm_state_tuple(value, torch.zeros_like(value)) for node_type, value in x_dict.items()}
             else:
-                # previous_hidden_state = {node_type: out[node_type][0] for node_type in x_dict.keys()}
-                # previous_cell_state = {node_type: out[node_type][1] for node_type in x_dict.keys()}
                 previous_state_tuple = {node_type: self.lstm_state_tuple(out[node_type].h, out[node_type].c) for node_type in x_dict.keys()}
             out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_state_tuple, batch_dict)
             x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
@@ -79,7 +75,6 @@ class NeuroSatLSTMConv(LSTMConvV1):
             lstm_input_size = sum([in_channels[src_node_type] for src_node_type in self.input_type_per_node_type[node_type]])            
             self.lstm_sizes[node_type] = lstm_input_size
             self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, state_tuple=self.lstm_state_tuple, device=self.device)
-            # self.lstm_cells[node_type] = LSTMCell(lstm_input_size, hidden_size, device=self.device)
         
         self.reset_parameters()
 
