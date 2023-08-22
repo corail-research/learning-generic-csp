@@ -5,6 +5,9 @@ import os
 from sklearn.metrics import classification_report
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
+from models.decision_tsp.base_model import GNNTSP
+from models.sat.neurosat_model import NeuroSAT
+
 
 def get_args():
     parser = argparse.ArgumentParser(description="Your script description here.")
@@ -55,12 +58,16 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
     num_samples = 0
     for data in loader:
         data = data.to(device="cuda:0")
+        if type(model) == NeuroSAT:
+            label = data["variable"].y.float()
+        elif type(model) == GNNTSP:
+            label = data.label.float()
         if mode == 'train':
             optimizer.zero_grad()
             out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
             if out.size(1) == 1:
                 out = out.squeeze(1)
-            loss = criterion(out, data["variable"].y.float())
+            loss = criterion(out, label)
             loss.backward()
             optimizer.step()
         else:
@@ -68,19 +75,17 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
                 out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
                 if out.size(1) == 1:
                     out = out.squeeze(1)
-                loss = criterion(out, data["variable"].y.float())
+                loss = criterion(out, label)
         
         predicted = (out > 0).int()
-        label = data["variable"].y.int()
-
-        y_true.extend(label.tolist())
+        y_true.extend(label.int().tolist())
         y_pred.extend(predicted.tolist())
 
         total_loss += loss.item()
         num_samples += len(label)
         if mode == "train" and samples_per_epoch is not None and num_samples >= samples_per_epoch:
             break
-
+    
     report = classification_report(y_true, y_pred, output_dict=True, zero_division=0)
     metrics = {
         f"{mode}/global_acc": report['accuracy'],
