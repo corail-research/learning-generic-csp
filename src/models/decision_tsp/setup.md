@@ -1,4 +1,5 @@
 # Setup 
+
 ## QSopt
 Concorde requires a linear programming solver. In this setup, we use QSopt. Simply download it (all three files) from (this link)[https://www.math.uwaterloo.ca/~bico/qsopt/downloads/downloads.htm]. I am using ubuntu, so I download all 3 files located at the bottom of the page and I place them in a directory named `qsopt_solver`. 
 

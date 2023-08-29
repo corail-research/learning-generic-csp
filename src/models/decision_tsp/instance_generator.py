@@ -3,6 +3,7 @@ import numpy as np
 import random
 import networkx as nx
 from concorde.tsp import TSPSolver
+from contextlib import redirect_stdout
 
 
 def solve(Ma, Mw):
@@ -17,7 +18,8 @@ def solve(Ma, Mw):
     # Solve TSP on graph
     solver = TSPSolver.from_tspfile('tmp')
     # Get solution
-    solution = solver.solve(verbose=False)
+    with open(os.devnull, 'w') as f, redirect_stdout(f):
+        solution = solver.solve(verbose=False)
 
     """
         Concorde solves only symmetric TSP instances. To circumvent this, we
@@ -153,10 +155,10 @@ if __name__ == '__main__':
     parser.add_argument('-seed', type=int, default=42, help='RNG seed for Python, Numpy and Tensorflow')
     parser.add_argument('-distances', default='euc_2D', help='What type of distances? (euc_2D or random)')
     parser.add_argument('--metric', const=False, default=True, action='store_const', help='Create metric instances?')
-    parser.add_argument('-samples', default=2**5, type=int, help='How many samples?')
-    parser.add_argument('-path', default="data", help='Save path', required=True)
-    parser.add_argument('-nmin', default=10, type=int, help='Min. number of vertices')
-    parser.add_argument('-nmax', default=11, type=int, help='Max. number of vertices')
+    parser.add_argument('-samples', default=2**20, type=int, help='How many samples?')
+    parser.add_argument('-path', default="data/raw", help='Save path')
+    parser.add_argument('-nmin', default=20, type=int, help='Min. number of vertices')
+    parser.add_argument('-nmax', default=40, type=int, help='Max. number of vertices')
     parser.add_argument('-cmin', default=1, type=float, help='Min. connectivity')
     parser.add_argument('-cmax', default=1, type=float, help='Max. connectivity')
     parser.add_argument('-bins', default=10**6, help='Quantize edge weights in how many bins?')

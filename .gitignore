@@ -3,6 +3,11 @@
 sample_problems/*.xml
 *.gz
 *.pt
+*.sav
+*.res
+*.pul
+*.sol
+*tmp
 .vscode/*
 sat_data/*
 *.dimacs
