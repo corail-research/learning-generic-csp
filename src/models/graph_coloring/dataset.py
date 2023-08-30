@@ -5,9 +5,9 @@ import torch_geometric
 from torch_geometric.data.makedirs import makedirs
 from tqdm import tqdm
 try:
-    from .gc_parser import parse_gc_instance
+    from .gc_parser import GraphColoringInstance
 except ImportError:
-    from gc_parser import parse_gc_instance
+    from gc_parser import GraphColoringInstance
 
 import re
 import os
@@ -24,7 +24,7 @@ def _repr(obj) -> str:
         return 'None'
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
-class GraphColoringDataset(Dataset):
+class GraphColoringDataset(InMemoryDataset):
     def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="generic", in_memory: bool=True):
         """
         Args:
@@ -37,8 +37,8 @@ class GraphColoringDataset(Dataset):
         self.in_memory = in_memory
         self.sorted_raw_paths = None
         self.sorted_processed_paths = None
+        self.color_embeddings = torch.rand(10, 1)
         super(GraphColoringDataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
-
         if self.in_memory:
             self.data = self.processed_data()
     
@@ -79,12 +79,18 @@ class GraphColoringDataset(Dataset):
             self.raw_paths
         num_files_to_process = len(self.raw_paths)
         num_digits = len(str(num_files_to_process)) # zero pad the file names so that they are sorted correctly
-        
         pbar = tqdm(total=num_files_to_process, position=0)
-        for i, filepath in enumerate(self.raw_paths):
+        
+        for pair_id, filepath in enumerate(self.raw_paths):
+            if self.graph_type == "gc_specific":
+                raise NotImplementedError
+            elif self.graph_type == "generic":
+                data_positive, data_negative = GraphColoringInstance(filepath, self.color_embeddings).get_gc_specific_representation()
             
-            out_path = os.path.join(self.processed_dir, f"data_{current_pair.zfill(num_digits)}_{current_element}_sat={is_sat}.pt")
-            torch.save(data, out_path, _use_new_zipfile_serialization=False)
+            positive_out_path = os.path.join(self.processed_dir, f"data_{str(pair_id).zfill(num_digits)}_1.pt")
+            negative_out_path = os.path.join(self.processed_dir, f"data_{str(pair_id).zfill(num_digits)}_0.pt")
+            torch.save(data_positive, positive_out_path, _use_new_zipfile_serialization=False)
+            torch.save(data_negative, negative_out_path, _use_new_zipfile_serialization=False)
         
         pbar.close()
     
@@ -123,3 +129,8 @@ class GraphColoringDataset(Dataset):
         data = torch.load(path)
         
         return data
+
+if __name__ == "__main__":
+    data_path = "data"
+    dataset = GraphColoringDataset(data_path, graph_type="generic")
+    a = 1
