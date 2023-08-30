@@ -22,8 +22,8 @@ class GraphColoringInstance:
         positive_instance["vertex"].x = vertices
         negative_instance["vertex"].x = vertices
         colors = self.color_embeddings[:chromatic_number]       
-        positive_instance["colors"].x = colors
-        negative_instance["colors"].x = colors
+        positive_instance["color"].x = colors
+        negative_instance["color"].x = colors
         vertex_to_vertex_edge_list = []
         for line in lines[6:]:
             if line.strip() == '-1':
