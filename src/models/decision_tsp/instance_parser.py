@@ -1,5 +1,4 @@
 import torch
-import torch
 from torch_geometric.data import HeteroData
 import torch_geometric.transforms as T
 from typing import List
