@@ -83,9 +83,10 @@ class GraphColoringDataset(InMemoryDataset):
         
         for pair_id, filepath in enumerate(self.raw_paths):
             if self.graph_type == "gc_specific":
-                raise NotImplementedError
-            elif self.graph_type == "generic":
                 data_positive, data_negative = GraphColoringInstance(filepath, self.color_embeddings).get_gc_specific_representation()
+                
+            elif self.graph_type == "generic":
+                raise NotImplementedError
             
             positive_out_path = os.path.join(self.processed_dir, f"data_{str(pair_id).zfill(num_digits)}_1.pt")
             negative_out_path = os.path.join(self.processed_dir, f"data_{str(pair_id).zfill(num_digits)}_0.pt")

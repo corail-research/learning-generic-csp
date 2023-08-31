@@ -26,7 +26,7 @@ class GCGNN(AdaptedNeuroSAT):
         self.num_passes = num_passes
         self.device = device
         self.projection_layers = torch.nn.ModuleDict()
-        self.vote = MLP(hidden_size["color"], 2, 1, hidden_size["color"], device=device)
+        self.vote = MLP(hidden_size["vertex"], 2, 1, hidden_size["vertex"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
         self.lstm_conv_layers = GCLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
         self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
@@ -42,8 +42,8 @@ class GCGNN(AdaptedNeuroSAT):
                 previous_state_tuple = {node_type: self.lstm_state_tuple(out[node_type].h, out[node_type].c) for node_type in x_dict.keys()}
             out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_state_tuple, batch_dict)
             x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
-        raw_votes = self.vote(x_dict["color"])
-        votes = scatter_mean(raw_votes, batch_dict["color"], dim=0)
+        raw_votes = self.vote(x_dict["vertex"])
+        votes = scatter_mean(raw_votes, batch_dict["vertex"], dim=0)
 
         return votes
 
@@ -70,8 +70,8 @@ class GCLSTMConv(LSTMConvV1):
                 self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, 2, hidden_size, hidden_size, device=self.device)
             lstm_input_size = sum([in_channels[src_node_type] for src_node_type in self.input_type_per_node_type[node_type]])            
             self.lstm_sizes[node_type] = lstm_input_size
-            self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, state_tuple=self.lstm_state_tuple, device=self.device)
-        
+            self.lstm_cells[node_type] = LayerNormLSTMCell(self.lstm_sizes[node_type], hidden_size, state_tuple=self.lstm_state_tuple, device=self.device)
+            
         self.reset_parameters()
 
     def forward(self, x_dict, edge_index_dict, previous_state_tuple:namedtuple, batch_dict: Dict):
@@ -85,7 +85,8 @@ class GCLSTMConv(LSTMConvV1):
                 # Perform the message passing for the current node type and edge type
                 source_node_type, _, _ = edge_type
                 x = x_dict[source_node_type]
-                x = self.mlp_blocks[str(edge_type)](x) # before the layer, x is the result of the projection 
+                if node_type != "vertex" and edge_type != ("vertex", "connected_to", "vertex"):
+                    x = self.mlp_blocks[str(edge_type)](x) # before the layer, x is the result of the projection 
                 edge_index = edge_index_dict[edge_type]
                 size = (sizes[source_node_type][0], sizes[node_type][0])
                 agg = self.propagate(edge_index, size=size, x=x, edge_type=edge_type) # Here, we perform the "add" aggregation after the base features are passed through an MLP

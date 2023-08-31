@@ -6,6 +6,7 @@ from sklearn.metrics import classification_report
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 from models.decision_tsp.base_model import GNNTSP
+from models.graph_coloring.base_model import GCGNN
 from models.sat.neurosat_model import NeuroSAT
 
 
@@ -60,7 +61,7 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
         data = data.to(device="cuda:0")
         if type(model) == NeuroSAT:
             label = data["variable"].y.float()
-        elif type(model) == GNNTSP:
+        elif type(model) == GNNTSP or type(model) == GCGNN:
             label = data.label.float()
         if mode == 'train':
             optimizer.zero_grad()
