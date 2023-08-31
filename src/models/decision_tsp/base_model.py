@@ -34,7 +34,7 @@ class GNNTSP(AdaptedNeuroSAT):
             if node_type == "city":
                 self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
             else:
-                self.projection_layers[node_type] = MLPCustom(in_channels[node_type], hidden_size["arc"], hidden_sizes=[8, 16, 32], device=device)
+                self.projection_layers[node_type] = MLPCustom([8, 16, 32], in_channels[node_type], hidden_size["arc"], device=device)
 
     def forward(self, x_dict, edge_index_dict, batch_dict):
         x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
