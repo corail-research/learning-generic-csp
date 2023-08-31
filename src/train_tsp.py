@@ -19,13 +19,14 @@ from models.common.pytorch_utils import PairSampler, GradualWarmupScheduler
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    data_path = r"./src/models/decision_tsp/data"
+    # data_path = r"./src/models/decision_tsp/data"
+    data_path = r"/scratch1/boileo/dtsp/data"
     # Hyperparameters for grid search or random search
-    batch_sizes = [32]
+    batch_sizes = [16]
     hidden_units = [64]
     num_heads = [2]
     learning_rates = [0.00002]
-    num_lstm_passes = [26]
+    num_lstm_passes = [32]
     num_layers = [2]
     dropout = [0.1]
     num_epochs = 400
@@ -33,7 +34,7 @@ if __name__ == "__main__":
     train_ratio = 0.8
     samples_per_epoch = [4096]
     nodes_per_batch= [12000]
-    use_sampler_loader = True
+    use_sampler_loader = False
     weight_decay = [0.0000001]
     num_epochs_lr_warmup = 5
     num_epochs_lr_decay = 20
@@ -95,7 +96,6 @@ if __name__ == "__main__":
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        # model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params["num_lstm_passes"], device=device, flip_inputs=True)
         model = GNNTSP(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params.learning_rate, weight_decay=params.weight_decay)
