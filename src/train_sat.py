@@ -15,7 +15,8 @@ multiprocessing.set_start_method("spawn", force=True)
 
 from models.common.training_utils import train_model
 from models.sat.config import ExperimentConfig
-from models.common.pytorch_utils import PairSampler, GradualWarmupScheduler
+from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
+from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 
 if __name__ == "__main__":
     import math
@@ -23,7 +24,7 @@ if __name__ == "__main__":
     data_path = r"./src/models/sat/sat_spec_data/train_small"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
-    hidden_units = [128]
+    hidden_units = [32, 64]
     num_heads = [2]
     learning_rates = [0.0001]
     num_lstm_passes = [26]
@@ -33,9 +34,9 @@ if __name__ == "__main__":
     device = "cuda:0"
     train_ratio = 0.8
     samples_per_epoch = [4096]
-    nodes_per_batch= [12000]
-    use_sampler_loader = False
-    weight_decay = [0.0000001]
+    nodes_per_batch= [1024]
+    use_sampler_loader = True
+    weight_decay = [0.00001]
     num_epochs_lr_warmup = 5
     num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
@@ -84,7 +85,8 @@ if __name__ == "__main__":
 
     for params in search_parameters:
         if params.use_sampler_loader:
-            train_sampler = PairSampler(train_dataset, params.nodes_per_batch)
+            # train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
+            train_sampler = PairBatchSampler(train_dataset, 32)
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         else:
             train_loader = DataLoader(train_dataset, batch_size=params.batch_size, num_workers=0)

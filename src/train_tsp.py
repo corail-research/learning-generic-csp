@@ -14,13 +14,14 @@ multiprocessing.set_start_method("spawn", force=True)
 
 from models.common.training_utils import train_model
 from models.decision_tsp.config import ExperimentConfig
-from models.common.pytorch_utils import PairSampler, GradualWarmupScheduler
+from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
+from models.common.pytorch_samplers import  PairNodeSampler
 
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    # data_path = r"./src/models/decision_tsp/data"
-    data_path = r"/scratch1/boileo/dtsp/data"
+    data_path = r"./src/models/decision_tsp/data"
+    # data_path = r"/scratch1/boileo/dtsp/data"
     # Hyperparameters for grid search or random search
     batch_sizes = [16]
     hidden_units = [64]
@@ -83,7 +84,7 @@ if __name__ == "__main__":
 
     for params in search_parameters:
         if params.use_sampler_loader:
-            train_sampler = PairSampler(train_dataset, params.nodes_per_batch)
+            train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         else:
             train_loader = DataLoader(train_dataset, batch_size=params.batch_size, num_workers=0)
