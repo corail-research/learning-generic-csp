@@ -39,24 +39,11 @@ class TSPInstance:
                 elif lines[i].startswith('TOUR_SECTION'):
                     i += 1
                     self.optimal_tour = list(map(int, lines[i].strip().split()))
-                    self.optimal_value = self.compute_tour_cost(self.optimal_tour)
+                elif lines[i].startswith("OPTIMAL_VALUE"):
+                    i += 1
+                    self.optimal_value = float(lines[i].strip())
                 i += 1
 
-    def compute_tour_cost(self, tour, is_open=False):
-        num_cities = len(tour)
-        total_cost = 0.0
-
-        # Calculate the total distance by summing up the distances between consecutive cities
-        for i in range(num_cities - 1):
-            from_city = tour[i]
-            to_city = tour[i + 1]
-            total_cost += self.distance_matrix[from_city][to_city]
-
-        # Add the distance from the last city back to the starting city for closed tours
-        if not is_open:
-            total_cost += self.distance_matrix[tour[-1]][tour[0]]
-
-        return total_cost
     
     def get_dtsp_specific_representation(self, target_deviation):
         """Build the graph representation used in the Prates DTSP paper.
