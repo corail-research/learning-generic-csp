@@ -24,7 +24,8 @@ class Config:
                     num_epochs_lr_warmup:int=5,
                     num_epochs_lr_decay:int=20,
                     lr_decay_factor:float=0.8,
-                    generic_representation:bool=False
+                    generic_representation:bool=False,
+                    target_deviation:float=0.02
                  ):
         self.batch_size = batch_size
         self.hidden_units = hidden_units
@@ -46,6 +47,7 @@ class Config:
         self.num_epochs_lr_decay = num_epochs_lr_decay
         self.lr_decay_factor = lr_decay_factor
         self.generic_representation = generic_representation
+        self.target_deviation = target_deviation
 
 class ExperimentConfig:
     def __init__(
@@ -68,7 +70,8 @@ class ExperimentConfig:
                     num_epochs_lr_warmup:int=5,
                     num_epochs_lr_decay:int=20,
                     lr_decay_factor:float=0.8,
-                    generic_representation:bool=False
+                    generic_representation:bool=False,
+                    target_deviation:float=0.02
                 ):
         self.batch_sizes = batch_sizes
         self.hidden_units = hidden_units
@@ -89,6 +92,7 @@ class ExperimentConfig:
         self.num_epochs_lr_decay = num_epochs_lr_decay
         self.lr_decay_factor = lr_decay_factor
         self.generic_representation = generic_representation
+        self.target_deviation = target_deviation
 
     
     def generate_grid_search_parameters(self):
@@ -111,7 +115,8 @@ class ExperimentConfig:
                         num_epochs_lr_warmup=self.num_epochs_lr_warmup,
                         num_epochs_lr_decay=self.num_epochs_lr_decay,
                         lr_decay_factor=self.lr_decay_factor,
-                        generic_representation=self.generic_representation)
+                        generic_representation=self.generic_representation
+                        target_deviation=self.target_deviation)
     
     def generate_random_search_parameters(self, num_random_configs):
         generated_configs = set()
@@ -146,7 +151,8 @@ class ExperimentConfig:
                             num_epochs_lr_warmup=self.num_epochs_lr_warmup,
                             num_epochs_lr_decay=self.num_epochs_lr_decay,
                             lr_decay_factor=self.lr_decay_factor,
-                            generic_representation=self.generic_representation)
+                            generic_representation=self.generic_representation
+                            target_deviation=self.target_deviation)
             if config not in generated_configs:
                 generated_configs.add(config)
                 yield config

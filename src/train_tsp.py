@@ -41,7 +41,8 @@ if __name__ == "__main__":
     num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
     generic_representation = False
-    
+    target_deviation = 0.02
+
     experiment_config = ExperimentConfig(
         batch_sizes=batch_sizes,
         hidden_units=hidden_units,
@@ -61,7 +62,8 @@ if __name__ == "__main__":
         num_epochs_lr_warmup=num_epochs_lr_warmup,
         num_epochs_lr_decay=num_epochs_lr_decay,
         lr_decay_factor=lr_decay_factor,
-        generic_representation=generic_representation
+        generic_representation=generic_representation,
+        target_deviation=target_deviation
     )
 
     # Generate parameters based on the search method
@@ -104,9 +106,9 @@ if __name__ == "__main__":
         warmup_scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=experiment_config.num_epochs_lr_warmup, after_scheduler=after_scheduler)
 
         if type(model) == GNNTSP:
-            group = "generic"
+            group = f"generic_dev={target_deviation}"
         else:
-            group = "dtsp_specific"
+            group = f"dtsp_specific_dev={target_deviation}"
         wandb.init(
             project=f"TSP-GNN",
             config=params,
