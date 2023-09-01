@@ -115,7 +115,7 @@ class ExperimentConfig:
                         num_epochs_lr_warmup=self.num_epochs_lr_warmup,
                         num_epochs_lr_decay=self.num_epochs_lr_decay,
                         lr_decay_factor=self.lr_decay_factor,
-                        generic_representation=self.generic_representation
+                        generic_representation=self.generic_representation,
                         target_deviation=self.target_deviation)
     
     def generate_random_search_parameters(self, num_random_configs):
@@ -151,7 +151,7 @@ class ExperimentConfig:
                             num_epochs_lr_warmup=self.num_epochs_lr_warmup,
                             num_epochs_lr_decay=self.num_epochs_lr_decay,
                             lr_decay_factor=self.lr_decay_factor,
-                            generic_representation=self.generic_representation
+                            generic_representation=self.generic_representation,
                             target_deviation=self.target_deviation)
             if config not in generated_configs:
                 generated_configs.add(config)

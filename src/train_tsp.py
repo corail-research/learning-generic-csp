@@ -15,7 +15,7 @@ multiprocessing.set_start_method("spawn", force=True)
 from models.common.training_utils import train_model
 from models.decision_tsp.config import ExperimentConfig
 from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
-from models.common.pytorch_samplers import  PairNodeSampler
+from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 
 if __name__ == "__main__":
     import math
@@ -89,7 +89,8 @@ if __name__ == "__main__":
             train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         else:
-            train_loader = DataLoader(train_dataset, batch_size=params.batch_size, num_workers=0)
+            train_sampler = PairBatchSampler(train_dataset, 32, 2048) 
+            train_loader = DataLoader(train_dataset, batch_size=params.batch_size, sampler=train_sampler, num_workers=0)
         
         test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
         first_batch_iter = iter(test_loader)
