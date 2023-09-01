@@ -107,9 +107,10 @@ if __name__ == "__main__":
         warmup_scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=experiment_config.num_epochs_lr_warmup, after_scheduler=after_scheduler)
 
         if type(model) == GNNTSP:
-            group = f"generic_dev={target_deviation}"
-        else:
             group = f"dtsp_specific_dev={target_deviation}"
+            
+        else:
+            group = f"generic_dev={target_deviation}"
         wandb.init(
             project=f"TSP-GNN",
             config=params,
