@@ -77,8 +77,9 @@ class TSPInstance:
                 arcs.append([j, arc_counter])
                 target_cost_positive = self.optimal_value + target_deviation * self.optimal_value
                 target_cost_negative = self.optimal_value - target_deviation * self.optimal_value
-                arc_features_positive.append([self.distance_matrix[i][j], target_cost_positive])
-                arc_features_negative.append([self.distance_matrix[i][j], target_cost_negative])
+                distance = max(self.distance_matrix[i][j], self.distance_matrix[j][i])
+                arc_features_positive.append([distance, target_cost_positive])
+                arc_features_negative.append([distance, target_cost_negative])
                 arcs_to_id_mapping[(i, j)] = arc_counter
                 arc_counter += 1
 
@@ -93,6 +94,49 @@ class TSPInstance:
         data_negative["city"].x = torch.Tensor(cities)
         data_negative["arc"].x = torch.Tensor(arc_features_negative)
         data_negative["city", "connected_to", "arc"].edge_index = self.build_edge_index_tensor(arcs)
+        data_negative.filename = self.filename
+        data_negative.label = 0
+        T.ToUndirected()(data_negative)
+
+        return data_positive, data_negative
+    
+    def get_arc_based_representation(self, target_deviation):
+        """Build arc-based representation of the TSP instance. This representation creates one node per arc, and connects such nodes if 
+        they are adjacent in the original graph. The features for the nodes (arcs in the original graph) are the arc weight alongside the target cost
+        Args:
+            target_cost (float): the target deviation cost for the decision TSP, in percentage. For example, 0.02 means that the target cost is 2% more 
+            or less than the optimal cost.
+        
+        Returns:
+            data (tuple(torch_geometric.data.HeteroData)): graph for the DTSP problem, one for the positive instance (cost = optimal value + target_deviation * optimal_value)
+             and one for the negative instance (cost = optimal value - target_deviation * optimal_value)
+             labels are stored in data.label
+        """
+        arcs = []
+        arc_features_positive = []
+        arc_features_negative = []
+        arcs_to_id_mapping = {}
+        arc_counter = 0
+        for i in range(self.dimension):
+            for j in range(i+1, self.dimension):
+                arcs.append([i, arc_counter])
+                arcs.append([j, arc_counter])
+                target_cost_positive = self.optimal_value + target_deviation * self.optimal_value
+                target_cost_negative = self.optimal_value - target_deviation * self.optimal_value
+                arc_features_positive.append([self.distance_matrix[i][j], target_cost_positive])
+                arc_features_negative.append([self.distance_matrix[i][j], target_cost_negative])
+                arcs_to_id_mapping[(i, j)] = arc_counter
+                arc_counter += 1
+
+        data_positive, data_negative = HeteroData(), HeteroData()
+        data_positive["arc"].x = torch.Tensor(arc_features_positive)
+        data_positive["arc", "adjacent_to", "arc"].edge_index = self.build_edge_index_tensor(arcs)
+        data_positive.filename = self.filename
+        data_positive.label = 1
+        T.ToUndirected()(data_positive)
+
+        data_negative["arc"].x = torch.Tensor(arc_features_negative)
+        data_negative["arc", "adjacent_to", "arc"].edge_index = self.build_edge_index_tensor(arcs)
         data_negative.filename = self.filename
         data_negative.label = 0
         T.ToUndirected()(data_negative)
