@@ -77,7 +77,7 @@ class TSPInstance:
                 arcs.append([j, arc_counter])
                 target_cost_positive = self.optimal_value + target_deviation * self.optimal_value
                 target_cost_negative = self.optimal_value - target_deviation * self.optimal_value
-                distance = max(self.distance_matrix[i][j], self.distance_matrix[j][i])
+                distance = self.distance_matrix[i][j]
                 arc_features_positive.append([distance, target_cost_positive])
                 arc_features_negative.append([distance, target_cost_negative])
                 arcs_to_id_mapping[(i, j)] = arc_counter
