@@ -73,7 +73,7 @@ class DTSPLSTMConv(LSTMConvV1):
                 self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, 2, hidden_size, hidden_size, device=self.device)
             lstm_input_size = sum([in_channels[src_node_type] for src_node_type in self.input_type_per_node_type[node_type]])            
             self.lstm_sizes[node_type] = lstm_input_size
-            self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, state_tuple=self.lstm_state_tuple, device=self.device)
+            self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, activation=torch.relu, state_tuple=self.lstm_state_tuple, device=self.device)
         
         self.reset_parameters()
 
