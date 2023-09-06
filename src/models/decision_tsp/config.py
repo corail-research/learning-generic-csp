@@ -25,7 +25,8 @@ class Config:
                     num_epochs_lr_decay:int=20,
                     lr_decay_factor:float=0.8,
                     generic_representation:bool=False,
-                    target_deviation:float=0.02
+                    target_deviation:float=0.02,
+                    clip_gradient_norm:float=0.65
                  ):
         self.batch_size = batch_size
         self.hidden_units = hidden_units
@@ -48,6 +49,7 @@ class Config:
         self.lr_decay_factor = lr_decay_factor
         self.generic_representation = generic_representation
         self.target_deviation = target_deviation
+        self.clip_gradient_norm = clip_gradient_norm
 
 class ExperimentConfig:
     def __init__(
@@ -71,7 +73,8 @@ class ExperimentConfig:
                     num_epochs_lr_decay:int=20,
                     lr_decay_factor:float=0.8,
                     generic_representation:bool=False,
-                    target_deviation:float=0.02
+                    target_deviation:float=0.02,
+                    clip_gradient_norm:float=0.65
                 ):
         self.batch_sizes = batch_sizes
         self.hidden_units = hidden_units
@@ -93,6 +96,7 @@ class ExperimentConfig:
         self.lr_decay_factor = lr_decay_factor
         self.generic_representation = generic_representation
         self.target_deviation = target_deviation
+        self.clip_gradient_norm = clip_gradient_norm
 
     
     def generate_grid_search_parameters(self):
@@ -116,7 +120,8 @@ class ExperimentConfig:
                         num_epochs_lr_decay=self.num_epochs_lr_decay,
                         lr_decay_factor=self.lr_decay_factor,
                         generic_representation=self.generic_representation,
-                        target_deviation=self.target_deviation)
+                        target_deviation=self.target_deviation,
+                        clip_gradient_norm=self.clip_gradient_norm)
     
     def generate_random_search_parameters(self, num_random_configs):
         generated_configs = set()
@@ -152,7 +157,8 @@ class ExperimentConfig:
                             num_epochs_lr_decay=self.num_epochs_lr_decay,
                             lr_decay_factor=self.lr_decay_factor,
                             generic_representation=self.generic_representation,
-                            target_deviation=self.target_deviation)
+                            target_deviation=self.target_deviation,
+                            clip_gradient_norm=self.clip_gradient_norm)
             if config not in generated_configs:
                 generated_configs.add(config)
                 yield config

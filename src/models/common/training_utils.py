@@ -8,6 +8,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 from models.decision_tsp.base_model import GNNTSP
 from models.graph_coloring.base_model import GCGNN
 from models.sat.neurosat_model import NeuroSAT
+import torch.nn.utils as utils
 
 
 def get_args():
@@ -27,25 +28,25 @@ def get_args():
     
     return args
 
-def train_model(model, train_loader, test_loader, optimizer, scheduler, criterion, num_epochs, samples_per_epoch=None, threshold=0.6):
+def train_model(model, train_loader, test_loader, optimizer, scheduler, criterion, num_epochs, samples_per_epoch=None, clip_value=None):
     train_losses, test_losses, train_metrics, test_metrics = [], [], [], []
 
     for epoch in range(1, num_epochs):
-        scheduler.step(epoch)
-        train_acc, train_loss, train_metric = process_model(model, optimizer, criterion, train_loader, mode='train', samples_per_epoch=samples_per_epoch)
+        train_acc, train_loss, train_metric = process_model(model, optimizer, criterion, train_loader, mode='train', samples_per_epoch=samples_per_epoch, clip_value=clip_value)
         train_losses.append(train_loss)
         train_metrics.append(train_metric)
 
         test_acc, test_loss, test_metric = process_model(model, None, criterion, test_loader, mode='test', samples_per_epoch=samples_per_epoch)
         test_losses.append(test_loss)
         test_metrics.append(test_metric)
+        scheduler.step()
 
         print(f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}")
         print(f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}")
 
     return train_losses, test_losses, train_metrics, test_metrics
 
-def process_model(model, optimizer, criterion, loader, mode='train', samples_per_epoch=None, model_path=None):
+def process_model(model, optimizer, criterion, loader, mode='train', samples_per_epoch=None, model_path=None, clip_value=None):
     assert mode in ['train', 'test'], "Invalid mode, choose either 'train' or 'test'."
 
     if mode == 'train':
@@ -70,6 +71,8 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
                 out = out.squeeze(1)
             loss = criterion(out, label)
             loss.backward()
+            if clip_value is not None:
+                utils.clip_grad_norm_(model.parameters(), clip_value) 
             optimizer.step()
         else:
             with torch.no_grad():

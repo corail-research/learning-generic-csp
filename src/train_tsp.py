@@ -23,10 +23,10 @@ if __name__ == "__main__":
     data_path = r"./src/models/decision_tsp/data"
     # data_path = r"/scratch1/boileo/dtsp/data"
     # Hyperparameters for grid search or random search
-    batch_sizes = [2]
+    batch_sizes = [32]
     hidden_units = [64]
     num_heads = [2]
-    learning_rates = [0.00002]
+    learning_rates = [0.00001]
     num_lstm_passes = [32]
     num_layers = [2]
     dropout = [0.1]
@@ -36,12 +36,13 @@ if __name__ == "__main__":
     samples_per_epoch = [4096]
     nodes_per_batch= [12000]
     use_sampler_loader = False
-    weight_decay = [0.0000001]
+    weight_decay = [0.0000000001]
     num_epochs_lr_warmup = 5
     num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
     generic_representation = False
     target_deviation = 0.02
+    clip_gradient_norm = 0.65
 
     experiment_config = ExperimentConfig(
         batch_sizes=batch_sizes,
@@ -63,7 +64,8 @@ if __name__ == "__main__":
         num_epochs_lr_decay=num_epochs_lr_decay,
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
-        target_deviation=target_deviation
+        target_deviation=target_deviation,
+        clip_gradient_norm=clip_gradient_norm
     )
 
     # Generate parameters based on the search method
@@ -89,8 +91,8 @@ if __name__ == "__main__":
             train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         else:
-            train_sampler = PairBatchSampler(train_dataset, params.batch_size, 2048) 
-            train_loader = DataLoader(train_dataset, batch_size=params.batch_size, sampler=train_sampler, num_workers=0)
+            # train_sampler = PairBatchSampler(train_dataset, params.batch_size, 2048) 
+            train_loader = DataLoader(train_dataset, batch_size=params.batch_size, num_workers=0)
         
         test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
         first_batch_iter = iter(test_loader)
@@ -116,9 +118,9 @@ if __name__ == "__main__":
             config=params,
             group=group
         )
-        # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch)
+        # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)
         profile = cProfile.Profile()
-        profile.run('train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch)')
+        profile.run('train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)')
 
         stats = pstats.Stats(profile)
         stats.sort_stats('tottime')

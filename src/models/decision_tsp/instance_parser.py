@@ -75,8 +75,8 @@ class TSPInstance:
             for j in range(i+1, self.dimension):
                 arcs.append([i, arc_counter])
                 arcs.append([j, arc_counter])
-                target_cost_positive = self.optimal_value + target_deviation * self.optimal_value
-                target_cost_negative = self.optimal_value - target_deviation * self.optimal_value
+                target_cost_positive = self.optimal_value * (1 + target_deviation)
+                target_cost_negative = self.optimal_value * (1 - target_deviation)
                 distance = self.distance_matrix[i][j]
                 arc_features_positive.append([distance, target_cost_positive])
                 arc_features_negative.append([distance, target_cost_negative])
