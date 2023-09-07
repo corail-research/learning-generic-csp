@@ -1,3 +1,4 @@
+import socket
 from datetime import datetime
 import wandb
 import torch
@@ -24,9 +25,9 @@ if __name__ == "__main__":
     data_path = r"./src/models/sat/sat_spec_data/train_small"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
-    hidden_units = [32, 64]
+    hidden_units = [128]
     num_heads = [2]
-    learning_rates = [0.0001]
+    learning_rates = [0.00001]
     num_lstm_passes = [26]
     num_layers = [2]
     dropout = [0.1]
@@ -42,6 +43,8 @@ if __name__ == "__main__":
     lr_decay_factor = 0.8
     generic_representation = False
     
+    hostname = socket.gethostname()
+
     experiment_config = ExperimentConfig(
         batch_sizes=batch_sizes,
         hidden_units=hidden_units,
@@ -108,9 +111,9 @@ if __name__ == "__main__":
         warmup_scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=experiment_config.num_epochs_lr_warmup, after_scheduler=after_scheduler)
 
         if type(model) == AdaptedNeuroSAT:
-            group = "generic"
+            group = "generic" + hostname
         else:
-            group = "sat_specific"
+            group = "sat_specific" + hostname
         wandb.init(
             project=f"SATGNN",
             config=params,

@@ -1,3 +1,4 @@
+import socket
 from datetime import datetime
 import wandb
 import torch
@@ -43,6 +44,8 @@ if __name__ == "__main__":
     generic_representation = False
     target_deviation = 0.02
     clip_gradient_norm = 0.65
+
+    hostname = socket.gethostname()
 
     experiment_config = ExperimentConfig(
         batch_sizes=batch_sizes,
@@ -109,10 +112,10 @@ if __name__ == "__main__":
         warmup_scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=experiment_config.num_epochs_lr_warmup, after_scheduler=after_scheduler)
 
         if type(model) == GNNTSP:
-            group = f"dtsp_specific_dev={target_deviation}"
+            group = f"dtsp_specific_dev={target_deviation}" + "_" + hostname
             
         else:
-            group = f"generic_dev={target_deviation}"
+            group = f"generic_dev={target_deviation}"+ "_" + hostname
         wandb.init(
             project=f"TSP-GNN",
             config=params,
