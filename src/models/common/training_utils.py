@@ -39,7 +39,8 @@ def train_model(model, train_loader, test_loader, optimizer, scheduler, criterio
         test_acc, test_loss, test_metric = process_model(model, None, criterion, test_loader, mode='test', samples_per_epoch=samples_per_epoch)
         test_losses.append(test_loss)
         test_metrics.append(test_metric)
-        scheduler.step()
+        if scheduler is not None:
+            scheduler.step()
 
         print(f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}")
         print(f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}")

@@ -25,7 +25,8 @@ class Config:
                     num_epochs_lr_decay:int=20,
                     lr_decay_factor:float=0.8,
                     generic_representation:bool=False,
-                    flip_inputs:bool=False
+                    flip_inputs:bool=False,
+                    lr_scheduler=None
                  ):
         self.batch_size = batch_size
         self.hidden_units = hidden_units
@@ -48,6 +49,7 @@ class Config:
         self.lr_decay_factor = lr_decay_factor
         self.generic_representation = generic_representation
         self.flip_inputs = flip_inputs
+        self.lr_scheduler = lr_scheduler
 
 class ExperimentConfig:
     def __init__(
@@ -71,7 +73,8 @@ class ExperimentConfig:
                     num_epochs_lr_decay:int=20,
                     lr_decay_factor:float=0.8,
                     generic_representation:bool=False,
-                    flip_inputs:bool=False
+                    flip_inputs:bool=False,
+                    lr_scheduler=None
                 ):
         self.batch_sizes = batch_sizes
         self.hidden_units = hidden_units
@@ -93,6 +96,7 @@ class ExperimentConfig:
         self.lr_decay_factor = lr_decay_factor
         self.generic_representation = generic_representation
         self.flip_inputs = flip_inputs
+        self.lr_scheduler = lr_scheduler
 
     
     def generate_grid_search_parameters(self):
@@ -116,7 +120,8 @@ class ExperimentConfig:
                         num_epochs_lr_decay=self.num_epochs_lr_decay,
                         lr_decay_factor=self.lr_decay_factor,
                         generic_representation=self.generic_representation,
-                        flip_inputs=self.flip_inputs
+                        flip_inputs=self.flip_inputs,
+                        lr_scheduler=self.lr_scheduler
                     )
     
     def generate_random_search_parameters(self, num_random_configs):
@@ -153,7 +158,8 @@ class ExperimentConfig:
                             num_epochs_lr_decay=self.num_epochs_lr_decay,
                             lr_decay_factor=self.lr_decay_factor,
                             generic_representation=self.generic_representation,
-                            flip_inputs=self.flip_inputs
+                            flip_inputs=self.flip_inputs,
+                            lr_scheduler=self.lr_scheduler
                         )
             if config not in generated_configs:
                 generated_configs.add(config)
