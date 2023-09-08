@@ -117,6 +117,7 @@ class LayerNormLSTMCell(nn.Module):
         self.dropout = nn.Dropout(0.1) #FIXME: recurrent dropout
 
     def forward(self, inputs, state):
+        # self.input_size = x.size(-1) Maybe?
         hx, cx = state
         i2h = inputs @ self.lstm_cell.weight_ih.t()
         h2h = hx @ self.lstm_cell.weight_hh.t() + self.lstm_cell.bias_hh
