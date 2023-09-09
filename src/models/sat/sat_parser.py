@@ -84,7 +84,7 @@ class CNF:
             var_tensor = torch.Tensor([[1] for var in self.variables])
 
         data["variable"].x = var_tensor
-        label = [1] if self.is_sat else [0]
+        label = 1 if self.is_sat else 0
         data["variable"].y = torch.Tensor([label])
         data["constraint"].x = torch.Tensor(constraints)
 
