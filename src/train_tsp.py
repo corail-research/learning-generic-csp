@@ -108,9 +108,9 @@ if __name__ == "__main__":
         model = GNNTSP(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params.learning_rate, weight_decay=params.weight_decay)
-        after_scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: experiment_config.lr_decay_factor ** (epoch // experiment_config.num_epochs_lr_decay))
-        warmup_scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=experiment_config.num_epochs_lr_warmup, after_scheduler=after_scheduler)
-
+        # after_scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: experiment_config.lr_decay_factor ** (epoch // experiment_config.num_epochs_lr_decay))
+        # warmup_scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=experiment_config.num_epochs_lr_warmup, after_scheduler=after_scheduler)
+        warmup_scheduler = None
         if type(model) == GNNTSP:
             group = f"dtsp_specific_dev={target_deviation}" + "_" + hostname
             
