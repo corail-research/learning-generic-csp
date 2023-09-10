@@ -38,7 +38,7 @@ if __name__ == "__main__":
     samples_per_epoch = [4096]
     nodes_per_batch= [1024]
     use_sampler_loader = False
-    weight_decay = [0.00001]
+    weight_decay = [0.0000000001]
     num_epochs_lr_warmup = 5
     num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
@@ -80,7 +80,7 @@ if __name__ == "__main__":
     if experiment_config.generic_representation:
         dataset = SatDataset(root=experiment_config.data_path, graph_type="generic", meta_connected_to_all=False)
     else:
-        dataset = SatDataset(root=experiment_config.data_path, graph_type="sat_specific", meta_connected_to_all=False)
+        dataset = SatDataset(root=experiment_config.data_path, graph_type="sat_specific", meta_connected_to_all=False, in_memory=False)
     train_dataset = dataset[:math.floor(len(dataset) * experiment_config.train_ratio)]
     test_dataset = dataset[math.floor(len(dataset) * experiment_config.train_ratio):]
             
@@ -104,7 +104,7 @@ if __name__ == "__main__":
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
         model_type = "sat_spec"
-        model = NeuroSAT(metadata, model_type, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device, flip_inputs=params.flip_inputs)
+        model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device, flip_inputs=params.flip_inputs)
         # model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params.learning_rate, weight_decay=params.weight_decay)

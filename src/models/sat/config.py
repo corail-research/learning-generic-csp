@@ -25,7 +25,7 @@ class Config:
                     num_epochs_lr_decay:int=20,
                     lr_decay_factor:float=0.8,
                     generic_representation:bool=False,
-                    flip_inputs:bool=False,
+                    flip_inputs:bool=True,
                     lr_scheduler=None
                  ):
         self.batch_size = batch_size
