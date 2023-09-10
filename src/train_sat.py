@@ -122,7 +122,7 @@ if __name__ == "__main__":
         )
         # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch)
         profile = cProfile.Profile()
-        profile.run('train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch)')
+        profile.run('train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=0.65)')
 
         stats = pstats.Stats(profile)
         stats.sort_stats('tottime')
