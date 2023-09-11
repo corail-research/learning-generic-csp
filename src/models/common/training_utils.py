@@ -28,8 +28,9 @@ def get_args():
     
     return args
 
-def train_model(model, train_loader, test_loader, optimizer, scheduler, criterion, num_epochs, samples_per_epoch=None, clip_value=None):
+def train_model(model, train_loader, test_loader, optimizer, criterion, num_epochs, samples_per_epoch=None, clip_value=None):
     train_losses, test_losses, train_metrics, test_metrics = [], [], [], []
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10, verbose=True)
 
     for epoch in range(1, num_epochs):
         train_acc, train_loss, train_metric = process_model(model, optimizer, criterion, train_loader, mode='train', samples_per_epoch=samples_per_epoch, clip_value=clip_value)
@@ -39,8 +40,7 @@ def train_model(model, train_loader, test_loader, optimizer, scheduler, criterio
         test_acc, test_loss, test_metric = process_model(model, None, criterion, test_loader, mode='test', samples_per_epoch=samples_per_epoch)
         test_losses.append(test_loss)
         test_metrics.append(test_metric)
-        if scheduler is not None:
-            scheduler.step()
+        scheduler.step(test_loss)
 
         print(f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}")
         print(f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}")
