@@ -44,7 +44,7 @@ if __name__ == "__main__":
     generic_representation = False
     target_deviation = 0.02
     clip_gradient_norm = 0.65
-
+    
     hostname = socket.gethostname()
 
     experiment_config = ExperimentConfig(
@@ -118,9 +118,10 @@ if __name__ == "__main__":
             config=params,
             group=group
         )
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10, verbose=True)
         # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)
         profile = cProfile.Profile()
-        profile.run('train_model(model, train_loader, test_loader, optimizer, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)')
+        profile.run('train_model(model, train_loader, test_loader, optimizer, scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)')
 
         stats = pstats.Stats(profile)
         stats.sort_stats('tottime')
