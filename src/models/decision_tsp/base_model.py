@@ -29,7 +29,7 @@ class GNNTSP(AdaptedNeuroSAT):
         self.vote = MLP(hidden_size["arc"], 2, 1, hidden_size["arc"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
         self.lstm_conv_layers = DTSPLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
-        self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
+        # self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
         for node_type in metadata[0]:
             if node_type == "city":
                 self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
@@ -40,10 +40,18 @@ class GNNTSP(AdaptedNeuroSAT):
         x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
         for i in range(self.num_passes):
             if i == 0:
-                previous_state_tuple = {node_type: self.lstm_state_tuple(value, torch.zeros_like(value)) for node_type, value in x_dict.items()}
+                previous_hidden_state = {node_type: value for node_type, value in x_dict.items()}
+                previous_cell_state = {node_type: None for node_type, x in x_dict.items()}
             else:
-                previous_state_tuple = {node_type: self.lstm_state_tuple(out[node_type].h, out[node_type].c) for node_type in x_dict.keys()}
-            out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_state_tuple, batch_dict)
+                previous_hidden_state = {node_type: out[node_type][0] for node_type in x_dict.keys()}
+                previous_cell_state = {node_type: out[node_type][1] for node_type in x_dict.keys()}
+
+            # if i == 0:
+            #     previous_state_tuple = {node_type: self.lstm_state_tuple(value, torch.zeros_like(value)) for node_type, value in x_dict.items()}
+            # else:
+            #     previous_state_tuple = {node_type: self.lstm_state_tuple(out[node_type].h, out[node_type].c) for node_type in x_dict.keys()}
+            # out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_state_tuple, batch_dict)
+            out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state, batch_dict)
             x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
         raw_votes = self.vote(x_dict["arc"])
         votes = scatter_mean(raw_votes, batch_dict["arc"], dim=0)
@@ -63,7 +71,7 @@ class DTSPLSTMConv(LSTMConvV1):
         self.lstm_cells = torch.nn.ModuleDict()
         self.mlp_blocks = torch.nn.ModuleDict()
         self.lstm_sizes = {}
-        self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
+        # self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
 
         for node_type in metadata[0]:            
             hidden_size = in_channels[node_type]
@@ -73,17 +81,18 @@ class DTSPLSTMConv(LSTMConvV1):
                 self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, 2, hidden_size, hidden_size, device=self.device)
             lstm_input_size = sum([in_channels[src_node_type] for src_node_type in self.input_type_per_node_type[node_type]])            
             self.lstm_sizes[node_type] = lstm_input_size
-            self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, activation=torch.relu, state_tuple=self.lstm_state_tuple, device=self.device)
+            # self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, activation=torch.relu, state_tuple=self.lstm_state_tuple, device=self.device)
+            self.lstm_cells[node_type] = LSTMCell(lstm_input_size, hidden_size, device=self.device)
         
         self.reset_parameters()
 
-    def forward(self, x_dict, edge_index_dict, previous_state_tuple:namedtuple, batch_dict: Dict):
+    def forward(self, x_dict, edge_index_dict, previous_hidden_states:Dict, previous_cell_states:Dict, batch_dict: Dict):
         # Loop over each node type and each edge type
         sizes = {node_type: x_dict[node_type].size() for node_type in x_dict.keys()}
         output = {}
         for node_type in x_dict.keys():
             inputs = []
-            hidden_state = previous_state_tuple[node_type].h
+            hidden_state = previous_hidden_states[node_type]
             for edge_type in self.entering_edges_per_node_type[node_type]:
                 # Perform the message passing for the current node type and edge type
                 source_node_type, _, _ = edge_type
@@ -95,8 +104,12 @@ class DTSPLSTMConv(LSTMConvV1):
                 # Append the resulting node features to the list of hidden states
                 inputs.append(agg)
             # Concatenate the resulting node features for each node type into a single vector
-            h_cat = torch.cat(inputs, dim=1)            
-            state_tuple = self.lstm_cells[node_type](inputs=h_cat, state=previous_state_tuple[node_type])
-            output[node_type] = state_tuple
+            h_cat = torch.cat(inputs, dim=1)
+            if previous_cell_states[node_type] is None:
+                cell_state = torch.zeros_like(hidden_state)
+            else:
+                cell_state = previous_cell_states[node_type]            
+            h, c = self.lstm_cells[node_type](h_cat, (hidden_state, cell_state))
+            output[node_type] = (h, c)
 
         return output

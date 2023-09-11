@@ -21,13 +21,13 @@ from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    data_path = r"./src/models/decision_tsp/data"
-    # data_path = r"/scratch1/boileo/dtsp/data"
+    # data_path = r"./src/models/decision_tsp/data"
+    data_path = r"/scratch1/boileo/dtsp/data"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
     hidden_units = [64]
     num_heads = [2]
-    learning_rates = [0.00001]
+    learning_rates = [0.00002]
     num_lstm_passes = [32]
     num_layers = [2]
     dropout = [0.1]
@@ -94,8 +94,8 @@ if __name__ == "__main__":
             train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         else:
-            # train_sampler = PairBatchSampler(train_dataset, params.batch_size, 2048) 
-            train_loader = DataLoader(train_dataset, batch_size=params.batch_size, num_workers=0)
+            train_sampler = PairBatchSampler(train_dataset, params.batch_size, 2048) 
+            train_loader = DataLoader(train_dataset, batch_size=params.batch_size, sampler=train_sampler, num_workers=0)
         
         test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
         first_batch_iter = iter(test_loader)
