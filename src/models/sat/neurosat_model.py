@@ -147,13 +147,26 @@ from ..common.lstm_conv import AdaptedNeuroSAT, LSTMConvV1
 
 
 class NeuroSAT(AdaptedNeuroSAT):
-    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu", flip_inputs:bool=False):
+    def __init__(self,
+                metadata,
+                in_channels:Dict[str, int],
+                out_channels:Dict[str, int],
+                hidden_size:Dict[str, int]=128,
+                num_passes:int=20,
+                device="cpu",
+                flip_inputs:bool=False,
+                layernorm_lstm_cell:bool=True,
+            ):
         """
         Args:
             metadata (_type_): metadata for the heterogeneous graph
             in_channels (Dict[str, int]): Dict mapping node type to the number of input features
             out_channels (Dict[str, int]): Dict mapping node type to the number of output features
             hidden_size (Dict[str, int], optional): Dict mapping node types to number of hidden channels. Defaults to 128.
+            num_passes (int): number of LSTM passes
+            device (str): device where computations happen
+            flip_inputs (bool): whether or not to flip the inputs for variable hidden states
+            layernorm_lstm_cell (bool): whether or not to use the layernorm lstm cell
         """
         super(AdaptedNeuroSAT, self).__init__()
         self.in_channels = in_channels
@@ -164,7 +177,7 @@ class NeuroSAT(AdaptedNeuroSAT):
         self.projection_layers = torch.nn.ModuleDict()
         self.vote = MLP(hidden_size["variable"], 2, 1, hidden_size["variable"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
-        self.lstm_conv_layers = NeuroSatLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, flip_inputs=flip_inputs)
+        self.lstm_conv_layers = NeuroSatLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, flip_inputs=flip_inputs, layernorm_lstm_cell=layernorm_lstm_cell)
         for node_type in metadata[0]:
             self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
         
@@ -189,7 +202,7 @@ class NeuroSatLSTMConv(LSTMConvV1):
     has not yet been passed through an MLP layer. Instead, it concatenates the input features 
     coming from the neighboring nodes before passing them through the MLP.
     """
-    def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, **kwargs):
+    def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, layernorm_lstm_cell=True, **kwargs):
         super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata)
         self.device = device if device is not None else torch.device('cpu')
         self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
@@ -207,7 +220,12 @@ class NeuroSatLSTMConv(LSTMConvV1):
                 self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, 2, hidden_size, hidden_size, device=self.device)
             lstm_input_size = sum([in_channels[src_node_type] for src_node_type in self.input_type_per_node_type[node_type]])            
             self.lstm_sizes[node_type] = lstm_input_size
-            self.lstm_cells[node_type] = LSTMCell(lstm_input_size, hidden_size, device=self.device)
+            
+            if layernorm_lstm_cell:
+                self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, torch.relu, device=self.device)
+            else:
+                self.lstm_cells[node_type] = LSTMCell(lstm_input_size, hidden_size, device=self.device)
+            
         
         self.reset_parameters()
 

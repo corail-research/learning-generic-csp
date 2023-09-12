@@ -91,46 +91,27 @@ class MLPCustom(nn.Module):
         return self.layers[-1](x)
 
 
-class LayerNormLSTMCell(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int, activation: callable = torch.tanh, state_tuple:collections.namedtuple=None, device='cpu'):
-        """
-        A long short-term memory (LSTM) cell with layer normalization applied to the input-to-hidden and hidden-to-hidden
-        weight matrices.
 
-        Args:
-            input_size (int): The number of expected features in the input.
-            hidden_size (int): The number of features in the hidden state.
-            activation (callable): The activation function to use (default is torch.tanh).
-            state_tuple (collections.namedtuple): A named tuple to use for the output state (default is None).
-            device (str): The device to use for the model parameters (default is 'cpu').
-        """
-        super().__init__()
+class LayerNormLSTMCell(nn.LSTMCell):
+
+    def __init__(self, input_size, hidden_size, activation=torch.tanh, device="cpu", bias=True):
+        super().__init__(input_size, hidden_size, bias)
         self.activation = activation
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.device = device
-        self.lstm_cell = nn.LSTMCell(input_size, hidden_size, device=self.device)
-        self.ln_ih = nn.LayerNorm(self.hidden_size * 4, device=self.device)
-        self.ln_hh = nn.LayerNorm(self.hidden_size * 4,device=self.device)
-        self.ln_ho = nn.LayerNorm(self.hidden_size,device=self.device)
-        self.state_tuple = state_tuple # namedtuple('LSTMState',('h','c'))
-        self.dropout = nn.Dropout(0.1) #FIXME: recurrent dropout
+        self.ln_ih = nn.LayerNorm(4 * hidden_size).to(device)
+        self.ln_hh = nn.LayerNorm(4 * hidden_size).to(device)
+        self.ln_ho = nn.LayerNorm(hidden_size).to(device)
 
-    def forward(self, inputs, state):
-        # self.input_size = x.size(-1) Maybe?
-        hx, cx = state
-        i2h = inputs @ self.lstm_cell.weight_ih.t()
-        h2h = hx @ self.lstm_cell.weight_hh.t() + self.lstm_cell.bias_hh
-        gates = self.ln_ih(i2h) + self.ln_hh(h2h)
-        
-        i, f, o, g = gates.chunk(4, 1)
-        i = torch.sigmoid(i)
-        f = torch.sigmoid(f)
-        o = torch.sigmoid(o)
-        g = self.activation(g)
+    def forward(self, input, hidden=None):
+        if hidden is None:
+            hx = input.new_zeros(input.size(0), self.hidden_size, requires_grad=False)
+            cx = input.new_zeros(input.size(0), self.hidden_size, requires_grad=False)
+        else:
+            hx, cx = hidden
+
+        gates = self.ln_ih(F.linear(input, self.weight_ih, self.bias_ih)) + self.ln_hh(F.linear(hx, self.weight_hh, self.bias_hh))
+        i, f, o = gates[:, :(3 * self.hidden_size)].sigmoid().chunk(3, 1)
+        g = gates[:, (3 * self.hidden_size):].tanh()
 
         cy = (f * cx) + (i * g)
-        hy = o * self.ln_ho(self.activation(cy))
-        hy = self.dropout(hy)
-
-        return self.state_tuple(h=hy, c=cy)
+        hy = o * self.activation(self.ln_ho(cy))
+        return hy, cy

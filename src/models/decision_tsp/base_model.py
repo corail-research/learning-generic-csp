@@ -8,7 +8,15 @@ from ..common.lstm_conv import AdaptedNeuroSAT, LSTMConvV1
 
 
 class GNNTSP(AdaptedNeuroSAT):
-    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu"):
+    def __init__(self,
+                 metadata,
+                 in_channels:Dict[str, int],
+                 out_channels:Dict[str, int],
+                 hidden_size:Dict[str, int]=128,
+                 num_passes:int=20,
+                 device="cpu",
+                 layernorm_lstm_cell:bool=True
+            ):
         """
         Args:
             metadata (_type_): metadata for the heterogeneous graph
@@ -18,6 +26,7 @@ class GNNTSP(AdaptedNeuroSAT):
             hidden_size (Dict[str, int], optional): Dict mapping node types to number of hidden channels. Defaults to 128.
             num_passes (int): number of LSTM passes
             device (str): device where computations happen
+            layer_norm_lstm_cell (bool): whether to use layer norm in the LSTM cell
         """
         super(AdaptedNeuroSAT, self).__init__()
         self.in_channels = in_channels
@@ -28,8 +37,7 @@ class GNNTSP(AdaptedNeuroSAT):
         self.projection_layers = torch.nn.ModuleDict()
         self.vote = MLP(hidden_size["arc"], 2, 1, hidden_size["arc"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
-        self.lstm_conv_layers = DTSPLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
-        # self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
+        self.lstm_conv_layers = DTSPLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, layernorm_lstm_cell=layernorm_lstm_cell)
         for node_type in metadata[0]:
             if node_type == "city":
                 self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
@@ -46,11 +54,6 @@ class GNNTSP(AdaptedNeuroSAT):
                 previous_hidden_state = {node_type: out[node_type][0] for node_type in x_dict.keys()}
                 previous_cell_state = {node_type: out[node_type][1] for node_type in x_dict.keys()}
 
-            # if i == 0:
-            #     previous_state_tuple = {node_type: self.lstm_state_tuple(value, torch.zeros_like(value)) for node_type, value in x_dict.items()}
-            # else:
-            #     previous_state_tuple = {node_type: self.lstm_state_tuple(out[node_type].h, out[node_type].c) for node_type in x_dict.keys()}
-            # out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_state_tuple, batch_dict)
             out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state, batch_dict)
             x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
         raw_votes = self.vote(x_dict["arc"])
@@ -63,7 +66,7 @@ class DTSPLSTMConv(LSTMConvV1):
     has not yet been passed through an MLP layer. Instead, it concatenates the input features 
     coming from the neighboring nodes before passing them through the MLP.
     """
-    def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, **kwargs):
+    def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, layernorm_lstm_cell=True, **kwargs):
         super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata)
         self.device = device if device is not None else torch.device('cpu')
         self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
@@ -71,7 +74,6 @@ class DTSPLSTMConv(LSTMConvV1):
         self.lstm_cells = torch.nn.ModuleDict()
         self.mlp_blocks = torch.nn.ModuleDict()
         self.lstm_sizes = {}
-        # self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
 
         for node_type in metadata[0]:            
             hidden_size = in_channels[node_type]
@@ -81,8 +83,10 @@ class DTSPLSTMConv(LSTMConvV1):
                 self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, 2, hidden_size, hidden_size, device=self.device)
             lstm_input_size = sum([in_channels[src_node_type] for src_node_type in self.input_type_per_node_type[node_type]])            
             self.lstm_sizes[node_type] = lstm_input_size
-            # self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, activation=torch.relu, state_tuple=self.lstm_state_tuple, device=self.device)
-            self.lstm_cells[node_type] = LSTMCell(lstm_input_size, hidden_size, device=self.device)
+            if layernorm_lstm_cell:
+                self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, activation=torch.relu, device=self.device)
+            else:
+                self.lstm_cells[node_type] = LSTMCell(lstm_input_size, hidden_size, device=self.device)
         
         self.reset_parameters()
 
