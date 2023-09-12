@@ -15,7 +15,7 @@ import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
 
 from models.common.training_utils import train_model
-from models.sat.config import ExperimentConfig
+from models.sat.config import SATExperimentConfig
 from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
 from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     
     hostname = socket.gethostname()
 
-    experiment_config = ExperimentConfig(
+    experiment_config = SATExperimentConfig(
         batch_sizes=batch_sizes,
         hidden_units=hidden_units,
         num_heads=num_heads,
@@ -66,7 +66,10 @@ if __name__ == "__main__":
         num_epochs_lr_decay=num_epochs_lr_decay,
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
-        flip_inputs=True
+        flip_inputs=True,
+        lr_scheduler_patience=10,
+        lr_scheduler_factor=0.2,
+        layernorm_lstm_cell=True
     )
 
     # Generate parameters based on the search method
@@ -104,13 +107,19 @@ if __name__ == "__main__":
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
         model_type = "sat_spec"
-        model = NeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device, flip_inputs=params.flip_inputs)
+        model = NeuroSAT(
+            metadata,
+            input_size,
+            out_channels,
+            hidden_size,
+            num_passes=params.num_lstm_passes,
+            device=device,
+            flip_inputs=params.flip_inputs,
+            layernorm_lstm_cell=params.layernorm_lstm_cell
+        )
         # model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params.learning_rate, weight_decay=params.weight_decay)
-        # after_scheduler = LambdaLR(optimizer, lr_lambda=lambda epoch: experiment_config.lr_decay_factor ** (epoch // experiment_config.num_epochs_lr_decay))
-        # warmup_scheduler = GradualWarmupScheduler(optimizer, multiplier=1, total_epoch=experiment_config.num_epochs_lr_warmup, after_scheduler=after_scheduler)
-        warmup_scheduler = None
         if type(model) == AdaptedNeuroSAT:
             group = "generic" + hostname
         else:
@@ -120,9 +129,13 @@ if __name__ == "__main__":
             config=params,
             group=group
         )
+        if params.lr_scheduler_patience is not None:
+            lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=params.lr_scheduler_factor, patience=params.lr_scheduler_patience, verbose=True)
+        else:
+            lr_scheduler = None
         # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch)
         profile = cProfile.Profile()
-        profile.run('train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=0.65)')
+        profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=0.65)')
 
         stats = pstats.Stats(profile)
         stats.sort_stats('tottime')

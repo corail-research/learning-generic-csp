@@ -14,7 +14,7 @@ import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
 
 from models.common.training_utils import train_model
-from models.decision_tsp.config import ExperimentConfig
+from models.decision_tsp.config import TSPExperimentConfig
 from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
 from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     
     hostname = socket.gethostname()
 
-    experiment_config = ExperimentConfig(
+    experiment_config = TSPExperimentConfig(
         batch_sizes=batch_sizes,
         hidden_units=hidden_units,
         num_heads=num_heads,
@@ -68,7 +68,10 @@ if __name__ == "__main__":
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
         target_deviation=target_deviation,
-        clip_gradient_norm=clip_gradient_norm
+        clip_gradient_norm=clip_gradient_norm,
+        lr_scheduler_patience=10,
+        lr_scheduler_factor=0.2,
+        layernorm_lstm_cell=True
     )
 
     # Generate parameters based on the search method
@@ -110,7 +113,6 @@ if __name__ == "__main__":
         optimizer = torch.optim.Adam(model.parameters(),lr=params.learning_rate, weight_decay=params.weight_decay)
         if type(model) == GNNTSP:
             group = f"dtsp_specific_dev={target_deviation}" + "_" + hostname
-            
         else:
             group = f"generic_dev={target_deviation}"+ "_" + hostname
         wandb.init(
@@ -118,10 +120,13 @@ if __name__ == "__main__":
             config=params,
             group=group
         )
-        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.2, patience=10, verbose=True)
+        if params.lr_scheduler_patience is not None:
+            lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=params.lr_scheduler_factor, patience=params.lr_scheduler_patience, verbose=True)
+        else:
+            lr_scheduler = None
         # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)
         profile = cProfile.Profile()
-        profile.run('train_model(model, train_loader, test_loader, optimizer, scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)')
+        profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)')
 
         stats = pstats.Stats(profile)
         stats.sort_stats('tottime')
