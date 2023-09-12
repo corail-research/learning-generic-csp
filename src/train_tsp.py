@@ -21,8 +21,8 @@ from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    # data_path = r"./src/models/decision_tsp/data"
-    data_path = r"/scratch1/boileo/dtsp/data"
+    data_path = r"./src/models/decision_tsp/data"
+    # data_path = r"/scratch1/boileo/dtsp/data"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
     hidden_units = [64]
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     dropout = [0.1]
     num_epochs = 400
     device = "cuda:0"
-    train_ratio = 0.8
+    train_ratio = 0.99
     samples_per_epoch = [4096]
     nodes_per_batch= [12000]
     use_sampler_loader = False
@@ -69,8 +69,8 @@ if __name__ == "__main__":
         generic_representation=generic_representation,
         target_deviation=target_deviation,
         clip_gradient_norm=clip_gradient_norm,
-        lr_scheduler_patience=10,
-        lr_scheduler_factor=0.2,
+        lr_scheduler_patience=13,
+        lr_scheduler_factor=0.5,
         layernorm_lstm_cell=True
     )
 
@@ -97,8 +97,8 @@ if __name__ == "__main__":
             train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         else:
-            train_sampler = PairBatchSampler(train_dataset, params.batch_size, 2048) 
-            train_loader = DataLoader(train_dataset, batch_size=params.batch_size, sampler=train_sampler, num_workers=0)
+            train_sampler = PairBatchSampler(train_dataset, params.batch_size, params.samples_per_epoch) 
+            train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         
         test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
         first_batch_iter = iter(test_loader)
