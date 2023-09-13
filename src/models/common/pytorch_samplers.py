@@ -128,14 +128,11 @@ class PairBatchSampler(BasePairSampler):
         """
         # Shuffle the pair list
         random.shuffle(self.pair_list)
-        total_epoch_items = 0
         # Yield batches of pairs until all pairs have been used
         for i in range(0, len(self.pair_list), self.batch_size // 2):
+            print(i)
             batch = [self.pair_list[j][0] for j in range(i, i+self.batch_size // 2)] + [self.pair_list[j][1] for j in range(i, i+self.batch_size // 2)]
             yield batch
-            total_epoch_items += self.batch_size
-            if total_epoch_items >= self.total_samples_per_batch:
-                break
 
     def __len__(self) -> int:
         """
