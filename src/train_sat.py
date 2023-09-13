@@ -35,8 +35,8 @@ if __name__ == "__main__":
     num_epochs = 400
     device = "cuda:0"
     train_ratio = 0.8
-    samples_per_epoch = [4096]
-    nodes_per_batch= [1024]
+    samples_per_epoch = [64000]
+    nodes_per_batch= [12000]
     use_sampler_loader = False
     weight_decay = [0.0000000001]
     num_epochs_lr_warmup = 5
@@ -92,11 +92,11 @@ if __name__ == "__main__":
 
     for params in search_parameters:
         if params.use_sampler_loader:
-            # train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
-            train_sampler = PairBatchSampler(train_dataset, 32)
+            train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         else:
-            train_loader = DataLoader(train_dataset, batch_size=params.batch_size, num_workers=0)
+            train_sampler = PairBatchSampler(train_dataset, params.batch_size, params.samples_per_epoch) 
+            train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         
         test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
         first_batch_iter = iter(test_loader)
