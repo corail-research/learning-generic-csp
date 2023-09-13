@@ -156,6 +156,7 @@ class NeuroSAT(AdaptedNeuroSAT):
                 device="cpu",
                 flip_inputs:bool=False,
                 layernorm_lstm_cell:bool=True,
+                **kwargs
             ):
         """
         Args:
@@ -177,7 +178,7 @@ class NeuroSAT(AdaptedNeuroSAT):
         self.projection_layers = torch.nn.ModuleDict()
         self.vote = MLP(hidden_size["variable"], 2, 1, hidden_size["variable"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
-        self.lstm_conv_layers = NeuroSatLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, flip_inputs=flip_inputs, layernorm_lstm_cell=layernorm_lstm_cell)
+        self.lstm_conv_layers = NeuroSatLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, flip_inputs=flip_inputs, layernorm_lstm_cell=layernorm_lstm_cell, **kwargs)
         for node_type in metadata[0]:
             self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
         
@@ -204,7 +205,7 @@ class NeuroSatLSTMConv(LSTMConvV1):
     coming from the neighboring nodes before passing them through the MLP.
     """
     def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, layernorm_lstm_cell=True, **kwargs):
-        super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata)
+        super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata, **kwargs)
         self.device = device if device is not None else torch.device('cpu')
         self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
         self.input_type_per_node_type = self.get_input_per_node_type(metadata[1], metadata[0])

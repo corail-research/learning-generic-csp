@@ -40,7 +40,7 @@ class LSTMConvV1(MessagePassing, CustomConvUtils):
     """This class is used to perform LSTM Convolution in GNNs.
     """
     def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, **kwargs):
-        MessagePassing.__init__(self, aggr='add', **kwargs)
+        MessagePassing.__init__(self, **kwargs)
         CustomConvUtils.__init__(self)
         self.device = device if device is not None else torch.device('cpu')
         self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])

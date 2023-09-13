@@ -109,7 +109,7 @@ class PairNodeSampler(BasePairSampler):
 
 
 class PairBatchSampler(BasePairSampler):
-    def __init__(self, dataset: Dataset, batch_size: int = 32, total_samples_per_batch: int = 1024):
+    def __init__(self, dataset: Dataset, batch_size: int = 32):
         """
         Sampler that yields batches of pairs of data instances.
 
@@ -120,7 +120,6 @@ class PairBatchSampler(BasePairSampler):
         """
         super().__init__(dataset)
         self.batch_size = batch_size
-        self.total_samples_per_batch = total_samples_per_batch
 
     def __iter__(self):
         """

@@ -22,20 +22,20 @@ from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    # data_path = r"./src/models/sat/sat_spec_data/train_small" # local
-    data_path = r"/scratch1/boileo/sat/data/sat_specific" # server
+    data_path = r"./src/models/sat/sat_spec_data/train_small" # local
+    # data_path = r"/scratch1/boileo/sat/data/sat_specific" # server
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
     hidden_units = [128]
     num_heads = [2]
-    learning_rates = [0.00002]
+    start_learning_rates = [0.00002]
     num_lstm_passes = [26]
     num_layers = [2]
     dropout = [0.1]
     num_epochs = 400
     device = "cuda:0"
     train_ratio = 0.8
-    samples_per_epoch = [64000]
+    samples_per_epoch = None # 64000
     nodes_per_batch= [12000]
     use_sampler_loader = False
     weight_decay = [0.0000000001]
@@ -43,6 +43,7 @@ if __name__ == "__main__":
     num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
     generic_representation = False
+    gnn_aggregation = "mean"
     
     hostname = socket.gethostname()
 
@@ -50,14 +51,14 @@ if __name__ == "__main__":
         batch_sizes=batch_sizes,
         hidden_units=hidden_units,
         num_heads=num_heads,
-        learning_rates=learning_rates,
+        start_learning_rates=start_learning_rates,
         num_layers=num_layers,
         dropouts=dropout,
         num_epochs=num_epochs,
         num_lstm_passes=num_lstm_passes,
         device=device,
         train_ratio=train_ratio,
-        samples_per_epochs=samples_per_epoch,
+        samples_per_epoch=samples_per_epoch,
         nodes_per_batch=nodes_per_batch,
         data_path=data_path,
         use_sampler_loader=use_sampler_loader,
@@ -69,7 +70,8 @@ if __name__ == "__main__":
         flip_inputs=True,
         lr_scheduler_patience=10,
         lr_scheduler_factor=0.2,
-        layernorm_lstm_cell=True
+        layernorm_lstm_cell=True,
+        gnn_aggregation=gnn_aggregation
     )
 
     # Generate parameters based on the search method
@@ -95,7 +97,7 @@ if __name__ == "__main__":
             train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         else:
-            train_sampler = PairBatchSampler(train_dataset, params.batch_size, params.samples_per_epoch) 
+            train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         
         test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
@@ -115,11 +117,12 @@ if __name__ == "__main__":
             num_passes=params.num_lstm_passes,
             device=device,
             flip_inputs=params.flip_inputs,
-            layernorm_lstm_cell=params.layernorm_lstm_cell
+            layernorm_lstm_cell=params.layernorm_lstm_cell,
+            aggr=params.gnn_aggregation
         )
         # model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
         model = model.cuda()
-        optimizer = torch.optim.Adam(model.parameters(),lr=params.learning_rate, weight_decay=params.weight_decay)
+        optimizer = torch.optim.Adam(model.parameters(),lr=params.start_learning_rate, weight_decay=params.weight_decay)
         if type(model) == AdaptedNeuroSAT:
             group = "generic" + hostname
         else:

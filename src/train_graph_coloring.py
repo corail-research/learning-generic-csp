@@ -25,7 +25,7 @@ if __name__ == "__main__":
     batch_sizes = [2]
     hidden_units = [64]
     num_heads = [2]
-    learning_rates = [0.00002]
+    start_learning_rates = [0.00002]
     num_lstm_passes = [26]
     num_layers = [2]
     dropout = [0.1]
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         batch_sizes=batch_sizes,
         hidden_units=hidden_units,
         num_heads=num_heads,
-        learning_rates=learning_rates,
+        start_learning_rates=start_learning_rates,
         num_layers=num_layers,
         dropouts=dropout,
         num_epochs=num_epochs,

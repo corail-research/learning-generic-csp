@@ -15,7 +15,8 @@ class GNNTSP(AdaptedNeuroSAT):
                  hidden_size:Dict[str, int]=128,
                  num_passes:int=20,
                  device="cpu",
-                 layernorm_lstm_cell:bool=True
+                 layernorm_lstm_cell:bool=True,
+                 **kwargs
             ):
         """
         Args:
@@ -72,7 +73,7 @@ class DTSPLSTMConv(LSTMConvV1):
     coming from the neighboring nodes before passing them through the MLP.
     """
     def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, layernorm_lstm_cell=True, **kwargs):
-        super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata)
+        super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata, **kwargs)
         self.device = device if device is not None else torch.device('cpu')
         self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
         self.input_type_per_node_type = self.get_input_per_node_type(metadata[1], metadata[0])
