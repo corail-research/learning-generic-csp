@@ -45,7 +45,12 @@ class GNNTSP(AdaptedNeuroSAT):
                 self.projection_layers[node_type] = MLPCustom([8, 16, 32], in_channels[node_type], hidden_size["arc"], device=device)
 
     def forward(self, x_dict, edge_index_dict, batch_dict):
-        x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
+        for node_type, x in x_dict.items():
+            if node_type == "city":
+                with torch.no_grad():
+                    x_dict[node_type] = self.projection_layers[node_type](x)
+            else:
+                x_dict[node_type] = self.projection_layers[node_type](x)
         for i in range(self.num_passes):
             if i == 0:
                 previous_hidden_state = {node_type: value for node_type, value in x_dict.items()}

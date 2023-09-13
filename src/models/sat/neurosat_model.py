@@ -182,7 +182,8 @@ class NeuroSAT(AdaptedNeuroSAT):
             self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
         
     def forward(self, x_dict, edge_index_dict, batch_dict):
-        x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
+        with torch.no_grad():
+            x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
         for i in range(self.num_passes):
             if i == 0:
                 previous_hidden_state = {node_type: value for node_type, value in x_dict.items()}
