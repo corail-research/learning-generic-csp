@@ -21,11 +21,11 @@ from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    data_path = r"./src/models/decision_tsp/data"
-    # data_path = r"/scratch1/boileo/dtsp/data"
+    # data_path = r"./src/models/decision_tsp/data"
+    data_path = r"/scratch1/boileo/dtsp/data"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
-    hidden_units = [64]
+    hidden_units = [256]
     num_heads = [2]
     start_learning_rates = [0.00002]
     num_lstm_passes = [32]
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         target_deviation=target_deviation,
         clip_gradient_norm=clip_gradient_norm,
         lr_scheduler_patience=13,
-        lr_scheduler_factor=0.5,
+        lr_scheduler_factor=0.8,
         layernorm_lstm_cell=True
     )
 
