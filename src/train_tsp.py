@@ -84,9 +84,9 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid search_method. Must be 'grid' or 'random'")
     if experiment_config.generic_representation:
-        dataset = DTSPDataset(root=experiment_config.data_path, graph_type="generic", meta_connected_to_all=False)
+        dataset = DTSPDataset(root=experiment_config.data_path, graph_type="generic", meta_connected_to_all=False, in_memory=False)
     else:
-        dataset = DTSPDataset(root=experiment_config.data_path, graph_type="dtsp_specific", meta_connected_to_all=False)
+        dataset = DTSPDataset(root=experiment_config.data_path, graph_type="dtsp_specific", meta_connected_to_all=False, in_memory=False)
     train_dataset = dataset[:math.floor(len(dataset) * experiment_config.train_ratio)]
     test_dataset = dataset[math.floor(len(dataset) * experiment_config.train_ratio):]
             

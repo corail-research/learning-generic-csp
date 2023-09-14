@@ -20,7 +20,7 @@ def _repr(obj) -> str:
         return 'None'
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
-class DTSPDataset(InMemoryDataset):
+class DTSPDataset(Dataset):
     def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="dtsp_specific", 
                  meta_connected_to_all:bool=False, target_deviation=0.02, in_memory: bool=True):
         """
