@@ -5,7 +5,7 @@ import collections
 
 
 class MLP(nn.Module):
-    def __init__(self, input_dimension: int, num_layers: int, output_size: int, layer_size: int, device: str = "cuda:0") -> None:
+    def __init__(self, input_dimension: int, num_layers: int, output_size: int, layer_size: int, device: str = "cuda:0", weight_init:callable=nn.init.xavier_uniform_, bias_init:callable=nn.init.zeros_) -> None:
         """
         A multi-layer perceptron (MLP) is a feedforward neural network that consists of one or more layers of fully
         connected neurons. This class is a PyTorch implementation of an MLP with a configurable number of hidden layers
@@ -17,6 +17,8 @@ class MLP(nn.Module):
             output_size (int): The size of the output layer.
             layer_size (int): The number of hidden units in each hidden layer.
             device (str): The device to use for the model parameters (default is "cuda:0").
+            weight_init (callable): The weight initialization function to use for the model parameters (default is `nn.init.xavier_uniform_`).
+            bias_init (callable): The bias initialization function to use for the model parameters (default is `nn.init.zeros_`).
         """
         super().__init__()
         self.input_dimension = input_dimension
@@ -24,12 +26,22 @@ class MLP(nn.Module):
         self.output_size = output_size
         self.layer_size = layer_size
         self.device = device
-        self.layers = nn.ModuleList([
-            nn.Linear(self.input_dimension, self.layer_size, device=self.device)
-        ])
+        self.layers = nn.ModuleList([])
+    
+        input_layer = nn.Linear(self.input_dimension, self.layer_size, device=self.device)
+        weight_init(input_layer.weight)
+        bias_init(input_layer.bias)
+        self.layers.append(input_layer)
         for i in range(self.num_layers - 1):
-            self.layers.append(nn.Linear(self.layer_size, self.layer_size, device=self.device))
-        self.layers.append(nn.Linear(self.layer_size, self.output_size, device=self.device))
+            layer = nn.Linear(self.layer_size, self.layer_size, device=self.device)
+            weight_init(layer.weight)
+            bias_init(layer.bias)
+            self.layers.append(layer)
+
+        output_layer = nn.Linear(self.layer_size, self.output_size, device=self.device)
+        weight_init(output_layer.weight)
+        bias_init(output_layer.bias)
+        self.layers.append(output_layer)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -48,7 +60,7 @@ class MLP(nn.Module):
 
 
 class MLPCustom(nn.Module):
-    def __init__(self, hidden_sizes: list[int], input_size: int, output_size: int, device: str = "cuda:0") -> None:
+    def __init__(self, hidden_sizes: list[int], input_size: int, output_size: int, device: str = "cuda:0", weight_init:callable=nn.init.xavier_uniform_, bias_init:callable=nn.init.zeros_) -> None:
         """
         A custom implementation of a multi-layer perceptron (MLP) that allows you to specify the number of hidden units
         in each hidden layer as a list. This class is similar to the `MLP` class, but provides more flexibility in
@@ -59,21 +71,31 @@ class MLPCustom(nn.Module):
             input_size (int): The size of the input layer.
             output_size (int): The size of the output layer.
             device (str): The device to use for the model parameters (default is "cuda:0").
+            weight_init (callable): The weight initialization function to use for the model parameters (default is `nn.init.xavier_uniform_`).
+            bias_init (callable): The bias initialization function to use for the model parameters (default is `nn.init.zeros_`).
         """
         super().__init__()
         self.hidden_sizes = hidden_sizes
         self.input_size = input_size
         self.output_size = output_size
         self.device = device
-        
-        self.layers = nn.ModuleList([
-            nn.Linear(self.input_size, self.hidden_sizes[0], device=self.device)
-        ])
+        self.layers = nn.ModuleList([])
+    
+        input_layer = nn.Linear(self.input_size, self.hidden_sizes[0], device=self.device)
+        weight_init(input_layer.weight)
+        bias_init(input_layer.bias)
+        self.layers.append(input_layer)
         
         for i in range(len(self.hidden_sizes) - 1):
-            self.layers.append(nn.Linear(self.hidden_sizes[i], self.hidden_sizes[i+1], device=self.device))
+            layer = nn.Linear(self.hidden_sizes[i], self.hidden_sizes[i+1], device=self.device)
+            weight_init(layer.weight)
+            bias_init(layer.bias)
+            self.layers.append(layer)
         
-        self.layers.append(nn.Linear(self.hidden_sizes[-1], self.output_size, device=self.device))
+        output_layer = nn.Linear(self.hidden_sizes[-1], self.output_size, device=self.device)
+        weight_init(output_layer.weight)
+        bias_init(output_layer.bias)
+        self.layers.append(output_layer)
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
