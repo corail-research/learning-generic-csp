@@ -176,15 +176,22 @@ class NeuroSAT(AdaptedNeuroSAT):
         self.num_passes = num_passes
         self.device = device
         self.projection_layers = torch.nn.ModuleDict()
+        self.projection_division = {}
         self.vote = MLP(hidden_size["variable"], 2, 1, hidden_size["variable"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
         self.lstm_conv_layers = NeuroSatLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, flip_inputs=flip_inputs, layernorm_lstm_cell=layernorm_lstm_cell, **kwargs)
         for node_type in metadata[0]:
-            self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
+            projection_layer = torch.nn.Linear(in_channels[node_type], hidden_size[node_type], bias=False)
+            torch.nn.init.normal_(projection_layer.weight, mean=0.0, std=1)
+            self.projection_layers[node_type] = projection_layer
+            self.projection_division[node_type] = torch.sqrt(torch.tensor(hidden_size[node_type]).float())
         
     def forward(self, x_dict, edge_index_dict, batch_dict):
         with torch.no_grad():
-            x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
+            for node_type, x in x_dict.items():
+                with torch.no_grad():
+                    embedding_init = self.projection_layers[node_type](x)
+                    x_dict[node_type] = embedding_init / self.projection_division[node_type]
         for i in range(self.num_passes):
             if i == 0:
                 previous_hidden_state = {node_type: value for node_type, value in x_dict.items()}

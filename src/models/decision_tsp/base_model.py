@@ -13,7 +13,7 @@ class GNNTSP(AdaptedNeuroSAT):
                  in_channels:Dict[str, int],
                  out_channels:Dict[str, int],
                  hidden_size:Dict[str, int]=128,
-                 num_passes:int=20,
+                 num_passes:int=32,
                  device="cpu",
                  layernorm_lstm_cell:bool=True,
                  **kwargs
@@ -36,12 +36,16 @@ class GNNTSP(AdaptedNeuroSAT):
         self.num_passes = num_passes
         self.device = device
         self.projection_layers = torch.nn.ModuleDict()
+        self.projection_division = {}
         self.vote = MLP(hidden_size["arc"], 2, 1, hidden_size["arc"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
         self.lstm_conv_layers = DTSPLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, layernorm_lstm_cell=layernorm_lstm_cell)
         for node_type in metadata[0]:
             if node_type == "city":
-                self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
+                projection_layer = torch.nn.Linear(in_channels[node_type], hidden_size[node_type], bias=False)
+                torch.nn.init.normal_(projection_layer.weight, mean=0.0, std=1)
+                self.projection_layers[node_type] = projection_layer
+                self.projection_division[node_type] = torch.sqrt(torch.tensor(hidden_size[node_type]).float())
             else:
                 self.projection_layers[node_type] = MLPCustom([8, 16, 32], in_channels[node_type], hidden_size["arc"], device=device)
 
@@ -49,7 +53,8 @@ class GNNTSP(AdaptedNeuroSAT):
         for node_type, x in x_dict.items():
             if node_type == "city":
                 with torch.no_grad():
-                    x_dict[node_type] = self.projection_layers[node_type](x)
+                    embedding_init = self.projection_layers[node_type](x)
+                    x_dict[node_type] = embedding_init / self.projection_division[node_type]
             else:
                 x_dict[node_type] = self.projection_layers[node_type](x)
         for i in range(self.num_passes):
