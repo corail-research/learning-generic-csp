@@ -7,7 +7,6 @@ class Config:
     def __init__(self, 
                     batch_size:int=None,
                     hidden_units:int=None,
-                    num_heads:int=None,
                     start_learning_rate:float=None,
                     end_learning_rate:float=None,
                     num_layers:int=None,
@@ -34,7 +33,6 @@ class Config:
                  ):
         self.batch_size = batch_size
         self.hidden_units = hidden_units
-        self.num_heads = num_heads
         self.start_learning_rate = start_learning_rate
         self.end_learning_rate = end_learning_rate
         self.num_layers = num_layers
@@ -64,7 +62,6 @@ class ExperimentConfig:
                     self,
                     batch_sizes:List[int]=[32],
                     hidden_units:List[int]=[128],
-                    num_heads:List[int]=[3],
                     start_learning_rates:List[float]=[0.00002],
                     end_learning_rate:float=0.00000001,
                     num_layers:List[int]=[2],
@@ -90,7 +87,6 @@ class ExperimentConfig:
                 ):
         self.batch_sizes = batch_sizes
         self.hidden_units = hidden_units
-        self.num_heads = num_heads
         self.start_learning_rates = start_learning_rates
         self.end_learning_rate = end_learning_rate
         self.num_layers = num_layers
@@ -117,22 +113,21 @@ class ExperimentConfig:
     
     def generate_base_grid_search_parameters(self):
         base_configs = []
-        for params in itertools.product(self.batch_sizes, self.hidden_units, self.num_heads, self.start_learning_rates, self.num_layers, self.dropouts, self.num_lstm_passes, self.weight_decay, self.nodes_per_batch):
+        for params in itertools.product(self.batch_sizes, self.hidden_units, self.start_learning_rates, self.num_layers, self.dropouts, self.num_lstm_passes, self.weight_decay, self.nodes_per_batch):
             new_config = Config(
                 batch_size=params[0],
                 hidden_units=params[1],
-                num_heads=params[2],
-                start_learning_rate=params[3],
+                start_learning_rate=params[2],
                 end_learning_rate=self.end_learning_rate,
-                num_layers=params[4],
-                dropout=params[5],
+                num_layers=params[3],
+                dropout=params[4],
                 num_epochs=self.num_epochs,
-                num_lstm_passes=params[6],
+                num_lstm_passes=params[5],
                 samples_per_epoch=self.samples_per_epoch,
-                weight_decay=params[7],
+                weight_decay=params[6],
                 device=self.device,
                 train_ratio=self.train_ratio,
-                nodes_per_batch=params[8],
+                nodes_per_batch=params[7],
                 data_path=self.data_path,
                 use_sampler_loader=self.use_sampler_loader,
                 num_epochs_lr_warmup=self.num_epochs_lr_warmup,
@@ -154,7 +149,6 @@ class ExperimentConfig:
             params = (
                 random.choice(self.batch_sizes),
                 random.choice(self.hidden_units),
-                random.choice(self.num_heads),
                 random.choice(self.start_learning_rates),
                 random.choice(self.num_layers),
                 random.choice(self.dropouts),
@@ -165,18 +159,17 @@ class ExperimentConfig:
             config = Config(
                 batch_size=params[0],
                 hidden_units=params[1],
-                num_heads=params[2],
-                start_learning_rate=params[3],
+                start_learning_rate=params[2],
                 end_learning_rate=self.end_learning_rate,
-                num_layers=params[4],
-                dropout=params[5],
+                num_layers=params[3],
+                dropout=params[4],
                 num_epochs=self.num_epochs,
-                num_lstm_passes=params[6],
+                num_lstm_passes=params[5],
                 samples_per_epoch=self.samples_per_epoch,
-                weight_decay=params[7],
+                weight_decay=params[6],
                 device=self.device,
                 train_ratio=self.train_ratio,
-                nodes_per_batch=params[8],
+                nodes_per_batch=params[7],
                 data_path=self.data_path,
                 use_sampler_loader=self.use_sampler_loader,
                 num_epochs_lr_warmup=self.num_epochs_lr_warmup,
