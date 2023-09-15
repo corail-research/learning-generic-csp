@@ -22,35 +22,33 @@ from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    data_path = r"./src/models/sat/sat_spec_data/train_small" # local
-    # data_path = r"/scratch1/boileo/sat/data/sat_specific" # server
+    # data_path = r"./src/models/sat/sat_spec_data/train_small" # local
+    data_path = r"/scratch1/boileo/sat/data/sat_specific" # server
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
-    hidden_units = [128]
-    num_heads = [2]
+    hidden_units = [128, 256]
     start_learning_rates = [0.00002]
     num_lstm_passes = [26]
-    num_layers = [2]
+    num_layers = [3]
     dropout = [0.1]
     num_epochs = 400
     device = "cuda:0"
     train_ratio = 0.8
-    samples_per_epoch = None # 64000
+    samples_per_epoch = 200000
     nodes_per_batch= [12000]
-    use_sampler_loader = False
+    use_sampler_loader = True
     weight_decay = [0.0000000001]
     num_epochs_lr_warmup = 5
     num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
     generic_representation = False
-    gnn_aggregation = "mean"
+    gnn_aggregation = "add"
     
     hostname = socket.gethostname()
 
     experiment_config = SATExperimentConfig(
         batch_sizes=batch_sizes,
         hidden_units=hidden_units,
-        num_heads=num_heads,
         start_learning_rates=start_learning_rates,
         num_layers=num_layers,
         dropouts=dropout,

@@ -25,16 +25,15 @@ if __name__ == "__main__":
     data_path = r"/scratch1/boileo/dtsp/data"
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
-    hidden_units = [256]
-    num_heads = [2]
+    hidden_units = [64, 256]
     start_learning_rates = [0.00002]
     num_lstm_passes = [32]
-    num_layers = [2]
+    num_layers = [3]
     dropout = [0.1]
-    num_epochs = 400
+    num_epochs = 500
     device = "cuda:0"
     train_ratio = 0.99
-    samples_per_epoch = 4096
+    samples_per_epoch = 200000
     nodes_per_batch= [12000]
     use_sampler_loader = False
     weight_decay = [0.0000000001]
@@ -44,14 +43,13 @@ if __name__ == "__main__":
     generic_representation = False
     target_deviation = 0.02
     clip_gradient_norm = 0.65
-    gnn_aggregation = "mean"
+    gnn_aggregation = "add"
     
     hostname = socket.gethostname()
 
     experiment_config = TSPExperimentConfig(
         batch_sizes=batch_sizes,
         hidden_units=hidden_units,
-        num_heads=num_heads,
         start_learning_rates=start_learning_rates,
         num_layers=num_layers,
         dropouts=dropout,
