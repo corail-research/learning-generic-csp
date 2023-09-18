@@ -1,7 +1,4 @@
 from ..common.config import ExperimentConfig, Config
-import itertools
-import random
-from typing import List
 
 
 class TSPConfig(Config):

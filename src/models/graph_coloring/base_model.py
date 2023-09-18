@@ -8,7 +8,17 @@ from ..common.lstm_conv import AdaptedNeuroSAT, LSTMConvV1
 
 
 class GCGNN(AdaptedNeuroSAT):
-    def __init__(self, metadata, in_channels:Dict[str, int], out_channels:Dict[str, int], hidden_size:Dict[str, int]=128, num_passes:int=20, device="cpu"):
+    def __init__(
+            self, 
+            metadata,
+            in_channels:Dict[str, int],
+            out_channels:Dict[str, int],
+            hidden_size:Dict[str, int]=128,
+            num_passes:int=20,
+            device="cpu",
+            layernorm_lstm_cell:bool=True,
+            **kwargs
+        ):
         """
         Args:
             metadata (_type_): metadata for the heterogeneous graph
@@ -18,6 +28,7 @@ class GCGNN(AdaptedNeuroSAT):
             hidden_size (Dict[str, int], optional): Dict mapping node types to number of hidden channels. Defaults to 128.
             num_passes (int): number of LSTM passes
             device (str): device where computations happen
+            layer_norm_lstm_cell (bool): whether to use layer norm in the LSTM cell
         """
         super(AdaptedNeuroSAT, self).__init__()
         self.in_channels = in_channels
@@ -26,21 +37,31 @@ class GCGNN(AdaptedNeuroSAT):
         self.num_passes = num_passes
         self.device = device
         self.projection_layers = torch.nn.ModuleDict()
+        self.projection_division = {}
         self.vote = MLP(hidden_size["vertex"], 2, 1, hidden_size["vertex"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
-        self.lstm_conv_layers = GCLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device)
-        self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
+        self.lstm_conv_layers = GCLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, layernorm_lstm_cell=layernorm_lstm_cell)
         for node_type in metadata[0]:
-            self.projection_layers[node_type] = torch.nn.Linear(in_channels[node_type], hidden_size[node_type])
+            projection_layer = torch.nn.Linear(in_channels[node_type], hidden_size[node_type], bias=False)
+            torch.nn.init.normal_(projection_layer.weight, mean=0.0, std=1)
+            self.projection_layers[node_type] = projection_layer
+            self.projection_division[node_type] = torch.sqrt(torch.tensor(hidden_size[node_type]).float())
 
     def forward(self, x_dict, edge_index_dict, batch_dict):
-        x_dict = {node_type: self.projection_layers[node_type](x) for node_type, x in x_dict.items()}
+        for node_type, x in x_dict.items():
+            with torch.no_grad():
+                embedding_init = self.projection_layers[node_type](x)
+                x_dict[node_type] = embedding_init / self.projection_division[node_type]
+
         for i in range(self.num_passes):
             if i == 0:
-                previous_state_tuple = {node_type: self.lstm_state_tuple(value, torch.zeros_like(value)) for node_type, value in x_dict.items()}
+                previous_hidden_state = {node_type: value for node_type, value in x_dict.items()}
+                previous_cell_state = {node_type: None for node_type, x in x_dict.items()}
             else:
-                previous_state_tuple = {node_type: self.lstm_state_tuple(out[node_type].h, out[node_type].c) for node_type in x_dict.keys()}
-            out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_state_tuple, batch_dict)
+                previous_hidden_state = {node_type: out[node_type][0] for node_type in x_dict.keys()}
+                previous_cell_state = {node_type: out[node_type][1] for node_type in x_dict.keys()}
+
+            out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state, batch_dict)
             x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
         raw_votes = self.vote(x_dict["vertex"])
         votes = scatter_mean(raw_votes, batch_dict["vertex"], dim=0)
@@ -52,15 +73,14 @@ class GCLSTMConv(LSTMConvV1):
     has not yet been passed through an MLP layer. Instead, it concatenates the input features 
     coming from the neighboring nodes before passing them through the MLP.
     """
-    def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, **kwargs):
-        super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata)
+    def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, layernorm_lstm_cell=True, **kwargs):
+        super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata, **kwargs)
         self.device = device if device is not None else torch.device('cpu')
         self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
         self.input_type_per_node_type = self.get_input_per_node_type(metadata[1], metadata[0])
         self.lstm_cells = torch.nn.ModuleDict()
         self.mlp_blocks = torch.nn.ModuleDict()
         self.lstm_sizes = {}
-        self.lstm_state_tuple = namedtuple('LSTMState',('h','c'))
 
         for node_type in metadata[0]:            
             hidden_size = in_channels[node_type]
@@ -70,17 +90,20 @@ class GCLSTMConv(LSTMConvV1):
                 self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, 2, hidden_size, hidden_size, device=self.device)
             lstm_input_size = sum([in_channels[src_node_type] for src_node_type in self.input_type_per_node_type[node_type]])            
             self.lstm_sizes[node_type] = lstm_input_size
-            self.lstm_cells[node_type] = LayerNormLSTMCell(self.lstm_sizes[node_type], hidden_size, state_tuple=self.lstm_state_tuple, device=self.device)
-            
+            if layernorm_lstm_cell:
+                self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, activation=torch.relu, device=self.device)
+            else:
+                self.lstm_cells[node_type] = LSTMCell(lstm_input_size, hidden_size, device=self.device)
+
         self.reset_parameters()
 
-    def forward(self, x_dict, edge_index_dict, previous_state_tuple:namedtuple, batch_dict: Dict):
+    def forward(self, x_dict, edge_index_dict, previous_hidden_states:Dict, previous_cell_states:Dict, batch_dict: Dict):
         # Loop over each node type and each edge type
         sizes = {node_type: x_dict[node_type].size() for node_type in x_dict.keys()}
         output = {}
         for node_type in x_dict.keys():
             inputs = []
-            hidden_state = previous_state_tuple[node_type].h
+            hidden_state = previous_hidden_states[node_type]
             for edge_type in self.entering_edges_per_node_type[node_type]:
                 # Perform the message passing for the current node type and edge type
                 source_node_type, _, _ = edge_type
@@ -93,8 +116,12 @@ class GCLSTMConv(LSTMConvV1):
                 # Append the resulting node features to the list of hidden states
                 inputs.append(agg)
             # Concatenate the resulting node features for each node type into a single vector
-            h_cat = torch.cat(inputs, dim=1)            
-            state_tuple = self.lstm_cells[node_type](inputs=h_cat, state=previous_state_tuple[node_type])
-            output[node_type] = state_tuple
+            h_cat = torch.cat(inputs, dim=1)
+            if previous_cell_states[node_type] is None:
+                cell_state = torch.zeros_like(hidden_state)
+            else:
+                cell_state = previous_cell_states[node_type]                    
+            h, c = self.lstm_cells[node_type](h_cat, (hidden_state, cell_state))
+            output[node_type] = (h, c)
 
         return output

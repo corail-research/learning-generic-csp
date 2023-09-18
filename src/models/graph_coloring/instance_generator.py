@@ -146,7 +146,7 @@ def degree_ranking(Ma):
 def write_graph(Ma, Mw, diff_edge, filepath, int_weights=False, cn=0):
     with open(filepath, "w") as out:
         n, m = Ma.shape[0], len(np.nonzero(Ma)[0])
-        out.write('TYPE : TSP\n')
+        out.write('TYPE : Graph Coloring\n')
         out.write('DIMENSION: {n}\n'.format(n=n))
         out.write('EDGE_DATA_FORMAT: EDGE_LIST\n')
         out.write('EDGE_WEIGHT_TYPE: EXPLICIT\n')
@@ -181,10 +181,10 @@ def write_graph(Ma, Mw, diff_edge, filepath, int_weights=False, cn=0):
 if __name__ == '__main__':
     # Define argument parser
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('-samples', default=2**5, type=int, help='How many samples?')
-    parser.add_argument('-path', default='data', type=str, help='Save path')
-    parser.add_argument('-nmin', default=12, type=int, help='Min. number of vertices')
-    parser.add_argument('-nmax', default=16, type=int, help='Max. number of vertices')
+    parser.add_argument('-samples', default=2**6, type=int, help='How many samples?')
+    parser.add_argument('-path', default=r'C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\graph_coloring\data\raw', type=str, help='Save path')
+    parser.add_argument('-nmin', default=20, type=int, help='Min. number of vertices')
+    parser.add_argument('-nmax', default=28, type=int, help='Max. number of vertices')
     parser.add_argument('--train', action='store_true', help='To define the seed')
 
     # Parse arguments from command line
@@ -194,8 +194,11 @@ if __name__ == '__main__':
     np.random.seed(random_seed)
 
     print('Creating {} instances'.format(vars(args)['samples']), flush=True)
-    create_dataset(
-        vars(args)['nmin'], vars(args)['nmax'],
-        samples=vars(args)['samples'],
-        path=vars(args)['path']
-    )
+    import cProfile
+    import pstats
+    profile = cProfile.Profile()
+    profile.run("create_dataset(vars(args)['nmin'], vars(args)['nmax'],samples=vars(args)['samples'],path=vars(args)['path'])")
+    stats = pstats.Stats(profile)
+    stats.sort_stats('tottime')
+    stats.print_stats()
+    

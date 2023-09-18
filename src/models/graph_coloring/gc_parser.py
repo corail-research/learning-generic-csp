@@ -40,12 +40,14 @@ class GraphColoringInstance:
         positive_instance["vertex", "connected_to", "vertex"].edge_index = positive_vertex_to_vertex_edge_index
         positive_instance["vertex", "connected_to", "color"].edge_index = vertex_to_colors_edge_index
         positive_instance.label = torch.tensor([1])
+        positive_instance.filename = self.filename
         T.ToUndirected()(positive_instance)
 
         negative_vertex_to_vertex_edge_index = torch.cat([positive_vertex_to_vertex_edge_index, frozen_edge], dim=1)
         negative_instance["vertex", "connected_to", "vertex"].edge_index = negative_vertex_to_vertex_edge_index        
         negative_instance["vertex", "connected_to", "color"].edge_index = vertex_to_colors_edge_index        
         negative_instance.label = torch.tensor([0])
+        negative_instance.filename = self.filename
         T.ToUndirected()(negative_instance)
         
         return positive_instance, negative_instance
