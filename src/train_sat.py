@@ -21,9 +21,9 @@ from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 
 if __name__ == "__main__":
     import math
-    search_method = "random"  # Set to either "grid" or "random"
-    # data_path = r"./src/models/sat/sat_spec_data/train_small" # local
-    data_path = r"/scratch1/boileo/sat/data/sat_specific" # server
+    search_method = "grid"  # Set to either "grid" or "random"
+    # data_path = r"./src/models/sat/generic_data/train_mid" # local
+    data_path = r"/scratch1/boileo/sat/data/sat_specific" # servercd 
     # Hyperparameters for grid search or random search
     batch_sizes = [32]
     hidden_units = [128, 256]
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     num_epochs_lr_warmup = 5
     num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
-    generic_representation = False
+    generic_representation = True
     gnn_aggregation = "add"
     
     hostname = socket.gethostname()
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         num_epochs_lr_decay=num_epochs_lr_decay,
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
-        flip_inputs=True,
+        flip_inputs=False,
         lr_scheduler_patience=10,
         lr_scheduler_factor=0.2,
         layernorm_lstm_cell=True,
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid search_method. Must be 'grid' or 'random'")
     if experiment_config.generic_representation:
-        dataset = SatDataset(root=experiment_config.data_path, graph_type="generic", meta_connected_to_all=False)
+        dataset = SatDataset(root=experiment_config.data_path, graph_type="generic", meta_connected_to_all=False, in_memory=False)
     else:
         dataset = SatDataset(root=experiment_config.data_path, graph_type="sat_specific", meta_connected_to_all=False, in_memory=False)
     train_dataset = dataset[:math.floor(len(dataset) * experiment_config.train_ratio)]
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        model_type = "sat_spec"
+        # model_type = "sat_spec"
         model = NeuroSAT(
             metadata,
             input_size,
