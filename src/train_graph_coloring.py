@@ -41,6 +41,7 @@ if __name__ == "__main__":
     lr_decay_factor = 0.8
     generic_representation = False
     gnn_aggregation = "add"
+    model_save_path = "./scratch1/boileo/graph_coloring/models"
     
     hostname = socket.gethostname()
 
@@ -121,11 +122,22 @@ if __name__ == "__main__":
             config=params,
             group=group
         )
-        # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch)
-        profile = cProfile.Profile()
-        profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch)')
+        train_model(
+            model,
+            train_loader,
+            test_loader,
+            optimizer,
+            lr_scheduler,
+            criterion,
+            params.num_epochs,
+            samples_per_epoch=params.samples_per_epoch,
+            model_save_path=model_save_path,
+            wandb=wandb.run.name
+        )
+        # profile = cProfile.Profile()
+        # profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch)')
 
-        stats = pstats.Stats(profile)
-        stats.sort_stats('tottime')
-        stats.print_stats()
+        # stats = pstats.Stats(profile)
+        # stats.sort_stats('tottime')
+        # stats.print_stats()
         wandb.finish() 

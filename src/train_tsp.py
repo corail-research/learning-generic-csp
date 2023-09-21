@@ -24,7 +24,7 @@ if __name__ == "__main__":
     # data_path = r"./src/models/decision_tsp/data"
     data_path = r"/scratch1/boileo/dtsp/data"
     # Hyperparameters for grid search or random search
-    batch_sizes = [32]
+    batch_sizes = [2]
     hidden_units = [64, 256]
     start_learning_rates = [0.00002]
     num_lstm_passes = [32]
@@ -44,6 +44,8 @@ if __name__ == "__main__":
     target_deviation = 0.02
     clip_gradient_norm = 0.65
     gnn_aggregation = "add"
+    model_save_path = "./scratch1/boileo/dtsp/models"
+    model_save_path = "./src/models/decision_tsp/models"
     
     hostname = socket.gethostname()
 
@@ -70,7 +72,9 @@ if __name__ == "__main__":
         clip_gradient_norm=clip_gradient_norm,
         lr_scheduler_patience=13,
         lr_scheduler_factor=0.8,
-        layernorm_lstm_cell=True
+        layernorm_lstm_cell=True,
+        gnn_aggregation=gnn_aggregation,
+        model_save_path=model_save_path
     )
 
     # Generate parameters based on the search method
@@ -99,7 +103,7 @@ if __name__ == "__main__":
             train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         
-        test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
+        test_loader = DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=0)
         first_batch_iter = iter(test_loader)
         first_batch = next(first_batch_iter)
         metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
@@ -123,11 +127,23 @@ if __name__ == "__main__":
             lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=params.lr_scheduler_factor, patience=params.lr_scheduler_patience, verbose=True)
         else:
             lr_scheduler = None
-        # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)
-        profile = cProfile.Profile()
-        profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)')
+        train_model(
+            model,
+            train_loader,
+            test_loader,
+            optimizer,
+            lr_scheduler,
+            criterion,
+            params.num_epochs,
+            samples_per_epoch=params.samples_per_epoch,
+            clip_value=experiment_config.clip_gradient_norm,
+            model_save_path=params.model_save_path,
+            wandb_run_name=wandb.run.name
+        )
+        # profile = cProfile.Profile()
+        # profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)')
 
-        stats = pstats.Stats(profile)
-        stats.sort_stats('tottime')
-        stats.print_stats()
-        wandb.finish() 
+        # stats = pstats.Stats(profile)
+        # stats.sort_stats('tottime')
+        # stats.print_stats()
+        wandb.finish()

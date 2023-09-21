@@ -29,7 +29,8 @@ class Config:
                     lr_scheduler_patience:int=10,
                     lr_scheduler_factor:float=0.2,
                     layernorm_lstm_cell:bool=True,
-                    gnn_aggregation:str="add"
+                    gnn_aggregation:str="add",
+                    model_save_path:str=None,
                  ):
         self.batch_size = batch_size
         self.hidden_units = hidden_units
@@ -56,6 +57,7 @@ class Config:
         self.lr_scheduler_factor = lr_scheduler_factor
         self.layernorm_lstm_cell = layernorm_lstm_cell
         self.gnn_aggregation = gnn_aggregation
+        self.model_save_path = model_save_path
 
 class ExperimentConfig:
     def __init__(
@@ -83,7 +85,8 @@ class ExperimentConfig:
                     lr_scheduler_patience:int=10,
                     lr_scheduler_factor:float=0.2,
                     layernorm_lstm_cell:bool=True,
-                    gnn_aggregation:str="add"
+                    gnn_aggregation:str="add",
+                    model_save_path:str=None,
                 ):
         self.batch_sizes = batch_sizes
         self.hidden_units = hidden_units
@@ -109,7 +112,7 @@ class ExperimentConfig:
         self.lr_scheduler_factor = lr_scheduler_factor
         self.layernorm_lstm_cell = layernorm_lstm_cell
         self.gnn_aggregation = gnn_aggregation
-
+        self.model_save_path = model_save_path
     
     def generate_base_grid_search_parameters(self):
         base_configs = []
@@ -138,7 +141,8 @@ class ExperimentConfig:
                 lr_scheduler_factor=self.lr_scheduler_factor,
                 lr_scheduler_patience=self.lr_scheduler_patience,
                 layernorm_lstm_cell=self.layernorm_lstm_cell,
-                gnn_aggregation=self.gnn_aggregation
+                gnn_aggregation=self.gnn_aggregation,
+                model_save_path=self.model_save_path
             )
             base_configs.append(new_config)
         return base_configs
@@ -180,7 +184,8 @@ class ExperimentConfig:
                 lr_scheduler_factor=self.lr_scheduler_factor,
                 lr_scheduler_patience=self.lr_scheduler_patience,
                 layernorm_lstm_cell = self.layernorm_lstm_cell,
-                gnn_aggregation=self.gnn_aggregation
+                gnn_aggregation=self.gnn_aggregation,
+                model_save_path=self.model_save_path
             )
             if config not in generated_configs:
                 generated_configs.add(config)

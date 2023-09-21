@@ -28,9 +28,9 @@ def get_args():
     
     return args
 
-def train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, num_epochs, samples_per_epoch=None, clip_value=None):
+def train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, num_epochs, samples_per_epoch=None, clip_value=None, model_save_path=None, wandb_run_name=None):
     train_losses, test_losses, train_metrics, test_metrics = [], [], [], []
-
+    best_acc = 0.0
     for epoch in range(1, num_epochs):
         train_acc, train_loss, train_metric = process_model(model, optimizer, criterion, train_loader, mode='train', samples_per_epoch=samples_per_epoch, clip_value=clip_value)
         train_losses.append(train_loss)
@@ -44,6 +44,11 @@ def train_model(model, train_loader, test_loader, optimizer, lr_scheduler, crite
 
         print(f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}")
         print(f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}")
+        
+        if test_acc > best_acc:
+            best_acc = test_acc
+            if model_save_path is not None:
+                torch.save(model.state_dict(), os.path.join(model_save_path, f'{wandb_run_name}.pth'))
 
     return train_losses, test_losses, train_metrics, test_metrics
 

@@ -22,10 +22,10 @@ from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 if __name__ == "__main__":
     import math
     search_method = "grid"  # Set to either "grid" or "random"
-    # data_path = r"./src/models/sat/generic_data/train_mid" # local
+    # data_path = r"./src/models/sat/generic/temp_remote_date" # local
     data_path = r"/scratch1/boileo/sat/data/sat_specific" # servercd 
     # Hyperparameters for grid search or random search
-    batch_sizes = [32]
+    batch_sizes = [2]
     hidden_units = [128, 256]
     start_learning_rates = [0.00002]
     num_lstm_passes = [26]
@@ -36,13 +36,15 @@ if __name__ == "__main__":
     train_ratio = 0.8
     samples_per_epoch = 200000
     nodes_per_batch= [12000]
-    use_sampler_loader = True
+    use_sampler_loader = False
     weight_decay = [0.0000000001]
     num_epochs_lr_warmup = 5
     num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
     generic_representation = True
     gnn_aggregation = "add"
+    model_save_path = "./scratch1/boileo/sat/models"
+    # model_save_path = r"./src/models/sat/models/"
     
     hostname = socket.gethostname()
 
@@ -69,7 +71,8 @@ if __name__ == "__main__":
         lr_scheduler_patience=10,
         lr_scheduler_factor=0.2,
         layernorm_lstm_cell=True,
-        gnn_aggregation=gnn_aggregation
+        gnn_aggregation=gnn_aggregation,
+        model_save_path=model_save_path
     )
 
     # Generate parameters based on the search method
@@ -134,11 +137,23 @@ if __name__ == "__main__":
             lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=params.lr_scheduler_factor, patience=params.lr_scheduler_patience, verbose=True)
         else:
             lr_scheduler = None
-        # train_losses, test_losses, train_accs, test_accs = train_model(model, train_loader, test_loader, optimizer, warmup_scheduler, criterion, params["num_epochs"], samples_per_epoch=samples_per_epoch)
-        profile = cProfile.Profile()
-        profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=0.65)')
+        train_model(
+            model,
+            train_loader,
+            test_loader,
+            optimizer,
+            lr_scheduler,
+            criterion,
+            params.num_epochs,
+            samples_per_epoch=params.samples_per_epoch,
+            clip_value=params.clip_gradient_norm,
+            model_save_path=params.model_save_path,
+            wandb_run_name=wandb.run.name
+        )
+        # profile = cProfile.Profile()
+        # profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=0.65)')
 
-        stats = pstats.Stats(profile)
-        stats.sort_stats('tottime')
-        stats.print_stats()
+        # stats = pstats.Stats(profile)
+        # stats.sort_stats('tottime')
+        # stats.print_stats()
         wandb.finish() 
