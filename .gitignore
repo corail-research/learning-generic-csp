@@ -3,6 +3,7 @@
 sample_problems/*.xml
 *.gz
 *.pt
+*.pth
 *.sav
 *.res
 *.pul
