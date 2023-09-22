@@ -190,7 +190,6 @@ class TSPInstance:
         data_negative.filename = self.filename
         data_negative.label = 0
 
-        T.ToUndirected()(data_positive)
         T.ToUndirected()(data_negative)
 
         return data_positive, data_negative
