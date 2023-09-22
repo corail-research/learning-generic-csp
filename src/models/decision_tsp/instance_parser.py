@@ -63,6 +63,8 @@ class TSPInstance:
              and one for the negative instance (cost = optimal value - target_deviation * optimal_value)
              labels are stored in data.label
         """
+        target_cost_positive = self.optimal_value * (1 + target_deviation)
+        target_cost_negative = self.optimal_value * (1 - target_deviation)
         # Nodes and node stuff
         cities = []
         arcs = []
@@ -75,8 +77,6 @@ class TSPInstance:
             for j in range(i+1, self.dimension):
                 arcs.append([i, arc_counter])
                 arcs.append([j, arc_counter])
-                target_cost_positive = self.optimal_value * (1 + target_deviation)
-                target_cost_negative = self.optimal_value * (1 - target_deviation)
                 distance = self.distance_matrix[i][j]
                 arc_features_positive.append([distance, target_cost_positive])
                 arc_features_negative.append([distance, target_cost_negative])
@@ -100,9 +100,27 @@ class TSPInstance:
 
         return data_positive, data_negative
     
-    def get_arc_based_representation(self, target_deviation):
-        """Build arc-based representation of the TSP instance. This representation creates one node per arc, and connects such nodes if 
-        they are adjacent in the original graph. The features for the nodes (arcs in the original graph) are the arc weight alongside the target cost
+    def get_circuit_based_representation(self, target_deviation):
+        """
+        CP Model for the Traveling Salesman Problem (TSP) with Circuit constraint
+
+        Parameters:
+            distances (matrix of floats): Distance matrix where distances[i][j] represents the distance between node i and node j.
+
+        Variables:
+            x (array of ints): Values are the successor node
+            distance (float): total distance traveled. - OPTIONAL, not implemented
+
+        Objective:
+            Minimize the total distance traveled.
+
+        Constraints:
+            1. All nodes must be visited exactly once: AllDifferent(x)
+            2. Circuit constraint: Circuit(x)
+        
+        Operators:
+            1. Distances are represented as operators between
+
         Args:
             target_cost (float): the target deviation cost for the decision TSP, in percentage. For example, 0.02 means that the target cost is 2% more 
             or less than the optimal cost.
@@ -112,33 +130,67 @@ class TSPInstance:
              and one for the negative instance (cost = optimal value - target_deviation * optimal_value)
              labels are stored in data.label
         """
-        arcs = []
-        arc_features_positive = []
-        arc_features_negative = []
-        arcs_to_id_mapping = {}
-        arc_counter = 0
+        target_cost_positive = self.optimal_value * (1 + target_deviation)
+        target_cost_negative = self.optimal_value * (1 - target_deviation)
+
+        x_features_positive = [[1, target_cost_positive] for _ in range(self.dimension)]
+        x_features_negative = [[1, target_cost_negative] for _ in range(self.dimension)]
+        values = [[1] for i in range(self.dimension)]
+        constraints = [[1, 0], [0, 1]] # Circuit and AllDifferent Constraints
+        x_to_constraint_edges = []
+
+        for i in range(self.dimension):
+            x_to_constraint_edges.append([i, 0])
+            x_to_constraint_edges.append([i, 1])
+        
+        values_to_x_edges = []
+        for i in range(self.dimension):
+            for j in range(self.dimension):
+                if i != j:
+                    values_to_x_edges.append([i, j])
+        
+        distance_parameters_features = []
+        distance_parameter_to_x_edges = []
+        distance_parameter_to_value_edges = []
+        distance_parameter_counter = 0
+    
         for i in range(self.dimension):
             for j in range(i+1, self.dimension):
-                arcs.append([i, arc_counter])
-                arcs.append([j, arc_counter])
-                target_cost_positive = self.optimal_value + target_deviation * self.optimal_value
-                target_cost_negative = self.optimal_value - target_deviation * self.optimal_value
-                arc_features_positive.append([self.distance_matrix[i][j], target_cost_positive])
-                arc_features_negative.append([self.distance_matrix[i][j], target_cost_negative])
-                arcs_to_id_mapping[(i, j)] = arc_counter
-                arc_counter += 1
+                distance = self.distance_matrix[i][j]
+                distance_parameters_features.append([distance])
+                distance_parameter_to_x_edges.append([distance_parameter_counter, i])
+                distance_parameter_to_x_edges.append([distance_parameter_counter, j])
+                distance_parameter_to_value_edges.append([distance_parameter_counter, i])
+                distance_parameter_to_value_edges.append([distance_parameter_counter, j])
+                distance_parameter_counter += 1
+                
 
         data_positive, data_negative = HeteroData(), HeteroData()
-        data_positive["arc"].x = torch.Tensor(arc_features_positive)
-        data_positive["arc", "adjacent_to", "arc"].edge_index = self.build_edge_index_tensor(arcs)
+
+        data_positive["x"].x = torch.Tensor(x_features_positive)
+        data_positive["constraint"].x = torch.Tensor(constraints)
+        data_positive["value"].x = torch.Tensor(values)
+        data_positive["operator"].x = torch.Tensor(distance_parameters_features)
+        data_positive["x", "involved_in", "constraint"].edge_index = self.build_edge_index_tensor(x_to_constraint_edges)
+        data_positive["x", "has_value", "value"].edge_index = self.build_edge_index_tensor(values_to_x_edges)
+        data_positive["operator", "has_parameter", "x"].edge_index = self.build_edge_index_tensor(distance_parameter_to_x_edges)
+        data_positive["operator", "has_parameter", "value"].edge_index = self.build_edge_index_tensor(distance_parameter_to_value_edges)
         data_positive.filename = self.filename
         data_positive.label = 1
         T.ToUndirected()(data_positive)
 
-        data_negative["arc"].x = torch.Tensor(arc_features_negative)
-        data_negative["arc", "adjacent_to", "arc"].edge_index = self.build_edge_index_tensor(arcs)
+        data_negative["x"].x = torch.Tensor(x_features_negative)
+        data_negative["constraint"].x = torch.Tensor(constraints)
+        data_negative["value"].x = torch.Tensor(values)
+        data_negative["operator"].x = torch.Tensor(distance_parameters_features)
+        data_negative["x", "involved_in", "constraint"].edge_index = self.build_edge_index_tensor(x_to_constraint_edges)
+        data_negative["x", "has_value", "value"].edge_index = self.build_edge_index_tensor(values_to_x_edges)
+        data_negative["operator", "has_parameter", "x"].edge_index = self.build_edge_index_tensor(distance_parameter_to_x_edges)
+        data_negative["operator", "has_parameter", "value"].edge_index = self.build_edge_index_tensor(distance_parameter_to_value_edges)
         data_negative.filename = self.filename
         data_negative.label = 0
+
+        T.ToUndirected()(data_positive)
         T.ToUndirected()(data_negative)
 
         return data_positive, data_negative

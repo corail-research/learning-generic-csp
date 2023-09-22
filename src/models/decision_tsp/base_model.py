@@ -19,6 +19,8 @@ class GNNTSP(AdaptedNeuroSAT):
                  **kwargs
             ):
         """
+        Used for TSP-Specific representations
+
         Args:
             metadata (_type_): metadata for the heterogeneous graph
             model_type (str): choice of 'sat_spec' or 'generic' influences the number of channels of the LSTM cells
@@ -71,6 +73,73 @@ class GNNTSP(AdaptedNeuroSAT):
         votes = scatter_mean(raw_votes, batch_dict["arc"], dim=0)
 
         return votes
+
+class GenericGNNTSP(AdaptedNeuroSAT):
+    def __init__(self,
+                 metadata,
+                 in_channels:Dict[str, int],
+                 out_channels:Dict[str, int],
+                 hidden_size:Dict[str, int]=128,
+                 num_passes:int=32,
+                 device="cpu",
+                 layernorm_lstm_cell:bool=True,
+                 **kwargs
+            ):
+        """
+        Args:
+            metadata (_type_): metadata for the heterogeneous graph
+            model_type (str): choice of 'sat_spec' or 'generic' influences the number of channels of the LSTM cells
+            in_channels (Dict[str, int]): Dict mapping node type to the number of input features
+            out_channels (Dict[str, int]): Dict mapping node type to the number of output features
+            hidden_size (Dict[str, int], optional): Dict mapping node types to number of hidden channels. Defaults to 128.
+            num_passes (int): number of LSTM passes
+            device (str): device where computations happen
+            layer_norm_lstm_cell (bool): whether to use layer norm in the LSTM cell
+        """
+        super(AdaptedNeuroSAT, self).__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.hidden_size = hidden_size
+        self.num_passes = num_passes
+        self.device = device
+        self.projection_layers = torch.nn.ModuleDict()
+        self.projection_division = {}
+        self.vote = MLP(hidden_size["x"], 2, 1, hidden_size["x"], device=device)
+        lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
+        self.lstm_conv_layers = DTSPLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, layernorm_lstm_cell=layernorm_lstm_cell)
+        for node_type in metadata[0]:
+            if node_type == "x" or node_type == "distance":
+                self.projection_layers[node_type] = MLPCustom([8, 16, 32], in_channels[node_type], hidden_size[node_type], device=device)
+            else:
+                projection_layer = torch.nn.Linear(in_channels[node_type], hidden_size[node_type], bias=False)
+                torch.nn.init.normal_(projection_layer.weight, mean=0.0, std=1)
+                self.projection_layers[node_type] = projection_layer
+                self.projection_division[node_type] = torch.sqrt(torch.tensor(hidden_size[node_type]).float())
+
+    def forward(self, x_dict, edge_index_dict, batch_dict):
+        for node_type, x in x_dict.items():
+            if node_type == "x" or node_type == "distance":
+                x_dict[node_type] = self.projection_layers[node_type](x)
+            else:
+                with torch.no_grad():
+                    embedding_init = self.projection_layers[node_type](x)
+                    x_dict[node_type] = embedding_init / self.projection_division[node_type]
+                
+        for i in range(self.num_passes):
+            if i == 0:
+                previous_hidden_state = {node_type: value for node_type, value in x_dict.items()}
+                previous_cell_state = {node_type: None for node_type, x in x_dict.items()}
+            else:
+                previous_hidden_state = {node_type: out[node_type][0] for node_type in x_dict.keys()}
+                previous_cell_state = {node_type: out[node_type][1] for node_type in x_dict.keys()}
+
+            out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state, batch_dict)
+            x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
+        raw_votes = self.vote(x_dict["x"])
+        votes = scatter_mean(raw_votes, batch_dict["x"], dim=0)
+
+        return votes
+
 
 class DTSPLSTMConv(LSTMConvV1):
     """This class is used to perform LSTM Convolution in GNNs. It assumes that the input x_dict 

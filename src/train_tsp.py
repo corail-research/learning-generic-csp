@@ -7,7 +7,7 @@ import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 import cProfile
 import pstats
-from models.decision_tsp.base_model import GNNTSP
+from models.decision_tsp.base_model import GNNTSP, GenericGNNTSP
 from models.decision_tsp.dataset import DTSPDataset
 from torch_geometric.loader import DataLoader
 import multiprocessing
@@ -25,9 +25,9 @@ if __name__ == "__main__":
     data_path = r"/scratch1/boileo/dtsp/data"
     # Hyperparameters for grid search or random search
     batch_sizes = [2]
-    hidden_units = [64, 256]
+    hidden_units = [8]
     start_learning_rates = [0.00002]
-    num_lstm_passes = [32]
+    num_lstm_passes = [2]
     num_layers = [3]
     dropout = [0.1]
     num_epochs = 500
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     num_epochs_lr_warmup = 5
     num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
-    generic_representation = False
+    generic_representation = True
     target_deviation = 0.02
     clip_gradient_norm = 0.65
     gnn_aggregation = "add"
@@ -111,7 +111,10 @@ if __name__ == "__main__":
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        model = GNNTSP(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device, aggr=params.gnn_aggregation)
+        if params.generic_representation:
+            model = GenericGNNTSP(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device, aggr=params.gnn_aggregation)
+        else:
+            model = GNNTSP(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device, aggr=params.gnn_aggregation)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params.start_learning_rate, weight_decay=params.weight_decay)
         if type(model) == GNNTSP:

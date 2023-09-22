@@ -87,7 +87,7 @@ class DTSPDataset(Dataset):
             if self.graph_type == "dtsp_specific":
                 data = instance_parser.get_dtsp_specific_representation(self.target_deviation)
             elif self.graph_type == "generic":
-                raise NotImplementedError
+                data = instance_parser.get_circuit_based_representation(self.target_deviation)
             
             filename_true = f"data_{str(current_pair).zfill(num_digits)}_{0}.pt"
             out_path_true = os.path.join(self.processed_dir, filename_true)
