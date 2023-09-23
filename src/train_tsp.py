@@ -21,13 +21,13 @@ from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    # data_path = r"./src/models/decision_tsp/data"
-    data_path = r"/scratch1/boileo/dtsp/data"
+    data_path = r"./src/models/decision_tsp/data_temp"
+    # data_path = r"/scratch1/boileo/dtsp/data"
     # Hyperparameters for grid search or random search
-    batch_sizes = [2]
-    hidden_units = [8]
-    start_learning_rates = [0.00002]
-    num_lstm_passes = [2]
+    batch_sizes = [128]
+    hidden_units = [64]
+    start_learning_rates = [0.00008]
+    num_lstm_passes = [32]
     num_layers = [3]
     dropout = [0.1]
     num_epochs = 500
@@ -44,7 +44,7 @@ if __name__ == "__main__":
     target_deviation = 0.02
     clip_gradient_norm = 0.65
     gnn_aggregation = "add"
-    model_save_path = "./scratch1/boileo/dtsp/models"
+    model_save_path = "/scratch1/boileo/dtsp/models"
     model_save_path = "./src/models/decision_tsp/models"
     
     hostname = socket.gethostname()
@@ -97,13 +97,13 @@ if __name__ == "__main__":
 
     for params in search_parameters:
         if params.use_sampler_loader:
-            train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
-            train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
+            # train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
+            train_loader = DataLoader(train_dataset, batch_size=1,  num_workers=0)
         else:
-            train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
-            train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
+            # train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
+            train_loader = DataLoader(train_dataset, batch_size=params.batch_size,  num_workers=0)
         
-        test_loader = DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=0)
+        test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
         first_batch_iter = iter(test_loader)
         first_batch = next(first_batch_iter)
         metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
