@@ -97,10 +97,10 @@ if __name__ == "__main__":
 
     for params in search_parameters:
         if params.use_sampler_loader:
-            # train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
+            train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
             train_loader = DataLoader(train_dataset, batch_size=1,  num_workers=0)
         else:
-            # train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
+            train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
             train_loader = DataLoader(train_dataset, batch_size=params.batch_size,  num_workers=0)
         
         test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
