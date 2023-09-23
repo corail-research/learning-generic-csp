@@ -72,7 +72,11 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
             label = data.label.float()
         if mode == 'train':
             optimizer.zero_grad()
-            out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
+            try:
+                out = model(data.x_dict, data.edge_index_dict, data.batch_dict)
+            except:
+                torch.cuda.empty_cache()
+                continue
             if out.size(1) == 1:
                 out = out.squeeze(1)
             loss = criterion(out, label)
