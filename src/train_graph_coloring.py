@@ -114,9 +114,9 @@ if __name__ == "__main__":
             lr_scheduler = None
 
         if type(model) == GCGNN:
-            group = "generic"
-        else:
             group = "gc_specific"
+        else:
+            group = "generic"
         wandb.init(
             project=f"GC-GNN",
             config=params,
