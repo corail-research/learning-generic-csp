@@ -131,8 +131,9 @@ if __name__ == "__main__":
             criterion,
             params.num_epochs,
             samples_per_epoch=params.samples_per_epoch,
+            clip_value=experiment_config.clip_value,
             model_save_path=model_save_path,
-            wandb=wandb.run.name
+            wandb_run_name=wandb.run.name
         )
         # profile = cProfile.Profile()
         # profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch)')
