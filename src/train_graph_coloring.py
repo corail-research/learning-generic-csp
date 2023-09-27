@@ -16,32 +16,33 @@ multiprocessing.set_start_method("spawn", force=True)
 from models.common.training_utils import train_model
 from models.graph_coloring.config import GraphColoringExperimentConfig
 from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
-from models.common.pytorch_samplers import  PairNodeSampler
+from models.common.pytorch_samplers import PairNodeSampler, PairBatchSampler
 
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    data_path = r"./src/models/graph_coloring/data"
+    #data_path = r"./src/models/graph_coloring/data"
+    data_path = r"/scratch1/boileo/graph_coloring/data/gc_specific"
     # Hyperparameters for grid search or random search
-    batch_sizes = [2]
-    hidden_units = [128, 256]
+    batch_sizes = [16]
+    hidden_units = [64]
     start_learning_rates = [0.00002]
     num_lstm_passes = [26]
     num_layers = [3]
     dropout = [0.1]
     num_epochs = 400
     device = "cuda:0"
-    train_ratio = 0.8
-    samples_per_epoch = 200000
+    train_ratio = 0.85
+    samples_per_epoch = 1024
     nodes_per_batch= [12000]
-    use_sampler_loader = True
+    use_sampler_loader = False
     weight_decay = [0.0000000001]
     num_epochs_lr_warmup = 5
     num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
     generic_representation = False
     gnn_aggregation = "add"
-    model_save_path = "./scratch1/boileo/graph_coloring/models"
+    model_save_path = "/scratch1/boileo/graph_coloring/models"
     
     hostname = socket.gethostname()
 
@@ -95,9 +96,10 @@ if __name__ == "__main__":
             train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         else:
-            train_loader = DataLoader(train_dataset, batch_size=params.batch_size, num_workers=0)
+            PairBatchSampler(train_dataset, params.batch_size)
+            train_loader = DataLoader(train_dataset, batch_size=1, num_workers=0)
         
-        test_loader = DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=0)
+        test_loader = DataLoader(test_dataset, batch_size=2048, shuffle=False, num_workers=0)
         first_batch_iter = iter(train_loader)
         first_batch = next(first_batch_iter)
         metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
