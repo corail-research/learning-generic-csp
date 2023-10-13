@@ -157,7 +157,7 @@ def parse_integer_variables(int_vars):
         
 
 if __name__ == "__main__":
-    file_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Graph-Representation\sample_problems\sample_problem_test\AircraftLanding-table-airland01_mc22.xml"
+    file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCOP\AircraftLanding-table-airland02_mc22.xml..xml"
     root = ET.parse(file_path)
     variables = root.findall("variables")
     array_vars = variables[0].findall("array")
