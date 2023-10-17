@@ -45,9 +45,10 @@ def parse_variable_domain(raw_domain:str):
             start, end = sub_domain.split(",")
             lower_bound = int(start) if "inf" not in start else float(start)
             upper_bound = int(end) if "inf" not in end else float(end)
-            domain.append([lower_bound, upper_bound])
+            domain_values = list(range(lower_bound, upper_bound + 1))
+            domain.extend(domain_values)
         else:
-            domain.append([int(sub_domain)])
+            domain.append(int(sub_domain))
     return domain
 
 
@@ -120,7 +121,8 @@ def parse_array_variables(array_vars: List[xml.etree.ElementTree.Element]) -> di
     """
     instance_variables = {}
     for array in array_vars:
-        other_domain = None  # domain for other variables
+        # other_domain = None  # domain for other variables
+        domain = None
         array_variables = []
         array_name = array.attrib["id"]
         array_dimensions = get_array_dimensions(array.attrib["size"])
@@ -129,19 +131,19 @@ def parse_array_variables(array_vars: List[xml.etree.ElementTree.Element]) -> di
             if variable.tag == "domain":
                 domain = parse_variable_domain(variable.text)
                 var_names = variable.attrib["for"].split()
-                if var_names == "others":
-                    other_domain = domain
-                    continue
+                # if var_names == "others":
+                #     other_domain = domain
+                #     continue
                 for new_var_name in var_names:
                     current_array_dims = new_var_name.replace("]", "").split('[')[1:]
                     parse_variable(array_name, 0, current_array_dims, [
                     ], domain, array_variables, array_dimensions, array_domains_parsed)
-        if other_domain is None:
-            other_domain = parse_variable_domain(array.text)
+        if domain is None:
+            domain = parse_variable_domain(array.text)
         for i, val in enumerate(array_domains_parsed.flatten()):
             if val == 0:
                 real_index = list(np.unravel_index(i, tuple(array_dimensions)))
-                new_var = build_variable(array_name, real_index, other_domain)
+                new_var = build_variable(array_name, real_index, domain)
                 array_variables.append(new_var)
         instance_variables[array_name] = array_variables
 
@@ -151,17 +153,29 @@ def parse_integer_variables(int_vars):
     instance_variables = {}
     for var in int_vars:
         variable_name = var.attrib["id"]
-        domain = parse_variable_domain(var.text)
+        base_var = var.attrib.get("as")
+        if var.text is not None:
+            domain = parse_variable_domain(var.text)
+        elif base_var is not None:
+            domain = instance_variables[base_var].domain
+        else:
+            raise("Unrecognized variable domain")
         new_var = build_variable(variable_name, "", domain)
         instance_variables[variable_name] = new_var
     return instance_variables
         
 
 if __name__ == "__main__":
-    file_path = r"C:/Users/leobo/Desktop/École/Poly/SeaPearl/instancesXCSP22/MiniCOP/LowAutocorrelation-015_c18.xml..xml"
-    root = ET.parse(file_path)
-    variables = root.findall("variables")
-    array_vars = variables[0].findall("array")
-    integer_vars = variables[0].findall("var")
-    parsed_array_variables = parse_array_variables(array_vars)
-    a = 1
+    import os
+    directory = r"C:/Users/leobo/Desktop/École/Poly/SeaPearl/instancesXCSP22/MiniCOP"
+    all_files = [os.path.join(directory, file) for file in os.listdir(directory)]
+    directory = r"C:/Users/leobo/Desktop/École/Poly/SeaPearl/instancesXCSP22/MiniCSP"
+    all_files += [os.path.join(directory, file) for file in os.listdir(directory)]
+    for file_path in all_files:
+        root = ET.parse(file_path)
+        variables = root.findall("variables")
+        array_vars = variables[0].findall("array")
+        integer_vars = variables[0].findall("var")
+        parsed_integer_variables = parse_integer_variables(integer_vars)
+        parsed_array_variables = parse_array_variables(array_vars)
+        a = 1
