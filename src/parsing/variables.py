@@ -136,8 +136,9 @@ def parse_array_variables(array_vars: List[xml.etree.ElementTree.Element]) -> di
                     current_array_dims = new_var_name.replace("]", "").split('[')[1:]
                     parse_variable(array_name, 0, current_array_dims, [
                     ], domain, array_variables, array_dimensions, array_domains_parsed)
-
-        for i, val in enumerate(array_domains_parsed):
+        if other_domain is None:
+            other_domain = parse_variable_domain(array.text)
+        for i, val in enumerate(array_domains_parsed.flatten()):
             if val == 0:
                 real_index = list(np.unravel_index(i, tuple(array_dimensions)))
                 new_var = build_variable(array_name, real_index, other_domain)
@@ -157,7 +158,7 @@ def parse_integer_variables(int_vars):
         
 
 if __name__ == "__main__":
-    file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCOP\AircraftLanding-table-airland02_mc22.xml..xml"
+    file_path = r"C:/Users/leobo/Desktop/École/Poly/SeaPearl/instancesXCSP22/MiniCOP/LowAutocorrelation-015_c18.xml..xml"
     root = ET.parse(file_path)
     variables = root.findall("variables")
     array_vars = variables[0].findall("array")

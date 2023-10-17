@@ -119,5 +119,3 @@ def parse_base_alldiff_constraint(root: xml.etree.ElementTree.Element) -> Dict:
     constraint["exceptions"] = None
 
     return constraint
-
-Eight-panel cartoon narrative in warm pastel desert hues. Scene 1: Abstract snails gather around a meeting point, dialog says 'Meet Mibber!'. Scene 2: Revealing a Bauhaus rocket design, dialog reads 'Design Dibber!'. Scene 3: Energetic collection of materials, dialog bubbles state 'Collect Cobber!'. Scene 4: Busy construction of the rocket, dialog exclaims 'Construct Conber!'. Scene 5: Final touches and decorations, dialog says 'Decorate Dobber!'. Scene 6: Rocket's grand takeoff, snail dialog shouts 'Takeoff Tobber!'. Scene 7: Space journey, snails inside the rocket, dialog reads 'Journey Jobber!'. Scene 8: Successful landing and exploration, snails' dialog celebrates 'Explore Eobber!'.
