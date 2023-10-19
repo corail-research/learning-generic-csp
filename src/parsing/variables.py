@@ -24,7 +24,7 @@ class VariableArray:
         self.variables = {var.name: var for var in variables}
 
     def get_all_variables_from_implicit_subarray_name(self, subarray_name):
-        """Get the implicit dimensions of a subarray
+        """Get the implicit dimensions of a subarray with implicit dimensions
         for example:
         - if array x has dimensions [14, 15] and we have subarray x[1][], we would get 15 variables:
             x[1][0], x[1][1], ..., x[1][14]
@@ -40,7 +40,39 @@ class VariableArray:
         array_name = subarray_name[:subarray_name.find("[")]
         variable_names = [array_name]
         raw_dimensions = ast.literal_eval(subarray_name[subarray_name.find("["):].replace("]", "],"))
-        implicit_dimensions = []
+        for i, dim in enumerate(raw_dimensions):
+            if not dim:
+                implicit_size = self.size[i]
+                new_variable_names = []
+                for variable_name in variable_names:
+                    for j in range(implicit_size):
+                        new_variable_names.append(f"{variable_name}[{j}]")
+                variable_names = new_variable_names
+            else:
+                for i in range(len(variable_names)):
+                    variable_names[i] += f"{dim}"
+
+        return variable_names
+    
+    def get_all_variables_from_shortened_subarray_name(self, subarray_name):
+        """Get the dimensions of a subarray with shortnened dimensions
+        for example:
+        - if array x has dimensions [14, 15] and we have subarray x[1][0..3], we would get 4 variables:
+            x[1][0], x[1][1], x[1][2], x[1][3]
+        - if array y has dimensions [2, 15, 3] and we have subarray y[][1][], we would get 2 * 3 variables:
+            y[0][1][0], y[0][1][1], y[0][1][2],
+            y[1][1][0], y[1][1][1], y[1][1][2]
+
+        Args:
+            variable (str): A variable name with the form "x[1][2][1..3]"
+
+        Returns:
+            A list of the implicit dimensions
+        """
+        subarray_name = subarray_name.replace("..", ",")
+        array_name = subarray_name[:subarray_name.find("[")]
+        variable_names = [array_name]
+        raw_dimensions = ast.literal_eval(subarray_name[subarray_name.find("["):].replace("]", "],"))
         for i, dim in enumerate(raw_dimensions):
             if not dim:
                 implicit_size = self.size[i]
