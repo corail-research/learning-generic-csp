@@ -1,6 +1,6 @@
 import ast
 import numpy as np
-from typing import List
+from typing import Dict, List
 import xml
 import xml.etree.ElementTree as ET
 
@@ -18,49 +18,108 @@ class Variable:
     def __repr__(self):
         return repr(f"""Name: {self.name} Domain: {self.domain}""")
 
+class VariableArray:
+    def __init__(self, size:List[int], variables: List[Variable]):
+        self.size = size
+        self.variables = {var.name: var for var in variables}
 
-def get_array_dimensions(size:str) -> int:
-    """Compute array dimensions
-    """
-    dimension_sizes = ast.literal_eval(
-        "[" + size.replace("]", ",").replace("[", "") + "]")
-    return dimension_sizes
+    def get_all_variables_from_implicit_subarray_name(self, subarray_name):
+        """Get the implicit dimensions of a subarray
+        for example:
+        - if array x has dimensions [14, 15] and we have subarray x[1][], we would get 15 variables:
+            x[1][0], x[1][1], ..., x[1][14]
+        - if array y has dimensions [14, 15, 16] and we have subarray y[][1][], we would get 14 * 16 variables:
+            y[0][1][0], y[0][1][1], ..., y[0][1][15], y[1][1][0], y[1][1][1], ..., y[1][1][15], ..., y[13][1][0], y[13][1][1], ..., y[13][1][15]
 
+        Args:
+            variable (str): A variable name with the form "x[1][2][3]"
 
-def parse_variable_domain(raw_domain:str):
-    """Get the domain 
+        Returns:
+            A list of the implicit dimensions
+        """
+        array_name = subarray_name[:subarray_name.find("[")]
+        variable_names = [array_name]
+        raw_dimensions = ast.literal_eval(subarray_name[subarray_name.find("["):].replace("]", "],"))
+        implicit_dimensions = []
+        for i, dim in enumerate(raw_dimensions):
+            if not dim:
+                implicit_size = self.size[i]
+                new_variable_names = []
+                for variable_name in variable_names:
+                    for j in range(implicit_size):
+                        new_variable_names.append(f"{variable_name}[{j}]")
+                variable_names = new_variable_names
+            else:
+                for i in range(len(variable_names)):
+                    variable_names[i] += f"{dim}"
+
+        return variable_names
+
+class InstanceVariables:
+    def __init__(self, integer_variables: Dict[str, Variable], array_variables: Dict[str, VariableArray]):
+        self.integer_variables = integer_variables
+        self.array_variables = array_variables
+
+def parse_all_variables(variables:List[xml.etree.ElementTree.Element]):
+    """Parses all variables in a given instance
 
     Args:
-        raw_domain : domain expressed as string
+        variables (List[xml.etree.ElementTree.Element]): root of variables in given XCSP3 problem
+    """
+    array_vars = variables[0].findall("array")
+    integer_vars = variables[0].findall("var")
+    parsed_integer_variables = parse_integer_variables(integer_vars)
+    parsed_array_variables = parse_array_variables(array_vars)
+    
+    return InstanceVariables(parsed_integer_variables, parsed_array_variables)
+
+def parse_array_variables(array_vars: List[xml.etree.ElementTree.Element]) -> dict:
+    """Parse all array variables and return the output as a dict where keys are the name of the arrays and values are of type List[Variable]
+    Args:
+        array_vars: list containing all array variables
 
     Returns:
-        domain: List[List[int]]
+        example: {
+            "x": [Variable("x[0]", [1, 4]), Variable("x[1]", [1, 5])],
+            "y": [Variable("y[0]", [4, 7]), Variable("y[1]", [1, 9])]
+        }
     """
-    domain = []
-    sub_domains = [dom_element for dom_element in raw_domain.replace("..", ",").replace("infinity", "inf").split(" ")]
-    for sub_domain in sub_domains:
-        if not sub_domain:
-            continue
-        if "," in sub_domain:
-            start, end = sub_domain.split(",")
-            lower_bound = int(start) if "inf" not in start else float(start)
-            upper_bound = int(end) if "inf" not in end else float(end)
-            domain_values = list(range(lower_bound, upper_bound + 1))
-            domain.extend(domain_values)
-        else:
-            domain.append(int(sub_domain))
-    return domain
+    instance_variables = {}
+    for array in array_vars:
+        # other_domain = None  # domain for other variables
+        domain = None
+        array_variables = []
+        array_name = array.attrib["id"]
+        array_dimensions = get_array_dimensions(array.attrib["size"])
+        array_domains_parsed = np.zeros(array_dimensions)
+        for variable in array:
+            if variable.tag == "domain":
+                domain = parse_variable_domain(variable.text)
+                var_names = variable.attrib["for"].split()
+                for new_var_name in var_names:
+                    current_array_dims = new_var_name.replace("]", "").split('[')[1:]
+                    parse_variable(
+                        array_name,
+                        0,
+                        current_array_dims,
+                        [],
+                        domain,
+                        array_variables,
+                        array_dimensions,
+                        array_domains_parsed
+                    )
+        if domain is None:
+            domain = parse_variable_domain(array.text)
 
+        for i, val in enumerate(array_domains_parsed.flatten()):
+            if val == 0:
+                real_index = list(np.unravel_index(i, tuple(array_dimensions)))
+                new_var = build_variable(array_name, real_index, domain)
+                array_variables.append(new_var)
+        new_array = VariableArray(array_dimensions, array_variables)
+        instance_variables[array_name] = new_array
 
-def build_variable(variable_name:str, current_position:List[int], domain:List[List[int]]):
-    """Create a variable
-    """
-    position_as_name = str(current_position).replace(", ", "][")
-    full_variable_name = variable_name + position_as_name
-    new_var = Variable(full_variable_name, domain)
-
-    return new_var
-
+    return instance_variables
 
 def parse_variable(
     var_name:str, 
@@ -107,47 +166,14 @@ def parse_variable(
             parse_variable(var_name, dim_index+1, dimensions, current_position, domain, variables, sizes, allocated_variables)
             current_position.pop()
 
-
-def parse_array_variables(array_vars: List[xml.etree.ElementTree.Element]) -> dict:
-    """Parse all array variables and return the output as a dict where keys are the name of the arrays and values are of type List[Variable]
-    Args:
-        array_vars: list containing all array variables
-
-    Returns:
-        example: {
-            "x": [Variable("x[0]", [1, 4]), Variable("x[1]", [1, 5])],
-            "y": [Variable("y[0]", [4, 7]), Variable("y[1]", [1, 9])]
-        }
+def build_variable(variable_name:str, current_position:List[int], domain:List[List[int]]):
+    """Create a variable
     """
-    instance_variables = {}
-    for array in array_vars:
-        # other_domain = None  # domain for other variables
-        domain = None
-        array_variables = []
-        array_name = array.attrib["id"]
-        array_dimensions = get_array_dimensions(array.attrib["size"])
-        array_domains_parsed = np.zeros(array_dimensions)
-        for variable in array:
-            if variable.tag == "domain":
-                domain = parse_variable_domain(variable.text)
-                var_names = variable.attrib["for"].split()
-                # if var_names == "others":
-                #     other_domain = domain
-                #     continue
-                for new_var_name in var_names:
-                    current_array_dims = new_var_name.replace("]", "").split('[')[1:]
-                    parse_variable(array_name, 0, current_array_dims, [
-                    ], domain, array_variables, array_dimensions, array_domains_parsed)
-        if domain is None:
-            domain = parse_variable_domain(array.text)
-        for i, val in enumerate(array_domains_parsed.flatten()):
-            if val == 0:
-                real_index = list(np.unravel_index(i, tuple(array_dimensions)))
-                new_var = build_variable(array_name, real_index, domain)
-                array_variables.append(new_var)
-        instance_variables[array_name] = array_variables
+    position_as_name = str(current_position).replace(", ", "][")
+    full_variable_name = variable_name + position_as_name
+    new_var = Variable(full_variable_name, domain)
 
-    return instance_variables
+    return new_var
 
 def parse_integer_variables(int_vars):
     instance_variables = {}
@@ -163,6 +189,37 @@ def parse_integer_variables(int_vars):
         new_var = build_variable(variable_name, "", domain)
         instance_variables[variable_name] = new_var
     return instance_variables
+
+def get_array_dimensions(size:str) -> int:
+    """Compute array dimensions
+    """
+    dimension_sizes = ast.literal_eval(
+        "[" + size.replace("]", ",").replace("[", "") + "]")
+    return dimension_sizes
+
+def parse_variable_domain(raw_domain:str):
+    """Get the domain 
+
+    Args:
+        raw_domain : domain expressed as string
+
+    Returns:
+        domain: List[List[int]]
+    """
+    domain = []
+    sub_domains = [dom_element for dom_element in raw_domain.replace("..", ",").replace("infinity", "inf").split(" ")]
+    for sub_domain in sub_domains:
+        if not sub_domain:
+            continue
+        if "," in sub_domain:
+            start, end = sub_domain.split(",")
+            lower_bound = int(start) if "inf" not in start else float(start)
+            upper_bound = int(end) if "inf" not in end else float(end)
+            domain_values = list(range(lower_bound, upper_bound + 1))
+            domain.extend(domain_values)
+        else:
+            domain.append(int(sub_domain))
+    return domain
         
 
 if __name__ == "__main__":
@@ -174,8 +231,10 @@ if __name__ == "__main__":
     for file_path in all_files:
         root = ET.parse(file_path)
         variables = root.findall("variables")
-        array_vars = variables[0].findall("array")
-        integer_vars = variables[0].findall("var")
-        parsed_integer_variables = parse_integer_variables(integer_vars)
-        parsed_array_variables = parse_array_variables(array_vars)
+        # array_vars = variables[0].findall("array")
+        # integer_vars = variables[0].findall("var")
+        # parsed_integer_variables = parse_integer_variables(integer_vars)
+        # parsed_array_variables = parse_array_variables(array_vars)
+        parsed_variables = parse_all_variables(variables)
+
         a = 1
