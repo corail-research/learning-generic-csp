@@ -5,9 +5,10 @@ from intension_utils import *
 import extension
 from variables import *
 from alldifferent import *
+from sum import *
 
 
-def parse_constraint_section(block: ET.Element) -> List[Dict]:
+def parse_constraint_section(instance_variables:Dict, block: ET.Element, constraints={}) -> List[Dict]:
     """Parses the constraint section. Works only for extension constraints. Returns a list of dicts from the parse_extension_constraint
     function
 
@@ -17,19 +18,19 @@ def parse_constraint_section(block: ET.Element) -> List[Dict]:
     Returns:
         constraints (List[Dict]): parsed extension constraints
     """
-    constraints = {}
+    block = list(block)
     for child in block:
         name = child.tag
         if name == "block":
-            constraints.update(parse_constraint_section(child))
+            constraints.update(parse_constraint_section(instance_variables, child, constraints))
         
         elif name == "group":
-            constraint_type, new_constraint = parse_group(child)
+            constraint_type, new_constraint = parse_group(child, instance_variables)
             if constraints.get(constraint_type) is None:
                 constraints[constraint_type] = [new_constraint]
             else:
                 constraints[constraint_type].append(new_constraint)
-
+        
         elif name == "extension":
             constraint_type, new_constraint = parse_extension_constraint(child)
             if constraints.get(constraint_type) is None:
@@ -38,41 +39,89 @@ def parse_constraint_section(block: ET.Element) -> List[Dict]:
                 constraints[constraint_type].append(new_constraint)
 
         elif name == "intension":
-            constraint_type, new_constraint = parse_extension_constraint(child)
+            constraint_type = "intension"
+            new_constraint = parse_intension_constraint(child)
             if constraints.get(constraint_type) is None:
                 constraints[constraint_type] = [new_constraint]
             else:
                 constraints[constraint_type].append(new_constraint)
         
-        elif name == "alldifferent":
-            constraint_type, new_constraint = parse_all_different_constraints(child)
+        elif name == "allDifferent":
+            constraint_type, new_constraint = parse_alldiff_constraint(child)
             if constraints.get(constraint_type) is None:
                 constraints[constraint_type] = [new_constraint]
             else:
                 constraints[constraint_type].append(new_constraint)
         
+        elif name == "sum":
+            constraint_type, new_constraint = parse_sum(child, instance_variables)
+            if constraints.get(constraint_type) is None:
+                constraints[constraint_type] = [new_constraint]
+            else:
+                constraints[constraint_type].append(new_constraint)
+
         elif name == "element":
             pass
 
 
     return constraints
 
-def parse_group(group: ET.Element) -> List[Dict]:
+def parse_group(group: ET.Element, instance_variables:Dict) -> List[Dict]:
     """Parse a group block: Identifies the type of constraint and parses it accordingly
     """
-    if group.find("extension"):
+    constraint_type, new_constraint = None, None
+    if group.find("extension") is not None:
         constraint_type, new_constraint = parse_extension_group(group)
-    elif group.find("intension"):
+    elif group.find("intension") is not None:
         constraint_type, new_constraint = parse_intension_group(group)
-    elif group.find("element"):
+    elif group.find("element") is not None:
         pass
-    elif group.find("allDifferent"):
+    elif group.find("allDifferent") is not None:
         pass
-    elif group.find("sum"):
+    elif group.find("sum") is not None:
+        print("sum")
+        # constraint_type, new_constraint = parse_sum_group(group, instance_variables)
         pass
     
     return constraint_type, new_constraint
 
+
+def parse_extension_constraint(constraint: ET.Element) -> Dict:
+    """Parse basic extension constraint and return it as a dict
+    ex:
+    <extension id="c1">
+        <list> x1 x2 x3 </list> 
+        <supports> (0,1,0) (1,0,0) (1,1,0) (1,1,1) </supports>
+    </extension>
+    will return:
+    {
+        "variables": [x1, x2, x3],
+        "supports": [(0,1,0), (1,0,0), (1,1,0), (1,1,1)]
+    }
+
+    Args:
+        constraint (ET.Element): _description_
+
+    Returns:
+        Dict: _description_
+    """
+    parsed_constraint = {}
+    variables = constraint.find("list").text.split()
+    parsed_constraint["variables"] = variables
+    
+    support_tuples = []
+    supports = constraint.find("supports")
+    if supports is not None:
+        supports = supports.text
+        parsed_constraint["supports"] = list(ast.literal_eval(supports.replace(")", "),").strip()))
+    
+    
+    conflicts = constraint.find("conflicts")
+    if conflicts is not None:
+        conflicts = conflicts.text
+        parsed_constraint["conflicts"] = list(ast.literal_eval(conflicts.replace(")", "),")))
+    
+    return "extension", parsed_constraint
 
 def parse_extension_group(constraint: ET.Element) -> Dict:
     """Parse an individual extension constraint defined with supports; that is values the variables CAN take. 
@@ -154,16 +203,28 @@ if __name__ == "__main__":
     </allDifferent>"""
     ]
     test_ad_constraints = [ET.fromstring(i) for i in test_cases]
-    parse_all_different_constraints(test_ad_constraints)
+    # parse_all_different_constraints(test_ad_constraints)
 
-    # file_path = r"C:/Users/leobo/Desktop/École/Poly/SeaPearl/instancesXCSP22/MiniCOP/LowAutocorrelation-015_c18.xml..xml"
-    file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCSP\Rlfap-ext-scen-11-f12_c18.xml..xml"
+    extension_constraint = """<extension id="c1">
+    <list> x1 x2 x3 </list> 
+    <supports> (0,1,0) (1,0,0) (1,1,0) (1,1,1)
+    </supports>
+    </extension>
+    """
+    test_extension_constraint = ET.fromstring(extension_constraint)
+    parsed_extension_constraint = parse_extension_constraint(test_extension_constraint)
+
+    file_path = r"C:/Users/leobo/Desktop/École/Poly/SeaPearl/instancesXCSP22/MiniCOP/LowAutocorrelation-015_c18.xml..xml"
+    # file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCSP\Rlfap-ext-scen-11-f12_c18.xml..xml"
+    # file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCSP\NumberPartitioning-290_mc22.xml..xml"
     root = ET.parse(file_path)
-    constraints = root.findall("constraints")
+    variables = root.findall("variables")
+    instance_variables = parse_all_variables(variables)
+    constraints = root.findall("constraints")[0]
     # groups = constraints[0].findall("group")
     # base_intension_expression = groups[0].find("intension").text.strip()
     # intension_groups = parse_intension_group(groups[0], base_intension_expression)
-    groups = constraints[0].findall("group")
+    groups = constraints
     # for group in groups:
-    parse_constraint_section(groups)
+    parse_constraint_section(instance_variables, constraints)
     a=1
