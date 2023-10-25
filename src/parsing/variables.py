@@ -81,6 +81,12 @@ class VariableArray:
                     for j in range(implicit_size):
                         new_variable_names.append(f"{variable_name}[{j}]")
                 variable_names = new_variable_names
+            elif len(dim) > 1:
+                new_variable_names = []
+                for variable_name in variable_names:
+                    for j in range(dim[0], dim[1] + 1):
+                        new_variable_names.append(f"{variable_name}[{j}]")
+                variable_names = new_variable_names
             else:
                 for i in range(len(variable_names)):
                     variable_names[i] += f"{dim}"
@@ -253,6 +259,31 @@ def parse_variable_domain(raw_domain:str):
             domain.append(int(sub_domain))
     return domain
         
+def parse_arg_variables(arg: str, instance_variables: Dict) -> List[str]:
+    """Parses the variables involved in an <args> section
+
+    Args:
+        arg (str): <arg> element in sum group or <list> in basic sum constraint
+        instance_variables (Dict): variables involved in the problem
+
+    Returns:
+        List[str]: _description_
+    """
+    
+    variables = []
+    arrays = arg.split()
+    for array in arrays:
+        array_name = array[:array.find("[")]
+        if "[]" in array:
+            new_vars = instance_variables.array_variables[array_name].get_all_variables_from_implicit_subarray_name(array)
+            variables.extend(new_vars)
+        elif ".." in array:
+            new_vars = instance_variables.array_variables[array_name].get_all_variables_from_shortened_subarray_name(array)
+            variables.extend(new_vars)
+        else:
+            variables.extend(array.split())
+    
+    return variables
 
 if __name__ == "__main__":
     import os

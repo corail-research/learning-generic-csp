@@ -21,7 +21,7 @@ def solve_csp(M, n_colors, nmin=40):
                 model.Add(variables[i] != variables[j])
 
     solver = cp_model.CpSolver()
-    solver.parameters.max_time_in_seconds = int(((10.0 / nmin) * N))
+    # solver.parameters.max_time_in_seconds = int(((10.0 / nmin) * N))
     status = solver.Solve(model)
 
     if status == cp_model.FEASIBLE or status == cp_model.OPTIMAL:
@@ -181,10 +181,10 @@ def write_graph(Ma, Mw, diff_edge, filepath, int_weights=False, cn=0):
 if __name__ == '__main__':
     # Define argument parser
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('-samples', default=2**6, type=int, help='How many samples?')
+    parser.add_argument('-samples', default=2**3, type=int, help='How many samples?')
     parser.add_argument('-path', default=r'C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\graph_coloring\data\raw', type=str, help='Save path')
-    parser.add_argument('-nmin', default=20, type=int, help='Min. number of vertices')
-    parser.add_argument('-nmax', default=28, type=int, help='Max. number of vertices')
+    parser.add_argument('-nmin', default=40, type=int, help='Min. number of vertices')
+    parser.add_argument('-nmax', default=60, type=int, help='Max. number of vertices')
     parser.add_argument('--train', action='store_true', help='To define the seed')
 
     # Parse arguments from command line

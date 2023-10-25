@@ -1,12 +1,12 @@
 import ast
-from typing import Dict
+from typing import Dict, List
 import xml.etree.ElementTree as ET
+from variables import *
 
 class SumNode:
     def __init__(self, variables, operator, operand):
         self.variables = variables
         self.condition = {'operator': operator, 'operand': operand}
-
 
 def parse_sum(sum_element:ET.Element, instance_variables:Dict):
     """Parse a <sum> element into a dictionary.
@@ -22,20 +22,57 @@ def parse_sum(sum_element:ET.Element, instance_variables:Dict):
     coeffs_element = sum_element.find("coeffs")
     condition_element = sum_element.find("condition")
     
-    # Parse the variables from the <list> element
     list_text = list_element.text.strip()
-    if "[]" in list_text:
-        array_name = list_text[:list_text.find("[")]
-        variables = instance_variables.array_variables[array_name].get_all_variables_from_implicit_subarray_name(list_text)
-    if ".." in list_text:
-        array_name = list_text[:list_text.find("[")]
-        variables = instance_variables.array_variables[array_name].get_all_variables_from_shortened_subarray_name(list_text)
-    else:
-        variables = list_text.split()
+    variables = parse_arg_variables(list_text, instance_variables)
+    coeffs = parse_coeffs(coeffs_element, len(variables))
 
+    # Parse the condition from the <condition> element
+    condition_raw = condition_element.text.strip().replace("(", "").replace(")", "").split(",")
+    condition = {"operator": condition_raw[0], "operand": condition_raw[1].strip()}
+    # Construct the parsed <sum> element as a dictionary
+    parsed_sum = {"variables": variables, "coeffs": coeffs, "condition": condition}
+
+    return "sum", parsed_sum
+
+def parse_sum_group(group:ET.Element, instance_variables: Dict):
+    """Parse a <sum> element into a dictionary.
+    Args:
+        sum_element: An ElementTree element representing a <sum> element.
+        instance_variables: variables involved in the problem
+    Returns:
+        A dictionary containing the parsed <sum> element.
+    """
+    parsed_group = []
+    # Parse the <sum> element
+    sum_element = group.find("sum")
+    condition_element = sum_element.find("condition")
+    condition_raw = condition_element.text.strip().replace("(", "").replace(")", "").split(",")
+    condition = {"operator": condition_raw[0], "operand": condition_raw[1].strip()}
+    args_elements = group.findall("args")
+
+    for args_element in args_elements:
+        args_text = args_element.text.strip()
+        variables = parse_arg_variables(args_text, instance_variables)
+        coeffs_element = sum_element.find("coeffs")
+        coeffs = parse_coeffs(coeffs_element, len(variables))
+        parsed_sum = {"variables": variables, "coeffs": coeffs, "condition": condition}
+        parsed_group.append(parsed_sum)
+
+    return "sum", parsed_group
+
+def parse_coeffs(coeffs_element: ET.Element, num_variables: int) -> List[int]:
+    """Parse the coefficients from the <coeffs> element of a <sum> element.
+
+    Args:
+        coeffs_element: An ElementTree element representing a <coeffs> element.
+        num_variables: number of variables in the sum
+
+    Returns:
+        coeffs: A list of coefficients for terms in a sum constraint.
+    """
     # Parse the coefficients from the <coeffs> element
     if coeffs_element is None:
-        coeffs = [1 for _ in range(len(variables))]
+        coeffs = [1 for _ in range(num_variables)]
     else:
         coeffs = []
         coeffs_raw = coeffs_element.text.strip().split()
@@ -46,18 +83,8 @@ def parse_sum(sum_element:ET.Element, instance_variables:Dict):
                     coeffs.append(int(value))
             else:
                 coeffs.append(int(c))
-
-    # Parse the condition from the <condition> element
-    condition_raw = condition_element.text.strip().replace("(", "").replace(")", "").split(",")
-    condition = {"operator": condition_raw[0], "operand": condition_raw[1].strip()}
-
-    # Construct the parsed <sum> element as a dictionary
-    parsed_sum = {"variables": variables, "coeffs": coeffs, "condition": condition}
-
-    return "sum", parsed_sum
-
-def parse_sum_group(group:ET.Element, variables):
-    pass
+    
+    return coeffs
 
 
 if __name__ == "__main__":

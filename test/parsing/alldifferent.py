@@ -2,28 +2,27 @@ from typing import Dict, List
 import xml.etree.ElementTree as ET
 
 
-def parse_all_different_constraints(raw_alldiff_constraints: List[ET.Element]) -> List[Dict]:
+def parse_alldiff_constraint(constraint: ET.Element) -> List[Dict]:
     """Parses all allDifferent constraints in a given problem
 
     Args:
-        raw_alldiff_constraints (ET.Element): _description_
+        constraint (ET.Element): _description_
 
     Returns:
         _type_: _description_
     """
-    alldiff_constraints = []
-    for constraint in raw_alldiff_constraints:
-        if constraint.find("list") is not None:
-            parsed_constraint = parse_list_and_exceptions(constraint)
-            alldiff_constraints.append(parsed_constraint)
-        elif constraint.find("matrix") is not None:
-            parsed_constraint = parse_matrix(constraint)
-            alldiff_constraints.append(parsed_constraint)
-        else:
-            parsed_constraint = parse_base_alldiff_constraint(constraint)
-            alldiff_constraints.append(parsed_constraint)
+    # for constraint in raw_alldiff_constraint:
+    if constraint.find("list") is not None
+        parsed_constraint = parse_list_and_exceptions(constraint)
+        # alldiff_constraints.append(parsed_constraint)
+    elif constraint.find("matrix") is not None:
+        parsed_constraint = parse_matrix(constraint)
+        # alldiff_constraints.append(parsed_constraint)
+    else:
+        parsed_constraint = parse_base_alldiff_constraint(constraint)
+        # alldiff_constraints.append(parsed_constraint)
 
-    return "allDifferent", alldiff_constraints
+    return "allDifferent", parsed_constraint
 
 def parse_list_and_exceptions(root: ET.Element):
     """Parses generic allDifferent constraints; the ones like:
