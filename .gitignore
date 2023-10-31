@@ -25,3 +25,4 @@ concorde
 qsopt_solver
 */images*
 src/models/sat/neurosat/data
+XCSP23_v2/*
