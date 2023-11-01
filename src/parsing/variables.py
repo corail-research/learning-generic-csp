@@ -97,6 +97,29 @@ class InstanceVariables:
     def __init__(self, integer_variables: Dict[str, Variable], array_variables: Dict[str, VariableArray]):
         self.integer_variables = integer_variables
         self.array_variables = array_variables
+        self.domain = self.get_domain()
+    
+    def contains_variable(self, variable_name:str):
+        if "[]" in variable_name:
+            array_name = variable_name[:variable_name.find("[")]
+            return array_name in self.array_variables
+        if variable_name in self.integer_variables:
+            return True
+        for _, array_vars in self.array_variables.items():
+            for var_name, _ in array_vars.variables.items():
+                if var_name == variable_name:
+                    return True
+        return False
+    
+    def get_domain(self):
+        """Get the union of domain of all variables in the instance"""
+        domain = set()
+        for _, var in self.integer_variables.items():
+            domain.update(var.domain)
+        for _, array_vars in self.array_variables.items():
+            for _, var in array_vars.variables.items():
+                domain.update(var.domain)
+        return sorted(list(domain))
 
 def parse_all_variables(variables:List[xml.etree.ElementTree.Element]):
     """Parses all variables in a given instance
@@ -274,10 +297,10 @@ def parse_arg_variables(arg: str, instance_variables: Dict) -> List[str]:
     arrays = arg.split()
     for array in arrays:
         array_name = array[:array.find("[")]
-        if "[]" in array:
-            new_vars = instance_variables.array_variables[array_name].get_all_variables_from_implicit_subarray_name(array)
-            variables.extend(new_vars)
-        elif ".." in array:
+        # if "[]" in array:
+        #     new_vars = instance_variables.array_variables[array_name].get_all_variables_from_implicit_subarray_name(array)
+        #     variables.extend(new_vars)
+        if ".." in array or "[]" in array:
             new_vars = instance_variables.array_variables[array_name].get_all_variables_from_shortened_subarray_name(array)
             variables.extend(new_vars)
         else:
