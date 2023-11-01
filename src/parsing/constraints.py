@@ -2,7 +2,7 @@ import ast
 from typing import List, Dict
 import xml.etree.ElementTree as ET
 from intension_utils import *
-import extension
+
 from variables import *
 from alldifferent import *
 from element import *
@@ -32,7 +32,7 @@ def parse_constraint_section(instance_variables:Dict, block: ET.Element, constra
             constraints[constraint_type].extend(new_constraint)
         
         elif name == "extension":
-            constraint_type, new_constraint = parse_extension_constraint(child)
+            constraint_type, new_constraint = parse_extension_constraint(child, instance_variables)
             if constraints.get(constraint_type) is None:
                 constraints[constraint_type] = [new_constraint]
             else:
@@ -81,11 +81,11 @@ def parse_group(group: ET.Element, instance_variables:Dict) -> List[Dict]:
     """
     constraint_type, new_constraint = None, None
     if group.find("extension") is not None:
-        constraint_type, new_constraint = parse_extension_group(group)
+        constraint_type, new_constraint = parse_extension_group(group, instance_variables)
     elif group.find("intension") is not None:
         constraint_type, new_constraint = parse_intension_group(group)
     elif group.find("element") is not None:
-        pass
+        constraint_type, new_constraint = parse_element_group(group, instance_variables)
     elif group.find("allDifferent") is not None:
         constraint_type, new_constraint = parse_alldiff_group(group, instance_variables)
     elif group.find("sum") is not None:
@@ -94,7 +94,7 @@ def parse_group(group: ET.Element, instance_variables:Dict) -> List[Dict]:
     return constraint_type, new_constraint
 
 
-def parse_extension_constraint(constraint: ET.Element) -> Dict:
+def parse_extension_constraint(constraint: ET.Element, instance_variables) -> Dict:
     """Parse basic extension constraint and return it as a dict
     ex:
     <extension id="c1">
@@ -117,21 +117,21 @@ def parse_extension_constraint(constraint: ET.Element) -> Dict:
     variables = constraint.find("list").text.split()
     parsed_constraint["variables"] = variables
     
-    support_tuples = []
     supports = constraint.find("supports")
     if supports is not None:
         supports = supports.text
-        parsed_constraint["supports"] = list(ast.literal_eval(supports.replace(")", "),").strip()))
-    
+        new_supports = parse_extension_tuple(supports, instance_variables)
+        parsed_constraint["supports"] = new_supports
     
     conflicts = constraint.find("conflicts")
     if conflicts is not None:
         conflicts = conflicts.text
-        parsed_constraint["conflicts"] = list(ast.literal_eval(conflicts.replace(")", "),")))
+        new_conflicts = parse_extension_tuple(conflicts, instance_variables)
+        parsed_constraint["conflicts"] = new_conflicts
     
     return "extension", parsed_constraint
 
-def parse_extension_group(constraint: ET.Element) -> Dict:
+def parse_extension_group(constraint: ET.Element, instance_variables) -> Dict:
     """Parse an individual extension constraint defined with supports; that is values the variables CAN take. 
     Extension constraints defined with exclusion are parsed with function parse_negative_extension_constraint
     Returns a dict like:
@@ -143,32 +143,41 @@ def parse_extension_group(constraint: ET.Element) -> Dict:
     Returns:
         parsed_constraint: dict containing the parsed constraint
     """
-    parsed_constraint = {}
-
-    variables = []
-    for arg in constraint.findall('args'):
-        variables.append((arg.text.split()[0], arg.text.split()[1]))
-    parsed_constraint["variables"] = variables
+    parsed_constraints = []
     
     # Get the support tuples
     support_tuples = []
     supports = constraint.find('extension/supports')
     if supports is not None:
-        supports = supports.text.split()
-        for support in supports:
-            support_tuples.append(ast.literal_eval(support.replace(")", "),")))
-        parsed_constraint["supports"] = support_tuples
+        supports = supports.text
+        new_supports = parse_extension_tuple(supports, instance_variables)
+        support_tuples = new_supports
         
     # Get the conflict tuples
     conflict_tuples = []
     conflicts = constraint.find('extension/conflicts')
     if conflicts is not None:
-        conflicts = conflicts.text.split()
-        for conflict in conflicts:
-            conflict_tuples.extend(ast.literal_eval(conflict.replace(")", "),")))
-        parsed_constraint["conflicts"] = conflict_tuples
+        conflicts = conflicts.text
+        new_conflicts = parse_extension_tuple(conflicts, instance_variables)
+        conflict_tuples = new_conflicts
+    
+    for arg in constraint.findall('args'):
+        all_arg_vars = []
+        for var_string in arg.text.split():
+            new_vars = parse_arg_variables(var_string, instance_variables)
+            all_arg_vars.extend(new_vars)
+        parsed_constraints.append({"variables": all_arg_vars, "supports": support_tuples, "conflicts": conflict_tuples})
+    
+    return "extension", parsed_constraints
 
-    return "extension", parsed_constraint
+def parse_extension_tuple(raw_tuple: str, instance_variables) -> List:
+    """Parse a support or conflict tuple"""
+    if "(" in raw_tuple:
+        tuples = ast.literal_eval(raw_tuple.strip().replace("*", "None").replace(")", "),"))
+    else:
+        tuples = [[int(i)] for i in parse_variable_domain(raw_tuple)]
+    
+    return tuples
 
 if __name__ == "__main__":
     # TODO: add tests for extension constraints
@@ -221,21 +230,17 @@ if __name__ == "__main__":
     </extension>
     """
     test_extension_constraint = ET.fromstring(extension_constraint)
-    parsed_extension_constraint = parse_extension_constraint(test_extension_constraint)
 
     # file_path = r"C:/Users/leobo/Desktop/École/Poly/SeaPearl/instancesXCSP22/MiniCOP/LowAutocorrelation-015_c18.xml..xml"
     # file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCSP\Rlfap-ext-scen-11-f12_c18.xml..xml"
     # file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCSP\NumberPartitioning-290_mc22.xml..xml"
     # file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCOP\ClockTriplet-20-35_c22.xml..xml"
-    file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCSP\Ortholatin-20_mc22.xml..xml"
+    # file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCSP\Ortholatin-20_mc22.xml..xml"
+    # file_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\XCSP23_V2\MiniCOP23\TSPTW-n020w040-1_mini_c23.xml"
+    file_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\XCSP23_V2\MiniCSP23\CoveringArray-3-05-2-10_mini_c23.xml"
     root = ET.parse(file_path)
     variables = root.findall("variables")
     instance_variables = parse_all_variables(variables)
     constraints = root.findall("constraints")[0]
-    # groups = constraints[0].findall("group")
-    # base_intension_expression = groups[0].find("intension").text.strip()
-    # intension_groups = parse_intension_group(groups[0], base_intension_expression)
-    groups = constraints
-    # for group in groups:
     constraints = parse_constraint_section(instance_variables, constraints)
     a=1
