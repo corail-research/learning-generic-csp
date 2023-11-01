@@ -97,7 +97,7 @@ class InstanceVariables:
     def __init__(self, integer_variables: Dict[str, Variable], array_variables: Dict[str, VariableArray]):
         self.integer_variables = integer_variables
         self.array_variables = array_variables
-        self.domain = self.get_domain()
+        self.domain_union = self.get_domain()
     
     def contains_variable(self, variable_name:str):
         if "[]" in variable_name:
@@ -274,12 +274,12 @@ def parse_variable_domain(raw_domain:str):
             continue
         if "," in sub_domain:
             start, end = sub_domain.split(",")
-            lower_bound = int(start) if "inf" not in start else float(start)
-            upper_bound = int(end) if "inf" not in end else float(end)
+            lower_bound = float(start)
+            upper_bound = float(end)
             domain_values = list(range(lower_bound, upper_bound + 1))
             domain.extend(domain_values)
         else:
-            domain.append(int(sub_domain))
+            domain.append(float(sub_domain))
     return domain
         
 def parse_arg_variables(arg: str, instance_variables: Dict) -> List[str]:
@@ -297,9 +297,6 @@ def parse_arg_variables(arg: str, instance_variables: Dict) -> List[str]:
     arrays = arg.split()
     for array in arrays:
         array_name = array[:array.find("[")]
-        # if "[]" in array:
-        #     new_vars = instance_variables.array_variables[array_name].get_all_variables_from_implicit_subarray_name(array)
-        #     variables.extend(new_vars)
         if ".." in array or "[]" in array:
             new_vars = instance_variables.array_variables[array_name].get_all_variables_from_shortened_subarray_name(array)
             variables.extend(new_vars)
@@ -317,10 +314,6 @@ if __name__ == "__main__":
     for file_path in all_files:
         root = ET.parse(file_path)
         variables = root.findall("variables")
-        # array_vars = variables[0].findall("array")
-        # integer_vars = variables[0].findall("var")
-        # parsed_integer_variables = parse_integer_variables(integer_vars)
-        # parsed_array_variables = parse_array_variables(array_vars)
         parsed_variables = parse_all_variables(variables)
 
         a = 1
