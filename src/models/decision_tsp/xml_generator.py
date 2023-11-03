@@ -40,7 +40,7 @@ def create_xml_instance(weights_matrix, output_file):
         domain = ET.SubElement(cities_array, "domain", {"for": f"x[{i}]"})
         domain.text = " " + " ".join(str(j) for j in range(num_cities) if j != i) + " "
 
-    distances_array = ET.SubElement(variables, "array", id="d", size=str(num_cities))
+    distances_array = ET.SubElement(variables, "array", id="d", type="real", size=str(num_cities))
     for i in range(num_cities):
         domain = ET.SubElement(distances_array, "domain", {"for": f"d[{i}]"})
         domain.text = " " + " ".join(str(max(weights_matrix[i][j], weights_matrix[j][i])) for j in range(num_cities) if i != j)
@@ -78,6 +78,6 @@ def main(input_file, output_file):
 
 
 if __name__ == "__main__":
-    input_file = ""
-    output_file = ""
+    input_file = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data\raw\0.graph"
+    output_file = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text.xml"
     main(input_file, output_file)
