@@ -93,8 +93,12 @@ class XCSP3GraphBuilder:
                 pass
             elif constraint_type == "element":
                 pass
+        
+        self.operator_features = self.one_hot_encode(self.operator_features)
+        self.constraint_features = self.one_hot_encode(self.constraint_features)
 
         data = HeteroData()
+
         
         return data
     
@@ -146,8 +150,7 @@ class XCSP3GraphBuilder:
         for variable_name in constraint_variables:
             variable_id = self.variable_type_ids.get_node_id(name=variable_name)
             self.variable_to_constraint_edges.append([variable_id, extension_constraint_id])
-
-        return
+        
 
     def add_all_different_constraint_to_graph(self, constraint):
         all_different_subtype_id = self.constraint_type_ids.add_subtype_id("allDifferent")["id"]
@@ -157,6 +160,17 @@ class XCSP3GraphBuilder:
             self.variable_to_constraint_edges.append([variable_id, all_different_id])
             self.constraint_features.append(all_different_subtype_id)
         return        
+
+    def one_hot_encode(self, values):
+        """
+        Creates a one-hot encoding of a list of integers.
+        """
+        # Get the maximum value in the list to determine the length of the one-hot vectors
+        max_value = max(values)
+        # Create a one-hot encoded list for each integer
+        one_hot_encoded = [[1 if i == value else 0 for i in range(max_value + 1)] for value in int_list]
+
+        return one_hot_encoded
 
     def build_edge_index_tensor(self, edges:List)->torch.Tensor:
         return torch.Tensor(edges).long().t().contiguous()
@@ -255,5 +269,36 @@ if __name__ == "__main__":
 
     print("\noperator_to_constraint_edges\n")
     print_operator_to_constraint_edges(graph_builder)
+
+    def print_constraint_features(builder):
+        for feature in builder.constraint_features:
+            print(f"Constraint feature: {feature}")
+
+    def print_operator_features(builder):
+        for feature in builder.operator_features:
+            print(f"Operator feature: {feature}")
+
+    def print_variable_features(builder):
+        for feature in builder.variable_features:
+            print(f"Variable feature: {feature}")
+
+    def print_value_features(builder):
+        for feature in builder.value_features:
+            print(f"Value feature: {feature}")
+
+    def print_meta_features(builder):
+        for feature in builder.meta_features:
+            print(f"Meta feature: {feature}")
+    
+    print("\nconstraint_features\n")
+    print_constraint_features(graph_builder)
+    print("\noperator_features\n")
+    print_operator_features(graph_builder)
+    print("\nvariable_features\n")
+    print_variable_features(graph_builder)
+    print("\nvalue_features\n")
+    print_value_features(graph_builder)
+    print("\nmeta_features\n")
+    print_meta_features(graph_builder)
     
     a=1
