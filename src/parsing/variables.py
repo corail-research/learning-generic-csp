@@ -100,7 +100,9 @@ class InstanceVariables:
     def __init__(self, integer_variables: Dict[str, Variable], array_variables: Dict[str, VariableArray]):
         self.integer_variables = integer_variables
         self.array_variables = array_variables
-        self.domain_union = self.get_domain()
+        domain_union, variable_types = self.get_domain_and_types()
+        self.domain_union = domain_union
+        self.variable_types = variable_types
     
     def contains_variable(self, variable_name:str):
         if "[]" in variable_name:
@@ -114,15 +116,18 @@ class InstanceVariables:
                     return True
         return False
     
-    def get_domain(self):
+    def get_domain_and_types(self):
         """Get the union of domain of all variables in the instance"""
         domain = set()
+        variable_types = set()
         for _, var in self.integer_variables.items():
             domain.update(var.domain)
+            variable_types.add(var.variable_type)
         for _, array_vars in self.array_variables.items():
             for _, var in array_vars.variables.items():
                 domain.update(var.domain)
-        return sorted(list(domain))
+                variable_types.add(var.variable_type)
+        return sorted(list(domain)), variable_types
 
 def parse_all_variables(variables:List[xml.etree.ElementTree.Element]):
     """Parses all variables in a given instance
@@ -159,7 +164,7 @@ def parse_array_variables(array_vars: List[xml.etree.ElementTree.Element]) -> di
         array_domains_parsed = np.zeros(array_dimensions)
         for variable in array:
             if variable.tag == "domain":
-                domain = parse_variable_domain(variable.text)
+                domain = parse_variable_domain(variable.text, variable_type)
                 var_names = variable.attrib["for"].split()
                 for new_var_name in var_names:
                     current_array_dims = new_var_name.replace("]", "").split('[')[1:]
@@ -175,7 +180,7 @@ def parse_array_variables(array_vars: List[xml.etree.ElementTree.Element]) -> di
                         variable_type
                     )
         if domain is None:
-            domain = parse_variable_domain(array.text)
+            domain = parse_variable_domain(array.text, variable_type)
 
         for i, val in enumerate(array_domains_parsed.flatten()):
             if val == 0:
