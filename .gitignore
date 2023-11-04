@@ -2,6 +2,7 @@
 *.pyc
 sample_problems/*.xml
 src/models/decision_tsp/data/xml_models
+src/models/decision_tsp/data/raw
 *.gz
 *.pt
 *.pth
