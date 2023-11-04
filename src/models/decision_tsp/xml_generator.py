@@ -15,8 +15,15 @@ def parse_tsp_data(input_file):
 
     weights_text = weights_section.group(1).strip()
     weights_matrix = [list(map(float, line.split())) for line in weights_text.split('\n')]
+    
+    optimal_value_section = re.search(r"OPTIMAL_VALUE:\n([\d\.]+)", content)
+    if not optimal_value_section:
+        raise ValueError("OPTIMAL_VALUE not found in the file.")
 
-    return weights_matrix
+    optimal_value = float(optimal_value_section.group(1))
+
+    return weights_matrix, optimal_value
+
 
 def add_tail(element):
     """Adds a newline as a tail to each XML element for better formatting."""
@@ -24,7 +31,7 @@ def add_tail(element):
     for child in element:
         add_tail(child)
 
-def create_xml_instance(weights_matrix, output_file):
+def create_xml_instance(weights_matrix, optimal_value, output_file):
     """
     Creates an XML instance for the TSP problem based on the weights matrix.
     """
@@ -63,6 +70,8 @@ def create_xml_instance(weights_matrix, output_file):
     objectives = ET.SubElement(root, "objectives")
     minimize = ET.SubElement(objectives, "minimize")
     minimize.text = " sum(d[]) "
+    optimal = ET.SubElement(objectives, "optimal")
+    optimal.text = str(optimal_value)
 
     # Formatting
     add_tail(root)
@@ -72,12 +81,12 @@ def create_xml_instance(weights_matrix, output_file):
     tree.write(output_file, encoding="UTF-8", xml_declaration=True)
 
 def main(input_file, output_file):
-    weights_matrix = parse_tsp_data(input_file)
-    create_xml_instance(weights_matrix, output_file)
+    weights_matrix, optimal_value = parse_tsp_data(input_file)
+    create_xml_instance(weights_matrix, optimal_value, output_file)
     print(f"XML instance created: {output_file}")
 
 
 if __name__ == "__main__":
     input_file = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data\raw\0.graph"
-    output_file = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text.xml"
+    output_file = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text2.xml"
     main(input_file, output_file)
