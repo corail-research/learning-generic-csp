@@ -4,13 +4,22 @@ from typing import List
 import xml.etree.ElementTree as ET
 
 
-
 class XCSP3Instance:
-    def __init__(self, variables: variables_parsing.InstanceVariables, constraints: List, optimal_value: float=None, optimal_deviation_factor: float=None):
+    def __init__(self,
+                 variables: variables_parsing.InstanceVariables, 
+                 constraints: List,
+                 optimal_value: float=None,
+                 optimal_deviation_factor: float=None,
+                 optimal_deviation_difference:int=None,
+                 label: int=None
+                 ):
         self.variables = variables
         self.constraints = constraints
         self.optimal_value = optimal_value
         self.optimal_deviation_factor = optimal_deviation_factor
+        self.optimal_deviation_difference = optimal_deviation_difference
+        self.label = label
+        assert label is not None or optimal_value is not None, "Either the optimal value or the label must be provided"
     
     def get_all_variables(self):
         all_vars = {}
