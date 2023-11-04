@@ -1,5 +1,6 @@
 import re
 import xml.etree.ElementTree as ET
+import os
 
 def parse_tsp_data(input_file):
     """
@@ -80,13 +81,17 @@ def create_xml_instance(weights_matrix, optimal_value, output_file):
     tree = ET.ElementTree(root)
     tree.write(output_file, encoding="UTF-8", xml_declaration=True)
 
-def main(input_file, output_file):
+def build_xml_tsp_instance(input_file, output_file):
     weights_matrix, optimal_value = parse_tsp_data(input_file)
     create_xml_instance(weights_matrix, optimal_value, output_file)
-    print(f"XML instance created: {output_file}")
 
+def generate_xml_files(directory, output_directory):
+    for filename in os.listdir(directory):
+        input_file = os.path.join(directory, filename)
+        output_file = os.path.join(output_directory, filename.replace(".graph", ".xml"))
+        build_xml_tsp_instance(input_file, output_file)
 
 if __name__ == "__main__":
-    input_file = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data\raw\0.graph"
-    output_file = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text3.xml"
-    main(input_file, output_file)
+    base_files_directory = r"/scratch1/boileo/dtsp/data/generic/raw_graph"
+    xml_files_directory = r"/scratch1/boileo/dtsp/data/generic/raw"
+    generate_xml_files(base_files_directory, xml_files_directory)

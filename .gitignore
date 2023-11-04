@@ -1,6 +1,7 @@
 *-checkpoint.ipynb
 *.pyc
 sample_problems/*.xml
+src/models/decision_tsp/data/xml_models
 *.gz
 *.pt
 *.pth
