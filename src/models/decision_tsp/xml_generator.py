@@ -68,8 +68,8 @@ def create_xml_instance(weights_matrix, optimal_value, output_file):
 
     # Objective
     objectives = ET.SubElement(root, "objectives")
-    minimize = ET.SubElement(objectives, "minimize")
-    minimize.text = " sum(d[]) "
+    minimize = ET.SubElement(objectives, "minimize", type="sum")
+    minimize.text = " d[] "
     optimal = ET.SubElement(objectives, "optimal")
     optimal.text = str(optimal_value)
 
@@ -88,5 +88,5 @@ def main(input_file, output_file):
 
 if __name__ == "__main__":
     input_file = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data\raw\0.graph"
-    output_file = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text2.xml"
+    output_file = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text3.xml"
     main(input_file, output_file)

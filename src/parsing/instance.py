@@ -3,23 +3,29 @@ from constraints import parse_constraint_section
 from typing import List
 import xml.etree.ElementTree as ET
 
+class Objective:
+    def __init__(self, objective_type, variables, coeffs, optimal_value):
+        self.objective_type = objective_type
+        self.variables = variables
+        self.coeffs = coeffs
+        self.optimal_value = optimal_value
 
 class XCSP3Instance:
     def __init__(self,
-                 variables: variables_parsing.InstanceVariables, 
-                 constraints: List,
-                 optimal_value: float=None,
-                 optimal_deviation_factor: float=None,
-                 optimal_deviation_difference:int=None,
-                 label: int=None
+                    variables: variables_parsing.InstanceVariables, 
+                    constraints: List,
+                    objective: Objective=None,
+                    optimal_deviation_factor: float=None,
+                    optimal_deviation_difference: float=None,
+                    label: str=None
                  ):
         self.variables = variables
         self.constraints = constraints
-        self.optimal_value = optimal_value
+        self.objective = objective
+        self.optimal_value = objective.optimal_value
         self.optimal_deviation_factor = optimal_deviation_factor
         self.optimal_deviation_difference = optimal_deviation_difference
         self.label = label
-        assert label is not None or optimal_value is not None, "Either the optimal value or the label must be provided"
     
     def get_all_variables(self):
         all_vars = {}
@@ -31,15 +37,8 @@ class XCSP3Instance:
             all_vars[variable.name] = variable
 
         return all_vars
-    
-class Objective:
-    def __init__(self, objective_type, variables, coeffs, optimal_value):
-        self.objective_type = objective_type
-        self.variables = variables
-        self.coeffs = coeffs
-        self.optimal_value = optimal_value
 
-def parse_instance(filepath:str) -> XCSP3Instance:
+def parse_instance(filepath:str, optimal_deviation_factor: float=None, optimal_deviation_difference: float=None, label: str=None) -> XCSP3Instance:
     """Parses an XCSP3 instance file."""
     root = ET.parse(filepath)
     variables = root.findall("variables")
@@ -50,7 +49,7 @@ def parse_instance(filepath:str) -> XCSP3Instance:
     if objective_element:
         objective = parse_objective(objective_element, instance_variables)
 
-    return XCSP3Instance(instance_variables, constraints, objective)
+    return XCSP3Instance(instance_variables, constraints, objective, optimal_deviation_factor, optimal_deviation_difference, label)
 
 def parse_objective(objective_element: ET.Element, instance_variables: variables_parsing.InstanceVariables):
     """Parses an objective element in a given problem

@@ -14,7 +14,6 @@ class XCSP3GraphBuilder:
     def __init__(self, instance: XCSP3Instance):
         self.instance = instance
         self.domain_union = self.instance.variables.domain_union
-        print(self.domain_union)
         self.variable_types = self.instance.variables.variable_types
         self.variable_to_operator_edges = []
         self.variable_to_value_edges = []
@@ -23,18 +22,20 @@ class XCSP3GraphBuilder:
         self.value_to_operator_edges = []
         self.operator_to_operator_edges = []
         self.operator_to_constraint_edges = []
+        self.operator_to_objective_edges = []
         self.constraint_to_objective_edges = []
         self.constraint_features = []
         self.operator_features = []
         self.variable_features = []
         self.value_features = []
         self.objective_features = []
+        self.operator_node_values = {} # map the id of operators to their desired values
         self.operator_type_ids = SubTypeIDManager("operators")
         self.variable_type_ids = SubTypeIDManager("variables")
         self.value_type_ids = SubTypeIDManager("values")
         self.constraint_type_ids = SubTypeIDManager("self.constraint_features")
     
-    def build_graph(self) -> HeteroData:
+    def get_graph_representation(self) -> HeteroData:
         """Builds a heterogeneous graph representation of the instance
         Returns:
             data (torch_geometric.data.HeteroData): graph for the SAT problem
@@ -93,9 +94,10 @@ class XCSP3GraphBuilder:
                 pass
             elif constraint_type == "element":
                 pass
-        
-        self.operator_features = self.one_hot_encode(self.operator_features)
+        self.add_objective_to_graph()
+        self.operator_features = self.one_hot_encode(self.operator_features, self.operator_node_values)
         self.constraint_features = self.one_hot_encode(self.constraint_features)
+
         if self.instance.optimal_deviation_factor is not None:
             data_positive, data_negative = self.build_positive_and_negative_pair()
             return data_positive, data_negative
@@ -118,16 +120,17 @@ class XCSP3GraphBuilder:
         data_positive["value"].x = torch.Tensor(self.value_features)
         data_positive["operator"].x = torch.Tensor(self.operator_features)
         data_positive["constraint"].x = torch.Tensor(self.constraint_features)
-        data_positive["objective"].x = torch.Tensor(objective_features_positive)
+        data_positive["objective"].x = torch.Tensor([objective_features_positive])
 
         data_positive["variable", "connected_to", "value"] = self.build_edge_index_tensor(self.variable_to_value_edges)
         data_positive["variable", "connected_to", "operator"] = self.build_edge_index_tensor(self.variable_to_operator_edges)
         data_positive["variable", "connected_to", "constraint"] = self.build_edge_index_tensor(self.variable_to_constraint_edges)
         data_positive["operator", "connected_to", "operator"] = self.build_edge_index_tensor(self.operator_to_operator_edges)
         data_positive["operator", "connected_to", "constraint"] = self.build_edge_index_tensor(self.operator_to_constraint_edges)
+        data_positive["operator", "connected_to", "objective"] = self.build_edge_index_tensor(self.operator_to_objective_edges)
         data_positive["value", "connected_to", "operator"] = self.build_edge_index_tensor(self.value_to_operator_edges)
-        data_positive["objective", "connected_to", "variable"] = self.build_edge_index_tensor(self.variable_to_objective_edges)
-        data_positive["objective", "connected_to", "constraint"] = self.build_edge_index_tensor(self.constraint_to_objective_edges)
+        data_positive["variable", "connected_to", "objective"] = self.build_edge_index_tensor(self.variable_to_objective_edges)
+        data_positive["constraint", "connected_to", "objective"] = self.build_edge_index_tensor(self.constraint_to_objective_edges)
         data_positive.label = 1
         T.ToUndirected()(data_positive)
         
@@ -136,16 +139,17 @@ class XCSP3GraphBuilder:
         data_negative["value"].x = torch.Tensor(self.value_features)
         data_negative["operator"].x = torch.Tensor(self.operator_features)
         data_negative["constraint"].x = torch.Tensor(self.constraint_features)
-        data_negative["objective"].x = torch.Tensor(objective_features_negative)
+        data_negative["objective"].x = torch.Tensor([objective_features_negative])
 
         data_negative["variable", "connected_to", "value"] = self.build_edge_index_tensor(self.variable_to_value_edges)
         data_negative["variable", "connected_to", "operator"] = self.build_edge_index_tensor(self.variable_to_operator_edges)
         data_negative["variable", "connected_to", "constraint"] = self.build_edge_index_tensor(self.variable_to_constraint_edges)
         data_negative["operator", "connected_to", "operator"] = self.build_edge_index_tensor(self.operator_to_operator_edges)
         data_negative["operator", "connected_to", "constraint"] = self.build_edge_index_tensor(self.operator_to_constraint_edges)
+        data_negative["operator", "connected_to", "objective"] = self.build_edge_index_tensor(self.operator_to_objective_edges)
         data_negative["value", "connected_to", "operator"] = self.build_edge_index_tensor(self.value_to_operator_edges)
-        data_negative["objective", "connected_to", "variable"] = self.build_edge_index_tensor(self.variable_to_objective_edges)
-        data_negative["objective", "connected_to", "constraint"] = self.build_edge_index_tensor(self.constraint_to_objective_edges)
+        data_negative["variable", "connected_to", "objective"] = self.build_edge_index_tensor(self.variable_to_objective_edges)
+        data_negative["constraint", "connected_to", "objective"] = self.build_edge_index_tensor(self.constraint_to_objective_edges)
         data_negative.label = 0
         T.ToUndirected()(data_negative)
 
@@ -158,16 +162,23 @@ class XCSP3GraphBuilder:
         data["value"].x = torch.Tensor(self.value_features)
         data["operator"].x = torch.Tensor(self.operator_features)
         data["constraint"].x = torch.Tensor(self.constraint_features)
-        data["objective"].x = torch.Tensor(objective_features_positive)
+        if self.instance.optimal_deviation_factor:
+            objective_features = self.instance.optimal_value * (1 + self.instance.optimal_deviation_factor) 
+        elif self.instance.optimal_deviation_difference:
+            objective_features = self.instance.optimal_value + self.instance.optimal_deviation_difference
+        else:
+            objective_features = 1
+        data["objective"].x = torch.Tensor([objective_features])
 
         data["variable", "connected_to", "value"] = self.build_edge_index_tensor(self.variable_to_value_edges)
         data["variable", "connected_to", "operator"] = self.build_edge_index_tensor(self.variable_to_operator_edges)
         data["variable", "connected_to", "constraint"] = self.build_edge_index_tensor(self.variable_to_constraint_edges)
         data["operator", "connected_to", "operator"] = self.build_edge_index_tensor(self.operator_to_operator_edges)
         data["operator", "connected_to", "constraint"] = self.build_edge_index_tensor(self.operator_to_constraint_edges)
+        data["operator", "connected_to", "objective"] = self.build_edge_index_tensor(self.operator_to_objective_edges)
         data["value", "connected_to", "operator"] = self.build_edge_index_tensor(self.value_to_operator_edges)
-        data["objective", "connected_to", "variable"] = self.build_edge_index_tensor(self.variable_to_objective_edges)
-        data["objective", "connected_to", "constraint"] = self.build_edge_index_tensor(self.constraint_to_objective_edges)
+        data["variable", "connected_to", "objective"] = self.build_edge_index_tensor(self.variable_to_objective_edges)
+        data["constraint", "connected_to", "objective"] = self.build_edge_index_tensor(self.constraint_to_objective_edges)
         data.label = self.instance.label
         T.ToUndirected()(data)
         
@@ -219,7 +230,8 @@ class XCSP3GraphBuilder:
             variable_id = self.variable_type_ids.get_node_id(name=variable_name)
             self.variable_to_constraint_edges.append([variable_id, extension_constraint_id])
         
-
+        self.constraint_to_objective_edges.append([extension_constraint_id, 0])
+        
     def add_all_different_constraint_to_graph(self, constraint):
         all_different_subtype_id = self.constraint_type_ids.add_subtype_id("allDifferent")["id"]
         all_different_id = self.constraint_type_ids.add_node_id("allDifferent")
@@ -227,16 +239,46 @@ class XCSP3GraphBuilder:
             variable_id = self.variable_type_ids.get_node_id(name=variable_name)
             self.variable_to_constraint_edges.append([variable_id, all_different_id])
             self.constraint_features.append(all_different_subtype_id)
-        return        
+        
+        self.constraint_to_objective_edges.append([all_different_id, 0])
+    
+    def add_objective_to_graph(self):
+        
+        if self.instance.objective.coeffs:
+            multiply_subtype_id = self.operator_type_ids.add_subtype_id("multiply")["id"]
+        else:
+            multiply_subtype_id = None
+        for i, variable in enumerate(self.instance.objective.variables):
+            variable_id = self.variable_type_ids.get_node_id(name=variable)
+            self.variable_to_objective_edges.append([variable_id, 0])
+            if multiply_subtype_id:
+                coeff = self.objective.coeffs[i]
+                self.add_coeffs_to_objective_subgraph(variable_id, coeff, multiply_subtype_id)
 
-    def one_hot_encode(self, values):
+    def add_coeff_to_objective_subgraph(self, variable_id, coeff, multiply_subtype_id):
+        new_multiply_node_id = self.operator_type_ids.add_node_id(subtype_name="multiply")
+        self.operator_features.append(multiply_subtype_id)    
+        new_var_op_pair = [variable_id, new_multiply_node_id]
+        self.variable_to_operator_edges.append(new_var_op_pair)
+        self.operator_to_objective_edges.append([new_multiply_node_id, 0])
+        self.operator_node_values[new_multiply_node_id] = coeff
+
+    def one_hot_encode(self, subtype_ids, id_to_value={}):
         """
         Creates a one-hot encoding of a list of integers.
         """
         # Get the maximum value in the list to determine the length of the one-hot vectors
-        max_value = max(values)
+        max_value = max(subtype_ids)
         # Create a one-hot encoded list for each integer
-        one_hot_encoded = [[1 if i == value else 0 for i in range(max_value + 1)] for value in int_list]
+        one_hot_encoded = []
+        for i, subtype_id in enumerate(subtype_ids):
+            new_row = []
+            for j in range(max_value + 1):
+                if j == subtype_id:
+                    new_row.append(id_to_value.get(i, 1))
+                else:
+                    new_row.append(0)
+            one_hot_encoded.append(new_row)
 
         return one_hot_encoded
 
@@ -287,9 +329,9 @@ if __name__ == "__main__":
     # files = [os.path.join(test_files_path, file) for file in os.listdir(test_files_path)]
 
     filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text.xml"
-    instance = parse_instance(filepath)
+    instance = parse_instance(filepath, optimal_deviation_factor=0.02)
     graph_builder = XCSP3GraphBuilder(instance)
-    graph_builder.build_graph()
+    graph_builder.get_graph_representation()
     def print_variable_to_operator_edges(builder):
         for edge in builder.variable_to_operator_edges:
             formatted_edge = [builder.variable_type_ids.get_node_name(edge[0]), builder.operator_type_ids.get_node_name(edge[1])]
@@ -303,6 +345,11 @@ if __name__ == "__main__":
     def print_variable_to_constraint_edges(builder):
         for edge in builder.variable_to_constraint_edges:
             formatted_edge = [builder.variable_type_ids.get_node_name(edge[0]), builder.constraint_type_ids.get_node_name(edge[1])]
+            print(formatted_edge)
+    
+    def print_variable_to_objective_edges(builder):
+        for edge in builder.variable_to_objective_edges:
+            formatted_edge = [builder.variable_type_ids.get_node_name(edge[0]), edge[1]]
             print(formatted_edge)
 
     def print_value_to_operator_edges(builder):
@@ -319,6 +366,16 @@ if __name__ == "__main__":
         for edge in builder.operator_to_constraint_edges:
             formatted_edge = [builder.operator_type_ids.get_node_name(edge[0]), builder.constraint_type_ids.get_node_name(edge[1])]
             print(formatted_edge)
+    
+    def print_constraint_to_objective_edges(builder):
+        for edge in builder.constraint_to_objective_edges:
+            formatted_edge = [builder.constraint_type_ids.get_node_name(edge[0]), edge[1]]
+            print(formatted_edge)
+
+    def print_operator_to_objective_edges(builder):
+        for edge in builder.operator_to_objective_edges:
+            formatted_edge = [builder.operator_type_ids.get_node_name(edge[0]), edge[1]]
+            print(formatted_edge)
 
     print("\nvariable_to_value_edges\n")
     print_variable_to_value_edges(graph_builder)
@@ -329,6 +386,9 @@ if __name__ == "__main__":
     print("\nvariable_to_constraint_edges\n")
     print_variable_to_constraint_edges(graph_builder)
 
+    print("\nvariable_to_objective_edges\n")
+    print_variable_to_objective_edges(graph_builder)
+
     print("\nvalue_to_operator_edges\n")
     print_value_to_operator_edges(graph_builder)
 
@@ -337,6 +397,13 @@ if __name__ == "__main__":
 
     print("\noperator_to_constraint_edges\n")
     print_operator_to_constraint_edges(graph_builder)
+
+    print("\noperator_to_objective_edges\n")
+    print_operator_to_objective_edges(graph_builder)
+
+    print("\nconstraint_to_objective_edges\n")
+    print_constraint_to_objective_edges(graph_builder)
+
 
     def print_constraint_features(builder):
         for feature in builder.constraint_features:
@@ -354,9 +421,9 @@ if __name__ == "__main__":
         for feature in builder.value_features:
             print(f"Value feature: {feature}")
 
-    def print_meta_features(builder):
-        for feature in builder.meta_features:
-            print(f"Meta feature: {feature}")
+    def print_objective_features(builder):
+        for feature in builder.objective_features:
+            print(f"Objective feature: {feature}")
     
     print("\nconstraint_features\n")
     print_constraint_features(graph_builder)
@@ -367,6 +434,6 @@ if __name__ == "__main__":
     print("\nvalue_features\n")
     print_value_features(graph_builder)
     print("\nmeta_features\n")
-    print_meta_features(graph_builder)
+    print_objective_features(graph_builder)
     
     a=1
