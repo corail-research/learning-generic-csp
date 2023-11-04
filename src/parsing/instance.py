@@ -1,5 +1,6 @@
 import variables as variables_parsing
-from constraints import parse_constraint_section
+import constraints as constraints_parsing
+
 from typing import List
 import xml.etree.ElementTree as ET
 
@@ -44,7 +45,7 @@ def parse_instance(filepath:str, optimal_deviation_factor: float=None, optimal_d
     variables = root.findall("variables")
     instance_variables = variables_parsing.parse_all_variables(variables)
     constraints = root.findall("constraints")[0]
-    constraints = parse_constraint_section(instance_variables, constraints)
+    constraints = constraints_parsing.parse_constraint_section(instance_variables, constraints, {})
     objective_element = root.findall("objectives")
     if objective_element:
         objective = parse_objective(objective_element, instance_variables)

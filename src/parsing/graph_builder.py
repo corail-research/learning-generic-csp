@@ -1,13 +1,8 @@
 from instance import XCSP3Instance
-
-import networkx as nx
 from typing import List
 import torch
 from torch_geometric.data import HeteroData
 import torch_geometric.transforms as T
-import torch_geometric.utils as pyg_utils
-import numpy as np
-import matplotlib.pyplot as plt
 
 
 class XCSP3GraphBuilder:
