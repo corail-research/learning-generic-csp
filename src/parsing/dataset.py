@@ -7,8 +7,12 @@ from tqdm import tqdm
 import re
 import os
 import sys
-from instance import parse_instance
-from graph_builder import XCSP3GraphBuilder
+if __name__ == "__main__":
+    from .instance import parse_instance
+    from .graph_builder import XCSP3GraphBuilder
+else:
+    from parsing.instance import parse_instance
+    from parsing.graph_builder import XCSP3GraphBuilder
 
 def files_exist(files: List[str]) -> bool:
     # NOTE: We return `False` in case `files` is empty, leading to a
@@ -80,7 +84,8 @@ class XCSP3Dataset(Dataset):
         for current_pair, filepath in enumerate(self.raw_paths):
             pbar.update(1)
             xcsp3_instance = parse_instance(filepath, optimal_deviation_factor=self.target_deviation)
-            graph_builder = XCSP3GraphBuilder(xcsp3_instance)
+            
+            graph_builder = XCSP3GraphBuilder(xcsp3_instance, filepath)
             
             data = graph_builder.get_graph_representation()
             

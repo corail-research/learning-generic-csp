@@ -1,4 +1,4 @@
-from instance import XCSP3Instance
+from parsing.instance import XCSP3Instance
 from typing import List
 import torch
 from torch_geometric.data import HeteroData
@@ -6,7 +6,7 @@ import torch_geometric.transforms as T
 
 
 class XCSP3GraphBuilder:
-    def __init__(self, instance: XCSP3Instance):
+    def __init__(self, instance: XCSP3Instance, filename: str):
         self.instance = instance
         self.domain_union = self.instance.variables.domain_union
         self.variable_types = self.instance.variables.variable_types
@@ -29,6 +29,7 @@ class XCSP3GraphBuilder:
         self.variable_type_ids = SubTypeIDManager("variables")
         self.value_type_ids = SubTypeIDManager("values")
         self.constraint_type_ids = SubTypeIDManager("self.constraint_features")
+        self.filename = filename
     
     def get_graph_representation(self) -> HeteroData:
         """Builds a heterogeneous graph representation of the instance
@@ -95,10 +96,13 @@ class XCSP3GraphBuilder:
 
         if self.instance.optimal_deviation_factor is not None:
             data_positive, data_negative = self.build_positive_and_negative_pair()
+            data_positive.filename = self.filename
+            data_negative.filename = self.filename
+
             return data_positive, data_negative
         else:
             data = self.build_graph()
-        
+            data.filename = self.filename
         return data
     
     def build_positive_and_negative_pair(self):
@@ -115,17 +119,18 @@ class XCSP3GraphBuilder:
         data_positive["value"].x = torch.Tensor(self.value_features)
         data_positive["operator"].x = torch.Tensor(self.operator_features)
         data_positive["constraint"].x = torch.Tensor(self.constraint_features)
-        data_positive["objective"].x = torch.Tensor([objective_features_positive])
+        data_positive["objective"].x = torch.Tensor([objective_features_positive]).unsqueeze(0)
 
-        data_positive["variable", "connected_to", "value"] = self.build_edge_index_tensor(self.variable_to_value_edges)
-        data_positive["variable", "connected_to", "operator"] = self.build_edge_index_tensor(self.variable_to_operator_edges)
-        data_positive["variable", "connected_to", "constraint"] = self.build_edge_index_tensor(self.variable_to_constraint_edges)
-        data_positive["operator", "connected_to", "operator"] = self.build_edge_index_tensor(self.operator_to_operator_edges)
-        data_positive["operator", "connected_to", "constraint"] = self.build_edge_index_tensor(self.operator_to_constraint_edges)
-        data_positive["operator", "connected_to", "objective"] = self.build_edge_index_tensor(self.operator_to_objective_edges)
-        data_positive["value", "connected_to", "operator"] = self.build_edge_index_tensor(self.value_to_operator_edges)
-        data_positive["variable", "connected_to", "objective"] = self.build_edge_index_tensor(self.variable_to_objective_edges)
-        data_positive["constraint", "connected_to", "objective"] = self.build_edge_index_tensor(self.constraint_to_objective_edges)
+        data_positive["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
+        data_positive["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
+        data_positive["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
+        data_positive["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
+        data_positive["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.operator_to_constraint_edges)
+        if self.operator_to_objective_edges:
+            data_positive["operator", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.operator_to_objective_edges)
+        data_positive["value", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.value_to_operator_edges)
+        data_positive["variable", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.variable_to_objective_edges)
+        data_positive["constraint", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.constraint_to_objective_edges)
         data_positive.label = 1
         T.ToUndirected()(data_positive)
         
@@ -134,17 +139,18 @@ class XCSP3GraphBuilder:
         data_negative["value"].x = torch.Tensor(self.value_features)
         data_negative["operator"].x = torch.Tensor(self.operator_features)
         data_negative["constraint"].x = torch.Tensor(self.constraint_features)
-        data_negative["objective"].x = torch.Tensor([objective_features_negative])
+        data_negative["objective"].x = torch.Tensor([objective_features_negative]).unsqueeze(0)
 
-        data_negative["variable", "connected_to", "value"] = self.build_edge_index_tensor(self.variable_to_value_edges)
-        data_negative["variable", "connected_to", "operator"] = self.build_edge_index_tensor(self.variable_to_operator_edges)
-        data_negative["variable", "connected_to", "constraint"] = self.build_edge_index_tensor(self.variable_to_constraint_edges)
-        data_negative["operator", "connected_to", "operator"] = self.build_edge_index_tensor(self.operator_to_operator_edges)
-        data_negative["operator", "connected_to", "constraint"] = self.build_edge_index_tensor(self.operator_to_constraint_edges)
-        data_negative["operator", "connected_to", "objective"] = self.build_edge_index_tensor(self.operator_to_objective_edges)
-        data_negative["value", "connected_to", "operator"] = self.build_edge_index_tensor(self.value_to_operator_edges)
-        data_negative["variable", "connected_to", "objective"] = self.build_edge_index_tensor(self.variable_to_objective_edges)
-        data_negative["constraint", "connected_to", "objective"] = self.build_edge_index_tensor(self.constraint_to_objective_edges)
+        data_negative["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
+        data_negative["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
+        data_negative["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
+        data_negative["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
+        data_negative["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.operator_to_constraint_edges)
+        if self.operator_to_objective_edges:
+            data_negative["operator", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.operator_to_objective_edges)
+        data_negative["value", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.value_to_operator_edges)
+        data_negative["variable", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.variable_to_objective_edges)
+        data_negative["constraint", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.constraint_to_objective_edges)
         data_negative.label = 0
         T.ToUndirected()(data_negative)
 
@@ -165,15 +171,15 @@ class XCSP3GraphBuilder:
             objective_features = 1
         data["objective"].x = torch.Tensor([objective_features])
 
-        data["variable", "connected_to", "value"] = self.build_edge_index_tensor(self.variable_to_value_edges)
-        data["variable", "connected_to", "operator"] = self.build_edge_index_tensor(self.variable_to_operator_edges)
-        data["variable", "connected_to", "constraint"] = self.build_edge_index_tensor(self.variable_to_constraint_edges)
-        data["operator", "connected_to", "operator"] = self.build_edge_index_tensor(self.operator_to_operator_edges)
-        data["operator", "connected_to", "constraint"] = self.build_edge_index_tensor(self.operator_to_constraint_edges)
-        data["operator", "connected_to", "objective"] = self.build_edge_index_tensor(self.operator_to_objective_edges)
-        data["value", "connected_to", "operator"] = self.build_edge_index_tensor(self.value_to_operator_edges)
-        data["variable", "connected_to", "objective"] = self.build_edge_index_tensor(self.variable_to_objective_edges)
-        data["constraint", "connected_to", "objective"] = self.build_edge_index_tensor(self.constraint_to_objective_edges)
+        data["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
+        data["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
+        data["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
+        data["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
+        data["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.operator_to_constraint_edges)
+        data["operator", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.operator_to_objective_edges)
+        data["value", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.value_to_operator_edges)
+        data["variable", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.variable_to_objective_edges)
+        data["constraint", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.constraint_to_objective_edges)
         data.label = self.instance.label
         T.ToUndirected()(data)
         
