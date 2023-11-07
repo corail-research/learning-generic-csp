@@ -1,5 +1,9 @@
-import variables as variables_parsing
-import constraints as constraints_parsing
+# if __name__ == "__main__":
+#     import .variable_parsing as variable_parsing
+#     import .constraints as constraints_parsing
+# else:
+import parsing.variable_parsing as variable_parsing
+import parsing.constraints as constraints_parsing
 
 from typing import List
 import xml.etree.ElementTree as ET
@@ -13,7 +17,7 @@ class Objective:
 
 class XCSP3Instance:
     def __init__(self,
-                    variables: variables_parsing.InstanceVariables, 
+                    variables: variable_parsing.InstanceVariables, 
                     constraints: List,
                     objective: Objective=None,
                     optimal_deviation_factor: float=None,
@@ -43,7 +47,7 @@ def parse_instance(filepath:str, optimal_deviation_factor: float=None, optimal_d
     """Parses an XCSP3 instance file."""
     root = ET.parse(filepath)
     variables = root.findall("variables")
-    instance_variables = variables_parsing.parse_all_variables(variables)
+    instance_variables = variable_parsing.parse_all_variables(variables)
     constraints = root.findall("constraints")[0]
     constraints = constraints_parsing.parse_constraint_section(instance_variables, constraints, {})
     objective_element = root.findall("objectives")
@@ -52,12 +56,12 @@ def parse_instance(filepath:str, optimal_deviation_factor: float=None, optimal_d
 
     return XCSP3Instance(instance_variables, constraints, objective, optimal_deviation_factor, optimal_deviation_difference, label)
 
-def parse_objective(objective_element: ET.Element, instance_variables: variables_parsing.InstanceVariables):
+def parse_objective(objective_element: ET.Element, instance_variables: variable_parsing.InstanceVariables):
     """Parses an objective element in a given problem
 
     Args:
         objective_element (ET.Element): The objective element to parse
-        instance_variables (variables_parsing.InstanceVariables): The variables in the instance
+        instance_variables (variable_parsing.InstanceVariables): The variables in the instance
 
     Returns:
         Tuple[str, Dict]: A tuple containing the objective type and the parsed objective

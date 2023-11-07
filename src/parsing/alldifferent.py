@@ -2,7 +2,7 @@ import ast
 from typing import List, Dict
 import xml
 
-from variables import *
+from parsing.variable_parsing import *
 
 
 def parse_alldiff_constraint(constraint: xml.etree.ElementTree.Element, instance_variables: Dict) -> List[Dict]:

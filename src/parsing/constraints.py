@@ -1,12 +1,12 @@
 import ast
 from typing import List, Dict
 import xml.etree.ElementTree as ET
-from intension_utils import *
+from parsing.intension_utils import *
 
-from variables import *
-from alldifferent import *
-from element import *
-from sum_constraint import *
+from parsing.variable_parsing import *
+from parsing.alldifferent import *
+from parsing.element import *
+from parsing.sum_constraint import *
 
 
 def parse_constraint_section(instance_variables:Dict, block: ET.Element, constraints={}) -> List[Dict]:
@@ -237,7 +237,8 @@ if __name__ == "__main__":
     # file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCOP\ClockTriplet-20-35_c22.xml..xml"
     # file_path = r"C:\Users\leobo\Desktop\École\Poly\SeaPearl\instancesXCSP22\MiniCSP\Ortholatin-20_mc22.xml..xml"
     # file_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\XCSP23_V2\MiniCOP23\TSPTW-n020w040-1_mini_c23.xml"
-    file_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\XCSP23_V2\MiniCSP23\CoveringArray-3-05-2-10_mini_c23.xml"
+    # file_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\XCSP23_V2\MiniCSP23\CoveringArray-3-05-2-10_mini_c23.xml"
+    file_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data\raw\001.xml"
     root = ET.parse(file_path)
     variables = root.findall("variables")
     instance_variables = parse_all_variables(variables)
