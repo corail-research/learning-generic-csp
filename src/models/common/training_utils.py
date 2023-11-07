@@ -68,7 +68,7 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
         data = data.to(device="cuda:0")
         if type(model) == NeuroSAT:
             label = data["variable"].y.float()
-        elif type(model) == GNNTSP or type(model) == GenericGNNTSP or type(model) == GCGNN:
+        else: # type(model) == GNNTSP or type(model) == GenericGNNTSP or type(model) == GCGNN:
             label = data.label.float()
         if mode == 'train':
             optimizer.zero_grad()

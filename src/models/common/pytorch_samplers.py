@@ -129,7 +129,8 @@ class PairBatchSampler(BasePairSampler):
         random.shuffle(self.pair_list)
         # Yield batches of pairs until all pairs have been used
         for i in range(0, len(self.pair_list), self.batch_size // 2):
-            batch = [self.pair_list[j][0] for j in range(i, i+self.batch_size // 2)] + [self.pair_list[j][1] for j in range(i, i+self.batch_size // 2)]
+            end_index = min(i+self.batch_size // 2, len(self.pair_list))
+            batch = [self.pair_list[j][0] for j in range(i, end_index)] + [self.pair_list[j][1] for j in range(i, end_index)]
             yield batch
 
     def __len__(self) -> int:
