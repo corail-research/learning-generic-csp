@@ -1,4 +1,5 @@
 import argparse
+from time import time
 import wandb
 import torch
 import os
@@ -32,25 +33,30 @@ def train_model(model, train_loader, test_loader, optimizer, lr_scheduler, crite
     train_losses, test_losses, train_metrics, test_metrics = [], [], [], []
     best_acc = 0.0
     for epoch in range(1, num_epochs):
+        start_time = time.time()
         train_acc, train_loss, train_metric = process_model(model, optimizer, criterion, train_loader, mode='train', samples_per_epoch=samples_per_epoch, clip_value=clip_value)
+        train_time = time.time() - start_time
+
+        start_time = time.time()
+        test_acc, test_loss, test_metric = process_model(model, None, criterion, test_loader, mode='test', samples_per_epoch=samples_per_epoch)
+        test_time = time.time() - start_time
+
         train_losses.append(train_loss)
         train_metrics.append(train_metric)
-
-        test_acc, test_loss, test_metric = process_model(model, None, criterion, test_loader, mode='test', samples_per_epoch=samples_per_epoch)
         test_losses.append(test_loss)
         test_metrics.append(test_metric)
         if lr_scheduler is not None:
             lr_scheduler.step(test_loss)
 
-        print(f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}")
-        print(f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}")
+        print(f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}, Train time: {train_time:.2f} seconds")
+        print(f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}, Test time: {test_time:.2f} seconds")
         
         if test_acc > best_acc:
             best_acc = test_acc
             if model_save_path is not None:
                 torch.save(model.state_dict(), os.path.join(model_save_path, f'{wandb_run_name}.pth'))
 
-    return train_losses, test_losses, train_metrics, test_metrics
+    return train_losses, test_losses, train_metric, test_metrics
 
 def process_model(model, optimizer, criterion, loader, mode='train', samples_per_epoch=None, model_path=None, clip_value=None):
     assert mode in ['train', 'test'], "Invalid mode, choose either 'train' or 'test'."
