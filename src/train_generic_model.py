@@ -25,13 +25,13 @@ if __name__ == "__main__":
     # data_path = r"./src/models/sat/generic/temp_remote_date" # local
     data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data" # servercd 
     # Hyperparameters for grid search or random search
-    batch_sizes = [64]
+    batch_sizes = [2]
     hidden_units = [128, 256]
-    start_learning_rates = [0.00002]
-    num_lstm_passes = [26]
+    start_learning_rates = [0.0000003]
+    num_lstm_passes = [28]
     num_layers = [3]
     dropout = [0.1]
-    num_epochs = 400
+    num_epochs = 1000
     device = "cuda:0"
     train_ratio = 0.8
     samples_per_epoch = 200000
@@ -85,9 +85,10 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid search_method. Must be 'grid' or 'random'")
     
-    dataset = XCSP3Dataset(root=experiment_config.data_path)
-    train_dataset = dataset[:math.floor(len(dataset) * experiment_config.train_ratio)]
-    test_dataset = dataset[math.floor(len(dataset) * experiment_config.train_ratio):]
+    dataset = XCSP3Dataset(root=experiment_config.data_path, in_memory=False)[:100]
+    limit_index = int(((len(dataset) * experiment_config.train_ratio) // 2) * 2)
+    train_dataset = dataset[:limit_index]
+    test_dataset = dataset[limit_index:]
             
     criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
     date = str(datetime.now().date())
