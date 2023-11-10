@@ -1,5 +1,5 @@
 import argparse
-from time import time
+import time
 import wandb
 import torch
 import os

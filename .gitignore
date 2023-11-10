@@ -28,3 +28,5 @@ qsopt_solver
 */images*
 src/models/sat/neurosat/data
 XCSP23_v2/*
+knapsack_instances/*
+*.xml
