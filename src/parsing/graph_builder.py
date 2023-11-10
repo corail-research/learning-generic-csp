@@ -1,4 +1,7 @@
-from parsing.instance import XCSP3Instance
+try:
+    from parsing.instance import XCSP3Instance
+except:
+    from instance import XCSP3Instance
 from typing import List
 import torch
 from torch_geometric.data import HeteroData
@@ -50,7 +53,7 @@ class XCSP3GraphBuilder:
         for value in self.domain_union:
             value_type = "int" if isinstance(value, int) else "real"
             self.value_type_ids.add_node_id(subtype_name=value_type, name=value) # id of the value node
-            if len(self.domain_union) > 1:
+            if len(self.variable_types) > 1:
                 current_value_features = [1, 0] if value_type == "int" else [0, value]
             else:
                 current_value_features = [1] if value_type == "int" else [value]
@@ -82,7 +85,8 @@ class XCSP3GraphBuilder:
                 for constraint in constraints:
                     self.add_extension_constraint_to_graph(constraint)
             elif constraint_type == "sum":
-                pass
+                for constraint in constraints:
+                    self.add_sum_constraint_to_graph(constraint)
             elif constraint_type == "allDifferent":
                 for constraint in constraints:
                     self.add_all_different_constraint_to_graph(constraint)
@@ -107,11 +111,21 @@ class XCSP3GraphBuilder:
     
     def build_positive_and_negative_pair(self):
         if self.instance.optimal_deviation_factor:
-            objective_features_positive = self.instance.optimal_value * (1 + self.instance.optimal_deviation_factor) 
-            objective_features_negative = self.instance.optimal_value * (1 - self.instance.optimal_deviation_factor) 
+            if self.instance.objective.minimize:
+                objective_features_positive = self.instance.optimal_value * (1 + self.instance.optimal_deviation_factor) 
+                objective_features_negative = self.instance.optimal_value * (1 - self.instance.optimal_deviation_factor)
+            else:
+                objective_features_positive = self.instance.optimal_value * (1 - self.instance.optimal_deviation_factor) 
+                objective_features_negative = self.instance.optimal_value * (1 + self.instance.optimal_deviation_factor)
+
         elif self.instance.optimal_deviation_difference:
-            objective_features_positive = self.instance.optimal_value + self.instance.optimal_deviation_difference
-            objective_features_negative = self.instance.optimal_value - self.instance.optimal_deviation_difference
+            if self.instance.objective.minimize:
+                objective_features_positive = self.instance.optimal_value + self.instance.optimal_deviation_difference
+                objective_features_negative = self.instance.optimal_value - self.instance.optimal_deviation_difference
+            else:
+                objective_features_positive = self.instance.optimal_value - self.instance.optimal_deviation_difference
+                objective_features_negative = self.instance.optimal_value + self.instance.optimal_deviation_difference
+            
 
         data_positive, data_negative = HeteroData(), HeteroData()
         # Positive sample
@@ -120,20 +134,7 @@ class XCSP3GraphBuilder:
         data_positive["operator"].x = torch.Tensor(self.operator_features)
         data_positive["constraint"].x = torch.Tensor(self.constraint_features)
         data_positive["objective"].x = torch.Tensor([objective_features_positive]).unsqueeze(0)
-
-        data_positive["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
-        data_positive["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
-        data_positive["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
-        data_positive["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
-        data_positive["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.operator_to_constraint_edges)
-        if self.operator_to_objective_edges:
-            data_positive["operator", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.operator_to_objective_edges)
-        data_positive["value", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.value_to_operator_edges)
-        data_positive["variable", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.variable_to_objective_edges)
-        data_positive["constraint", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.constraint_to_objective_edges)
-        data_positive.label = 1
-        T.ToUndirected()(data_positive)
-        
+ 
         # Negative sample
         data_negative["variable"].x = torch.Tensor(self.variable_features)
         data_negative["value"].x = torch.Tensor(self.value_features)
@@ -141,16 +142,34 @@ class XCSP3GraphBuilder:
         data_negative["constraint"].x = torch.Tensor(self.constraint_features)
         data_negative["objective"].x = torch.Tensor([objective_features_negative]).unsqueeze(0)
 
+        data_positive["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
         data_negative["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
-        data_negative["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
+        if self.variable_to_operator_edges:
+            data_positive["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
+            data_negative["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
+        data_positive["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
         data_negative["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
-        data_negative["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
-        data_negative["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.operator_to_constraint_edges)
+        if self.operator_to_operator_edges:    
+            data_positive["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
+            data_negative["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
+        if self.operator_to_constraint_edges:
+            data_positive["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.operator_to_constraint_edges)
+            data_negative["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.operator_to_constraint_edges)
         if self.operator_to_objective_edges:
+            data_positive["operator", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.operator_to_objective_edges)
             data_negative["operator", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.operator_to_objective_edges)
-        data_negative["value", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.value_to_operator_edges)
-        data_negative["variable", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.variable_to_objective_edges)
-        data_negative["constraint", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.constraint_to_objective_edges)
+        if self.value_to_operator_edges:
+            data_positive["value", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.value_to_operator_edges)
+            data_negative["value", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.value_to_operator_edges)
+        if self.variable_to_objective_edges:
+            data_positive["variable", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.variable_to_objective_edges)
+            data_negative["variable", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.variable_to_objective_edges)
+        if self.constraint_to_objective_edges:
+            data_positive["constraint", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.constraint_to_objective_edges)
+            data_negative["constraint", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.constraint_to_objective_edges)
+        
+        data_positive.label = 1
+        T.ToUndirected()(data_positive)
         data_negative.label = 0
         T.ToUndirected()(data_negative)
 
@@ -253,8 +272,8 @@ class XCSP3GraphBuilder:
             variable_id = self.variable_type_ids.get_node_id(name=variable)
             self.variable_to_objective_edges.append([variable_id, 0])
             if multiply_subtype_id:
-                coeff = self.objective.coeffs[i]
-                self.add_coeffs_to_objective_subgraph(variable_id, coeff, multiply_subtype_id)
+                coeff = self.instance.objective.coeffs[i]
+                self.add_coeff_to_objective_subgraph(variable_id, coeff, multiply_subtype_id)
 
     def add_coeff_to_objective_subgraph(self, variable_id, coeff, multiply_subtype_id):
         new_multiply_node_id = self.operator_type_ids.add_node_id(subtype_name="multiply")
@@ -262,7 +281,56 @@ class XCSP3GraphBuilder:
         new_var_op_pair = [variable_id, new_multiply_node_id]
         self.variable_to_operator_edges.append(new_var_op_pair)
         self.operator_to_objective_edges.append([new_multiply_node_id, 0])
-        self.operator_node_values[new_multiply_node_id] = coeff
+        self.operator_node_values[new_multiply_node_id] = float(coeff)
+
+    def add_sum_constraint_to_graph(self, constraint):
+        variables = constraint["variables"]
+        coeffs = constraint["coeffs"]
+        
+        sum_subtype_id = self.constraint_type_ids.add_subtype_id("sum")["id"]
+        self.constraint_features.append(sum_subtype_id)
+        sum_id = self.constraint_type_ids.add_node_id("sum")
+        
+        condition = constraint["condition"]
+        condition_comparison_operator = condition["operator"]
+        condition_operand = condition["operand"]
+        comparison_operator_subtype_id = self.operator_type_ids.add_subtype_id(condition_comparison_operator)["id"]
+        # comparison_operator_node_id = self.operator_type_ids.add_node_id(condition_comparison_operator)
+        
+        if condition_operand.isdigit(): # in this case, the sum is compared to a variable
+            new_comparison_node_id = self.operator_type_ids.add_node_id(subtype_name=condition_comparison_operator)
+            self.operator_features.append(comparison_operator_subtype_id)    
+            self.operator_to_constraint_edges.append([new_comparison_node_id, sum_id])
+            self.operator_node_values[new_comparison_node_id] = float(condition_operand)
+            
+        else: # in this case, the sum is compared to a float
+            
+            condition_operand_id = self.variable_type_ids.get_node_id(name=condition_operand)
+            self.variable_to_constraint_edges.append([condition_operand_id, sum_id])
+            new_comparison_node_id = self.operator_type_ids.add_node_id(subtype_name=condition_comparison_operator)
+            self.operator_features.append(comparison_operator_subtype_id)    
+            new_var_op_pair = [condition_operand_id, new_comparison_node_id]
+            self.variable_to_operator_edges.append(new_var_op_pair)
+            self.operator_to_constraint_edges.append([new_comparison_node_id, sum_id])
+            self.operator_node_values[new_comparison_node_id] = 1.
+
+        multiply_subtype_id = self.operator_type_ids.add_subtype_id("multiply")["id"]
+        
+        for i, variable in enumerate(variables):
+            variable_id = self.variable_type_ids.get_node_id(name=variable)
+            self.variable_to_constraint_edges.append([variable_id, sum_id])
+            self.add_coeff_to_sum_constraint_subgraph(variable_id, coeffs[i], sum_id, multiply_subtype_id)
+            
+        self.constraint_to_objective_edges.append([sum_id, 0])
+    
+    def add_coeff_to_sum_constraint_subgraph(self, variable_id, coeff, constraint_id, multiply_subtype_id):
+        new_multiply_node_id = self.operator_type_ids.add_node_id(subtype_name="multiply")
+        self.operator_features.append(multiply_subtype_id)    
+        new_var_op_pair = [variable_id, new_multiply_node_id]
+        self.variable_to_operator_edges.append(new_var_op_pair)
+        self.operator_to_constraint_edges.append([new_multiply_node_id, constraint_id])
+        self.operator_node_values[new_multiply_node_id] = float(coeff)
+
 
     def one_hot_encode(self, subtype_ids, id_to_value={}):
         """
@@ -329,9 +397,11 @@ if __name__ == "__main__":
     # test_files_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\XCSP23_V2\MiniCSP23"
     # files = [os.path.join(test_files_path, file) for file in os.listdir(test_files_path)]
 
-    filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text.xml"
+    # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text.xml"
+    # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\sample_problems\ClockTriplet-03-12_c22.xml"
+    filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\knapsack_instances\instance_1.xml"
     instance = parse_instance(filepath, optimal_deviation_factor=0.02)
-    graph_builder = XCSP3GraphBuilder(instance)
+    graph_builder = XCSP3GraphBuilder(instance, filepath)
     graph_builder.get_graph_representation()
     def print_variable_to_operator_edges(builder):
         for edge in builder.variable_to_operator_edges:

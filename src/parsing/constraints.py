@@ -1,12 +1,18 @@
 import ast
 from typing import List, Dict
 import xml.etree.ElementTree as ET
-from parsing.intension_utils import *
-
-from parsing.variable_parsing import *
-from parsing.alldifferent import *
-from parsing.element import *
-from parsing.sum_constraint import *
+try:
+    from parsing.intension_utils import *
+    from parsing.variable_parsing import *
+    from parsing.alldifferent import *
+    from parsing.element import *
+    from parsing.sum_constraint import *
+except:
+    from intension_utils import *
+    from variable_parsing import *
+    from alldifferent import *
+    from element import *
+    from sum_constraint import *
 
 
 def parse_constraint_section(instance_variables:Dict, block: ET.Element, constraints={}) -> List[Dict]:

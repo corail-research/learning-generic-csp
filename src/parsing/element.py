@@ -1,4 +1,7 @@
-from parsing.variable_parsing import *
+try:
+    from parsing.variable_parsing import *
+except:
+    from variable_parsing import *
 from typing import List, Dict
 import xml.etree.ElementTree as ET
 

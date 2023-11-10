@@ -63,6 +63,8 @@ class GenericModel(AdaptedNeuroSAT):
             out = self.lstm_conv_layers(x_dict, edge_index_dict, previous_hidden_state, previous_cell_state, batch_dict)
             x_dict = {node_type: out[node_type][1] for node_type in x_dict.keys()}
         raw_votes = self.vote(x_dict["variable"])
+        #concatenate all node types
+        
         votes = scatter_mean(raw_votes, batch_dict["variable"], dim=0)
 
         return votes

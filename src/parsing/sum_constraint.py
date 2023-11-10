@@ -1,7 +1,10 @@
 import ast
 from typing import Dict, List
 import xml.etree.ElementTree as ET
-from parsing.variable_parsing import *
+try:
+    from parsing.variable_parsing import *
+except:
+    from variable_parsing import *
 
 class SumNode:
     def __init__(self, variables, operator, operand):

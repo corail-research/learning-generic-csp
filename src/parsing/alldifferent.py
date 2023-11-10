@@ -1,9 +1,10 @@
 import ast
 from typing import List, Dict
 import xml
-
-from parsing.variable_parsing import *
-
+try:
+    from parsing.variable_parsing import *
+except:
+    from variable_parsing import *
 
 def parse_alldiff_constraint(constraint: xml.etree.ElementTree.Element, instance_variables: Dict) -> List[Dict]:
     """Parses one allDifferent constraint in a given problem

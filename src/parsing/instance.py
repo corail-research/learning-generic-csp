@@ -1,19 +1,20 @@
-# if __name__ == "__main__":
-#     import .variable_parsing as variable_parsing
-#     import .constraints as constraints_parsing
-# else:
-import parsing.variable_parsing as variable_parsing
-import parsing.constraints as constraints_parsing
+try:
+    import parsing.variable_parsing as variable_parsing
+    import parsing.constraints as constraints_parsing
+except:
+    import variable_parsing
+    import constraints as constraints_parsing
 
 from typing import List
 import xml.etree.ElementTree as ET
 
 class Objective:
-    def __init__(self, objective_type, variables, coeffs, optimal_value):
-        self.objective_type = objective_type
+    def __init__(self, objective_type, variables, coeffs, optimal_value, minimize=True):
+        self.objective_type = objective_type # sum or count
         self.variables = variables
         self.coeffs = coeffs
         self.optimal_value = optimal_value
+        self.minimize = minimize
 
 class XCSP3Instance:
     def __init__(self,
@@ -72,6 +73,7 @@ def parse_objective(objective_element: ET.Element, instance_variables: variable_
             optimal_value = float(optimal_element[0].text)
         else:
             optimal_value = None
+        minimize = True
         minimize_element = objective_element[0].findall("minimize")
         maximize_element = objective_element[0].findall("maximize")
         variables_in_objective = []
@@ -79,15 +81,16 @@ def parse_objective(objective_element: ET.Element, instance_variables: variable_
             objective_type, variables_in_objective, coeffs = parse_objective_type(minimize_element, instance_variables)
         else:
             objective_type, variables_in_objective, coeffs = parse_objective_type(maximize_element, instance_variables)
+            minimize = False
         
-        return Objective(objective_type, variables_in_objective, coeffs, optimal_value)
+        return Objective(objective_type, variables_in_objective, coeffs, optimal_value, minimize)
     else:
         return None
 
 def parse_objective_type(element, instance_variables):
     """Parses an objective minimize/maximize element in a given problem"""
     variables_in_objective = []
-    objective_type = element[0].attrib["type"]
+    objective_type = element[0].attrib.get("type", None) # type can be "sum", "count" or None. If None, a variable needs to be minimized 
     element_text = element[0].text.strip()
     if element_text:
         raw_variables = element_text.split()
