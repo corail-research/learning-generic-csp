@@ -19,9 +19,8 @@ def parse_graph_coloring_instance(filepath):
     chrom_number_index = next(i for i, line in enumerate(lines) if line.startswith('CHROM_NUMBER'))
     chrom_number = int(lines[chrom_number_index + 1].strip())
     return edges, diff_edge, chrom_number, dimension
-
-def save_graph_coloring_instance_to_file(filepath, graph, chrom_number, dimension, instance_number, variant):
-    filename = f"data{instance_number}_{variant}.xml"
+def save_graph_coloring_instance_to_file(filepath, graph, chrom_number, dimension, instance_number, label):
+    filename = f"data{instance_number}_{label}.xml"
     filepath = os.path.join(filepath, filename)
     with open(filepath, 'w') as file:
         file.write('<instance format="XCSP3" type="COP">\n')
@@ -34,6 +33,9 @@ def save_graph_coloring_instance_to_file(filepath, graph, chrom_number, dimensio
             if edge:
                 file.write(f'    <intension> ne(x{edge[0]},x{edge[1]}) </intension>\n')
         file.write('  </constraints>\n')
+        file.write('  <objectives>\n')
+        file.write(f'    <label> {label} </label>\n')
+        file.write('  </objectives>\n')
         file.write('</instance>\n')
 
 def build_graph_coloring_instances(directory, save_path='graph_coloring_instances'):
@@ -47,8 +49,8 @@ def build_graph_coloring_instances(directory, save_path='graph_coloring_instance
 
         # Parse the instance and create the XCSP3 instances
         edges, diff_edge, chrom_number, dimension = parse_graph_coloring_instance(filepath)
-        save_graph_coloring_instance_to_file(save_path, edges, chrom_number, dimension, instance_number, 0)
-        save_graph_coloring_instance_to_file(save_path, edges + [diff_edge], chrom_number, dimension, instance_number, 1)
+        save_graph_coloring_instance_to_file(save_path, edges, chrom_number, dimension, instance_number, 1)
+        save_graph_coloring_instance_to_file(save_path, edges + [diff_edge], chrom_number, dimension, instance_number, 0)
 
 if __name__ == "__main__":
     directory = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\graph_coloring\data\raw"
