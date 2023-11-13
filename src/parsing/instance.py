@@ -9,12 +9,13 @@ from typing import List
 import xml.etree.ElementTree as ET
 
 class Objective:
-    def __init__(self, objective_type, variables, coeffs, optimal_value, minimize=True):
+    def __init__(self, objective_type, variables, coeffs, optimal_value, minimize=True, label=None):
         self.objective_type = objective_type # sum or count
         self.variables = variables
         self.coeffs = coeffs
         self.optimal_value = optimal_value
         self.minimize = minimize
+        self.label = label
 
 class XCSP3Instance:
     def __init__(self,
@@ -77,13 +78,18 @@ def parse_objective(objective_element: ET.Element, instance_variables: variable_
         minimize_element = objective_element[0].findall("minimize")
         maximize_element = objective_element[0].findall("maximize")
         variables_in_objective = []
+        label = None
         if minimize_element:
             objective_type, variables_in_objective, coeffs = parse_objective_type(minimize_element, instance_variables)
-        else:
+        elif maximize_element:
             objective_type, variables_in_objective, coeffs = parse_objective_type(maximize_element, instance_variables)
             minimize = False
-        
-        return Objective(objective_type, variables_in_objective, coeffs, optimal_value, minimize)
+        else:
+            objective_type = None
+            coeffs = None
+            label = int(objective_element[0].findall("label")[0].text.strip())
+
+        return Objective(objective_type, variables_in_objective, coeffs, optimal_value, minimize, label)
     else:
         return None
 

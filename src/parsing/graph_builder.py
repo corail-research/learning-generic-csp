@@ -96,7 +96,8 @@ class XCSP3GraphBuilder:
             elif constraint_type == "element":
                 pass
         self.add_objective_to_graph()
-        self.operator_features = self.one_hot_encode(self.operator_features, self.operator_node_values)
+        if self.operator_features:
+            self.operator_features = self.one_hot_encode(self.operator_features, self.operator_node_values)
         self.constraint_features = self.one_hot_encode(self.constraint_features)
 
         if self.instance.optimal_deviation_factor is not None:
@@ -192,15 +193,21 @@ class XCSP3GraphBuilder:
         data["objective"].x = torch.Tensor([objective_features])
 
         data["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
-        data["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
+        if self.variable_to_operator_edges:
+            data["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
         data["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
-        data["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
-        data["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.operator_to_constraint_edges)
-        data["operator", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.operator_to_objective_edges)
-        data["value", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.value_to_operator_edges)
-        data["variable", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.variable_to_objective_edges)
+        if self.operator_to_operator_edges:    
+            data["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
+        if self.operator_to_constraint_edges:
+            data["operator", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.operator_to_constraint_edges)
+        if self.operator_to_objective_edges:
+            data["operator", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.operator_to_objective_edges)
+        if self.value_to_operator_edges:
+            data["value", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.value_to_operator_edges)
+        if self.variable_to_objective_edges:
+            data["variable", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.variable_to_objective_edges)
         data["constraint", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.constraint_to_objective_edges)
-        data.label = self.instance.label
+        data.label = self.instance.objective.label
         T.ToUndirected()(data)
         
         return data
@@ -412,7 +419,7 @@ if __name__ == "__main__":
     # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\sample_problems\ClockTriplet-03-12_c22.xml"
     # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\knapsack_instances\instance_1.xml"
     filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\graph_coloring_instances\data0_0.xml"
-    instance = parse_instance(filepath, optimal_deviation_factor=0.02)
+    instance = parse_instance(filepath)
     graph_builder = XCSP3GraphBuilder(instance, filepath)
     graph_builder.get_graph_representation()
     def print_variable_to_operator_edges(builder):
