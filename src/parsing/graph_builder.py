@@ -91,7 +91,8 @@ class XCSP3GraphBuilder:
                 for constraint in constraints:
                     self.add_all_different_constraint_to_graph(constraint)
             elif constraint_type == "intension":
-                pass
+                for constraint in constraints:
+                    self.add_intension_constraint_to_graph(constraint)
             elif constraint_type == "element":
                 pass
         self.add_objective_to_graph()
@@ -331,6 +332,16 @@ class XCSP3GraphBuilder:
         self.operator_to_constraint_edges.append([new_multiply_node_id, constraint_id])
         self.operator_node_values[new_multiply_node_id] = float(coeff)
 
+    def add_intension_constraint_to_graph(self, constraint):
+        # TODO: extend to other, non-graph coloring problems
+        intension_subtype_id = self.constraint_type_ids.add_subtype_id("intension")["id"]
+        intension_id = self.constraint_type_ids.add_node_id("intension")
+        self.constraint_features.append(intension_subtype_id)
+        for variable_name in constraint.children:
+            variable_id = self.variable_type_ids.get_node_id(name=variable_name)
+            self.variable_to_constraint_edges.append([variable_id, intension_id])
+        
+        self.constraint_to_objective_edges.append([intension_id, 0])
 
     def one_hot_encode(self, subtype_ids, id_to_value={}):
         """
@@ -399,7 +410,8 @@ if __name__ == "__main__":
 
     # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text.xml"
     # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\sample_problems\ClockTriplet-03-12_c22.xml"
-    filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\knapsack_instances\instance_1.xml"
+    # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\knapsack_instances\instance_1.xml"
+    filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\graph_coloring_instances\data0_0.xml"
     instance = parse_instance(filepath, optimal_deviation_factor=0.02)
     graph_builder = XCSP3GraphBuilder(instance, filepath)
     graph_builder.get_graph_representation()
