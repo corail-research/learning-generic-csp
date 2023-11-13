@@ -24,6 +24,7 @@ if __name__ == "__main__":
     search_method = "grid"  # Set to either "grid" or "random"
     # data_path = r"./src/models/sat/generic/temp_remote_date" # local
     data_path = r"/scratch1/boileo/graph_coloring/data/generic"
+    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\graph_coloring\data"
     # Hyperparameters for grid search or random search
     batch_sizes = [128]
     hidden_units = [128, 256]
@@ -56,7 +57,7 @@ if __name__ == "__main__":
         start_learning_rates=start_learning_rates,
         num_layers=num_layers,
         dropouts=dropout,
-        num_epochs=num_epochs,
+        num_epochs=num_epochs,:
         num_lstm_passes=num_lstm_passes,
         device=device,
         train_ratio=train_ratio,

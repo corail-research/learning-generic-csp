@@ -182,7 +182,8 @@ class XCSP3GraphBuilder:
         # Positive sample
         data["variable"].x = torch.Tensor(self.variable_features)
         data["value"].x = torch.Tensor(self.value_features)
-        data["operator"].x = torch.Tensor(self.operator_features)
+        if self.operator_features:
+            data["operator"].x = torch.Tensor(self.operator_features)
         data["constraint"].x = torch.Tensor(self.constraint_features)
         if self.instance.optimal_deviation_factor:
             objective_features = self.instance.optimal_value * (1 + self.instance.optimal_deviation_factor) 
@@ -190,7 +191,7 @@ class XCSP3GraphBuilder:
             objective_features = self.instance.optimal_value + self.instance.optimal_deviation_difference
         else:
             objective_features = 1
-        data["objective"].x = torch.Tensor([objective_features])
+        data["objective"].x = torch.Tensor([objective_features]).unsqueeze(0)
 
         data["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
         if self.variable_to_operator_edges:

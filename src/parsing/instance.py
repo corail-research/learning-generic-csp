@@ -53,6 +53,7 @@ def parse_instance(filepath:str, optimal_deviation_factor: float=None, optimal_d
     constraints = root.findall("constraints")[0]
     constraints = constraints_parsing.parse_constraint_section(instance_variables, constraints, {})
     objective_element = root.findall("objectives")
+    objective = None
     if objective_element:
         objective = parse_objective(objective_element, instance_variables)
 
