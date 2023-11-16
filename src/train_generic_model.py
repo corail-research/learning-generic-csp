@@ -23,7 +23,7 @@ if __name__ == "__main__":
     import math
     search_method = "grid"  # Set to either "grid" or "random"
     # data_path = r"./src/models/sat/generic/temp_remote_date" # local
-    data_path = r"/scratch1/boileo/knapsack/data/generic"
+    data_path = r"/scratch1/boileo/knapsack/data"
     # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
     # Hyperparameters for grid search or random search
     batch_sizes = [128]
