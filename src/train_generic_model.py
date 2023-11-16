@@ -23,12 +23,12 @@ if __name__ == "__main__":
     import math
     search_method = "grid"  # Set to either "grid" or "random"
     # data_path = r"./src/models/sat/generic/temp_remote_date" # local
-    data_path = r"/scratch1/boileo/graph_coloring/data/generic"
-    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\graph_coloring\data"
+    data_path = r"/scratch1/boileo/knapsack/data/generic"
+    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
     # Hyperparameters for grid search or random search
     batch_sizes = [128]
     hidden_units = [128, 256]
-    start_learning_rates = [0.000003]
+    start_learning_rates = [0.00002]
     num_lstm_passes = [28]
     num_layers = [3]
     dropout = [0.1]
@@ -41,13 +41,14 @@ if __name__ == "__main__":
     weight_decay = [0.0000000001]
     num_epochs_lr_warmup = 5
     num_epochs_lr_decay = 20
-    lr_decay_factor = 0.8
+    lr_decay_factor = 0.5
     generic_representation = True
     gnn_aggregation = "add"
     model_save_path = None
     # project_name = "Generic-TSP"
-    project_name = "Generic-GC"
-    model_save_path = r"/scratch1/boileo/graph_coloring/models"
+    # project_name = "Generic-GC"
+    project_name = "Generic-Knapsack"
+    model_save_path = r"/scratch1/boileo/knapsack/models"
     
     hostname = socket.gethostname()
 
@@ -57,7 +58,7 @@ if __name__ == "__main__":
         start_learning_rates=start_learning_rates,
         num_layers=num_layers,
         dropouts=dropout,
-        num_epochs=num_epochs,:
+        num_epochs=num_epochs,
         num_lstm_passes=num_lstm_passes,
         device=device,
         train_ratio=train_ratio,
@@ -87,7 +88,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid search_method. Must be 'grid' or 'random'")
     
-    dataset = XCSP3Dataset(root=experiment_config.data_path, in_memory=False, target_deviation=None)
+    dataset = XCSP3Dataset(root=experiment_config.data_path, in_memory=False, target_deviation=0.02)
     limit_index = int(((len(dataset) * experiment_config.train_ratio) // 2) * 2)
     train_dataset = dataset[:limit_index]
     test_dataset = dataset[limit_index:]

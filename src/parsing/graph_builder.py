@@ -149,8 +149,9 @@ class XCSP3GraphBuilder:
         if self.variable_to_operator_edges:
             data_positive["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
             data_negative["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
-        data_positive["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
-        data_negative["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
+        if self.variable_to_constraint_edges:
+            data_positive["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
+            data_negative["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
         if self.operator_to_operator_edges:    
             data_positive["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
             data_negative["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
@@ -196,7 +197,8 @@ class XCSP3GraphBuilder:
         data["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
         if self.variable_to_operator_edges:
             data["variable", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.variable_to_operator_edges)
-        data["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
+        if self.variable_to_constraint_edges:
+            data["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges)
         if self.operator_to_operator_edges:    
             data["operator", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.operator_to_operator_edges)
         if self.operator_to_constraint_edges:
@@ -306,14 +308,13 @@ class XCSP3GraphBuilder:
         comparison_operator_subtype_id = self.operator_type_ids.add_subtype_id(condition_comparison_operator)["id"]
         # comparison_operator_node_id = self.operator_type_ids.add_node_id(condition_comparison_operator)
         
-        if condition_operand.isdigit(): # in this case, the sum is compared to a variable
+        if condition_operand.isdigit(): # in this case, the sum is compared to a float
             new_comparison_node_id = self.operator_type_ids.add_node_id(subtype_name=condition_comparison_operator)
             self.operator_features.append(comparison_operator_subtype_id)    
             self.operator_to_constraint_edges.append([new_comparison_node_id, sum_id])
             self.operator_node_values[new_comparison_node_id] = float(condition_operand)
             
-        else: # in this case, the sum is compared to a float
-            
+        else: # in this case, the sum is compared to a variable
             condition_operand_id = self.variable_type_ids.get_node_id(name=condition_operand)
             self.variable_to_constraint_edges.append([condition_operand_id, sum_id])
             new_comparison_node_id = self.operator_type_ids.add_node_id(subtype_name=condition_comparison_operator)
@@ -327,7 +328,8 @@ class XCSP3GraphBuilder:
         
         for i, variable in enumerate(variables):
             variable_id = self.variable_type_ids.get_node_id(name=variable)
-            self.variable_to_constraint_edges.append([variable_id, sum_id])
+            if coeffs[i] == 1:
+                self.variable_to_constraint_edges.append([variable_id, sum_id])
             self.add_coeff_to_sum_constraint_subgraph(variable_id, coeffs[i], sum_id, multiply_subtype_id)
             
         self.constraint_to_objective_edges.append([sum_id, 0])
