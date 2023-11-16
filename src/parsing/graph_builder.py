@@ -131,17 +131,20 @@ class XCSP3GraphBuilder:
 
         data_positive, data_negative = HeteroData(), HeteroData()
         # Positive sample
-        data_positive["variable"].x = torch.Tensor(self.variable_features)
-        data_positive["value"].x = torch.Tensor(self.value_features)
-        data_positive["operator"].x = torch.Tensor(self.operator_features)
-        data_positive["constraint"].x = torch.Tensor(self.constraint_features)
+        if self.variable_features:
+            data_positive["variable"].x = torch.Tensor(self.variable_features)
+            data_negative["variable"].x = torch.Tensor(self.variable_features)
+        if self.value_features:
+            data_positive["value"].x = torch.Tensor(self.value_features)
+            data_negative["value"].x = torch.Tensor(self.value_features)
+        if self.operator_features:
+            data_positive["operator"].x = torch.Tensor(self.operator_features)
+            data_negative["operator"].x = torch.Tensor(self.operator_features)
+        if self.constraint_features:
+            data_positive["constraint"].x = torch.Tensor(self.constraint_features)
+            data_negative["constraint"].x = torch.Tensor(self.constraint_features)
+        
         data_positive["objective"].x = torch.Tensor([objective_features_positive]).unsqueeze(0)
- 
-        # Negative sample
-        data_negative["variable"].x = torch.Tensor(self.variable_features)
-        data_negative["value"].x = torch.Tensor(self.value_features)
-        data_negative["operator"].x = torch.Tensor(self.operator_features)
-        data_negative["constraint"].x = torch.Tensor(self.constraint_features)
         data_negative["objective"].x = torch.Tensor([objective_features_negative]).unsqueeze(0)
 
         data_positive["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
@@ -185,7 +188,8 @@ class XCSP3GraphBuilder:
         data["value"].x = torch.Tensor(self.value_features)
         if self.operator_features:
             data["operator"].x = torch.Tensor(self.operator_features)
-        data["constraint"].x = torch.Tensor(self.constraint_features)
+        if self.constraint_features:
+            data["constraint"].x = torch.Tensor(self.constraint_features)
         if self.instance.optimal_deviation_factor:
             objective_features = self.instance.optimal_value * (1 + self.instance.optimal_deviation_factor) 
         elif self.instance.optimal_deviation_difference:
@@ -209,7 +213,8 @@ class XCSP3GraphBuilder:
             data["value", "connected_to", "operator"].edge_index = self.build_edge_index_tensor(self.value_to_operator_edges)
         if self.variable_to_objective_edges:
             data["variable", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.variable_to_objective_edges)
-        data["constraint", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.constraint_to_objective_edges)
+        if self.constraint_to_objective_edges:
+            data["constraint", "connected_to", "objective"].edge_index = self.build_edge_index_tensor(self.constraint_to_objective_edges)
         data.label = self.instance.objective.label
         T.ToUndirected()(data)
         

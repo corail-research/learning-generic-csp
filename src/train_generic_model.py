@@ -114,13 +114,12 @@ if __name__ == "__main__":
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
         # model_type = "sat_spec"
         model = GenericModel(
-            metadata,
-            input_size,
-            out_channels,
-            hidden_size,
+            metadata=metadata,
+            in_channels=input_size,
+            out_channels=out_channels,
+            hidden_size=hidden_size,
             num_passes=params.num_lstm_passes,
             device=device,
-            flip_inputs=params.flip_inputs,
             layernorm_lstm_cell=params.layernorm_lstm_cell,
             aggr=params.gnn_aggregation
         )

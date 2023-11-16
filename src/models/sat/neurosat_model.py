@@ -95,7 +95,6 @@ class NeuroSatLSTMConv(LSTMConvV1):
                 self.lstm_cells[node_type] = LayerNormLSTMCell(lstm_input_size, hidden_size, torch.relu, device=self.device)
             else:
                 self.lstm_cells[node_type] = LSTMCell(lstm_input_size, hidden_size, device=self.device)
-            
         
         self.reset_parameters()
 
