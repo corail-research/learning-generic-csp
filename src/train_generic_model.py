@@ -19,6 +19,18 @@ from models.sat.config import SATExperimentConfig
 from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
 from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 
+import random
+import numpy as np
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+set_seed(42)
+
 if __name__ == "__main__":
     import math
     search_method = "grid"  # Set to either "grid" or "random"
