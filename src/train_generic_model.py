@@ -8,15 +8,14 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 import cProfile
 import pstats
 # from models.common.lstm_conv import AdaptedNeuroSAT
-from parsing.generic_model import GenericModel
-from parsing.dataset import XCSP3Dataset
+from generic_xcsp.generic_model import GenericModel
+from generic_xcsp.dataset import XCSP3Dataset
+from generic_xcsp.training_config import GenericExperimentConfig
 from torch_geometric.loader import DataLoader
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
 
 from models.common.training_utils import train_model
-from models.sat.config import SATExperimentConfig
-from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
 from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 
 import random
@@ -35,8 +34,8 @@ if __name__ == "__main__":
     import math
     search_method = "grid"  # Set to either "grid" or "random"
     # data_path = r"./src/models/sat/generic/temp_remote_date" # local
-    data_path = r"/scratch1/boileo/knapsack/data"
-    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
+    # data_path = r"/scratch1/boileo/knapsack/data"
+    data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
     # Hyperparameters for grid search or random search
     batch_sizes = [128]
     hidden_units = [128, 256]
@@ -48,7 +47,7 @@ if __name__ == "__main__":
     device = "cuda:0"
     train_ratio = 0.8
     samples_per_epoch = 100000
-    nodes_per_batch= [12000]
+    nodes_per_batch = [12000]
     use_sampler_loader = False
     weight_decay = [0.0000000001]
     num_epochs_lr_warmup = 5
@@ -57,14 +56,30 @@ if __name__ == "__main__":
     generic_representation = True
     gnn_aggregation = "add"
     model_save_path = None
+    # project_name = "Generic-SAT"
     # project_name = "Generic-TSP"
     # project_name = "Generic-GC"
     project_name = "Generic-Knapsack"
-    model_save_path = r"/scratch1/boileo/knapsack/models"
+
+    if project_name == "Generic-TSP":
+        data_path = r"/scratch1/boileo/dtsp/data/generic"
+        model_save_path = r"/scratch1/boileo/dtsp/models"
+    elif project_name == "Generic-GC":
+        data_path = r"/scratch1/boileo/graph_coloring/data/generic"
+        model_save_path = r"/scratch1/boileo/graph_coloring/models"
+    elif project_name == "Generic-Knapsack":
+        data_path = r"/scratch1/boileo/knapsack/data"
+        model_save_path = r"/scratch1/boileo/knapsack/models"
+    elif project_name == "Generic-SAT":
+        data_path = r"/scratch1/boileo/sat/data/generic"
+        model_save_path = r"/scratch1/boileo/sat/models"
+    else:
+        data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
+        model_save_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\models"
     
     hostname = socket.gethostname()
 
-    experiment_config = SATExperimentConfig(
+    experiment_config = GenericExperimentConfig(
         batch_sizes=batch_sizes,
         hidden_units=hidden_units,
         start_learning_rates=start_learning_rates,
@@ -83,12 +98,12 @@ if __name__ == "__main__":
         num_epochs_lr_decay=num_epochs_lr_decay,
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
-        flip_inputs=False,
         lr_scheduler_patience=10,
         lr_scheduler_factor=0.2,
         layernorm_lstm_cell=True,
         gnn_aggregation=gnn_aggregation,
-        model_save_path=model_save_path
+        model_save_path=model_save_path,
+        optimal_deviation_difference=0.02
     )
 
     # Generate parameters based on the search method
@@ -130,15 +145,14 @@ if __name__ == "__main__":
             in_channels=input_size,
             out_channels=out_channels,
             hidden_size=hidden_size,
+            num_mlp_layers=params.num_layers,
             num_passes=params.num_lstm_passes,
             device=device,
             layernorm_lstm_cell=params.layernorm_lstm_cell,
             aggr=params.gnn_aggregation
         )
-        # model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params.start_learning_rate, weight_decay=params.weight_decay)
-        # if type(model) == AdaptedNeuroSAT:
         group = hostname
         wandb.init(
             project=project_name,

@@ -2,11 +2,11 @@ import ast
 from typing import List, Dict
 import xml.etree.ElementTree as ET
 try:
-    from parsing.intension_utils import *
-    from parsing.variable_parsing import *
-    from parsing.alldifferent import *
-    from parsing.element import *
-    from parsing.sum_constraint import *
+    from generic_xcsp.intension_utils import *
+    from generic_xcsp.variable_parsing import *
+    from generic_xcsp.alldifferent import *
+    from generic_xcsp.element import *
+    from generic_xcsp.sum_constraint import *
 except:
     from intension_utils import *
     from variable_parsing import *

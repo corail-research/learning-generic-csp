@@ -28,6 +28,7 @@ class Config:
                     clip_gradient_norm:float=0.65,
                     lr_scheduler_patience:int=10,
                     lr_scheduler_factor:float=0.2,
+                    lr_scheduler_type:str="plateau",
                     layernorm_lstm_cell:bool=True,
                     gnn_aggregation:str="add",
                     model_save_path:str=None,
@@ -55,6 +56,7 @@ class Config:
         self.clip_gradient_norm = clip_gradient_norm
         self.lr_scheduler_patience = lr_scheduler_patience
         self.lr_scheduler_factor = lr_scheduler_factor
+        self.lr_scheduler_type = lr_scheduler_type
         self.layernorm_lstm_cell = layernorm_lstm_cell
         self.gnn_aggregation = gnn_aggregation
         self.model_save_path = model_save_path
@@ -84,6 +86,7 @@ class ExperimentConfig:
                     clip_gradient_norm:float=0.65,
                     lr_scheduler_patience:int=10,
                     lr_scheduler_factor:float=0.2,
+                    lr_scheduler_type:str="plateau",
                     layernorm_lstm_cell:bool=True,
                     gnn_aggregation:str="add",
                     model_save_path:str=None,
@@ -110,6 +113,7 @@ class ExperimentConfig:
         self.clip_gradient_norm = clip_gradient_norm
         self.lr_scheduler_patience = lr_scheduler_patience
         self.lr_scheduler_factor = lr_scheduler_factor
+        self.lr_scheduler_type = lr_scheduler_type
         self.layernorm_lstm_cell = layernorm_lstm_cell
         self.gnn_aggregation = gnn_aggregation
         self.model_save_path = model_save_path
@@ -140,6 +144,7 @@ class ExperimentConfig:
                 clip_gradient_norm=self.clip_gradient_norm,
                 lr_scheduler_factor=self.lr_scheduler_factor,
                 lr_scheduler_patience=self.lr_scheduler_patience,
+                lr_scheduler_type=self.lr_scheduler_type,
                 layernorm_lstm_cell=self.layernorm_lstm_cell,
                 gnn_aggregation=self.gnn_aggregation,
                 model_save_path=self.model_save_path
@@ -183,6 +188,7 @@ class ExperimentConfig:
                 clip_gradient_norm=self.clip_gradient_norm,
                 lr_scheduler_factor=self.lr_scheduler_factor,
                 lr_scheduler_patience=self.lr_scheduler_patience,
+                lr_scheduler_type=self.lr_scheduler_type,
                 layernorm_lstm_cell = self.layernorm_lstm_cell,
                 gnn_aggregation=self.gnn_aggregation,
                 model_save_path=self.model_save_path

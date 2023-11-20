@@ -2,7 +2,7 @@ import ast
 from typing import Dict, List
 import xml.etree.ElementTree as ET
 try:
-    from parsing.variable_parsing import *
+    from generic_xcsp.variable_parsing import *
 except:
     from variable_parsing import *
 

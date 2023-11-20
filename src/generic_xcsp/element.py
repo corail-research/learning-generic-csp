@@ -1,5 +1,5 @@
 try:
-    from parsing.variable_parsing import *
+    from generic_xcsp.variable_parsing import *
 except:
     from variable_parsing import *
 from typing import List, Dict

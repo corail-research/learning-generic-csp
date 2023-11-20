@@ -13,6 +13,7 @@ class GenericModel(AdaptedNeuroSAT):
                 in_channels:Dict[str, int],
                 out_channels:Dict[str, int],
                 hidden_size:Dict[str, int]=128,
+                num_mlp_layers:int=3,
                 num_passes:int=20,
                 device="cpu",
                 layernorm_lstm_cell:bool=True,
@@ -24,15 +25,16 @@ class GenericModel(AdaptedNeuroSAT):
             in_channels (Dict[str, int]): Dict mapping node type to the number of input features
             out_channels (Dict[str, int]): Dict mapping node type to the number of output features
             hidden_size (Dict[str, int], optional): Dict mapping node types to number of hidden channels. Defaults to 128.
+            num_mlp_layers (int): number of MLP layers
             num_passes (int): number of LSTM passes
             device (str): device where computations happen
-            flip_inputs (bool): whether or not to flip the inputs for variable hidden states
             layernorm_lstm_cell (bool): whether or not to use the layernorm lstm cell
         """
         super(AdaptedNeuroSAT, self).__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.hidden_size = hidden_size
+        self.num_mlp_layers = num_mlp_layers
         self.num_passes = num_passes
         self.device = device
         self.projection_layers = torch.nn.ModuleDict()
@@ -40,7 +42,7 @@ class GenericModel(AdaptedNeuroSAT):
         # self.vote_input_size = sum([hidden_size[node_type] for node_type in metadata[0]])
         self.voting_MLPs = torch.nn.ModuleDict()
         for node_type in metadata[0]:
-            self.voting_MLPs[node_type] = MLP(self.hidden_size[node_type], 2, 1, self.hidden_size[node_type], device=self.device)
+            self.voting_MLPs[node_type] = MLP(self.hidden_size[node_type], self.num_mlp_layers, 1, self.hidden_size[node_type], device=self.device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
         self.lstm_conv_layers = NeuroSatLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, layernorm_lstm_cell=layernorm_lstm_cell, **kwargs)
         for node_type in metadata[0]:
@@ -76,13 +78,14 @@ class NeuroSatLSTMConv(LSTMConvV1):
     has not yet been passed through an MLP layer. Instead, it concatenates the input features 
     coming from the neighboring nodes before passing them through the MLP.
     """
-    def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, layernorm_lstm_cell=True, **kwargs):
+    def __init__(self, in_channels:Dict, out_channels:Dict, num_mlp_layers:int, device=None, metadata=None, layernorm_lstm_cell=True, **kwargs):
         super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata, **kwargs)
         self.device = device if device is not None else torch.device('cpu')
         self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
         self.input_type_per_node_type = self.get_input_per_node_type(metadata[1], metadata[0])
         self.lstm_cells = torch.nn.ModuleDict()
         self.mlp_blocks = torch.nn.ModuleDict()
+        self.num_mlp_layers = num_mlp_layers
         self.lstm_sizes = {}
 
         for node_type in metadata[0]:            
@@ -90,7 +93,7 @@ class NeuroSatLSTMConv(LSTMConvV1):
             for edge_type in self.entering_edges_per_node_type[node_type]:
                 src_node_type = edge_type[0]
                 mlp_input_size = in_channels[src_node_type]
-                self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, 2, hidden_size, hidden_size, device=self.device)
+                self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, self.num_mlp_layers, hidden_size, hidden_size, device=self.device)
             lstm_input_size = sum([in_channels[src_node_type] for src_node_type in self.input_type_per_node_type[node_type]])            
             self.lstm_sizes[node_type] = lstm_input_size
             

@@ -1,6 +1,6 @@
 try:
-    import parsing.variable_parsing as variable_parsing
-    import parsing.constraints as constraints_parsing
+    import generic_xcsp.variable_parsing as variable_parsing
+    import generic_xcsp.constraints as constraints_parsing
 except:
     import variable_parsing
     import constraints as constraints_parsing

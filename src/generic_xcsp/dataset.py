@@ -11,8 +11,8 @@ if __name__ == "__main__":
     from .instance import parse_instance
     from .graph_builder import XCSP3GraphBuilder
 else:
-    from parsing.instance import parse_instance
-    from parsing.graph_builder import XCSP3GraphBuilder
+    from generic_xcsp.instance import parse_instance
+    from generic_xcsp.graph_builder import XCSP3GraphBuilder
 
 def files_exist(files: List[str]) -> bool:
     # NOTE: We return `False` in case `files` is empty, leading to a

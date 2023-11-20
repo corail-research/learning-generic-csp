@@ -2,7 +2,7 @@ import ast
 from typing import List, Dict
 import xml
 try:
-    from parsing.variable_parsing import *
+    from generic_xcsp.variable_parsing import *
 except:
     from variable_parsing import *
 

@@ -1,5 +1,5 @@
 try:
-    from parsing.instance import XCSP3Instance
+    from generic_xcsp.instance import XCSP3Instance
 except:
     from instance import XCSP3Instance
 from typing import List
