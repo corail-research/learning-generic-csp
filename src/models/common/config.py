@@ -21,8 +21,6 @@ class Config:
                     data_path:str=None,
                     use_sampler_loader:bool=False,
                     weight_decay:float=0.0000001,
-                    num_epochs_lr_warmup:int=5,
-                    num_epochs_lr_decay:int=20,
                     lr_decay_factor:float=0.8,
                     generic_representation:bool=False,
                     clip_gradient_norm:float=0.65,
@@ -49,8 +47,6 @@ class Config:
         self.data_path = data_path
         self.use_sampler_loader = use_sampler_loader
         self.weight_decay = weight_decay
-        self.num_epochs_lr_warmup = num_epochs_lr_warmup
-        self.num_epochs_lr_decay = num_epochs_lr_decay
         self.lr_decay_factor = lr_decay_factor
         self.generic_representation = generic_representation
         self.clip_gradient_norm = clip_gradient_norm
@@ -79,8 +75,6 @@ class ExperimentConfig:
                     data_path:str=None,
                     use_sampler_loader:bool=False,
                     weight_decay:List[float]=[0.0000001],
-                    num_epochs_lr_warmup:int=5,
-                    num_epochs_lr_decay:int=20,
                     lr_decay_factor:float=0.8,
                     generic_representation:bool=False,
                     clip_gradient_norm:float=0.65,
@@ -106,8 +100,6 @@ class ExperimentConfig:
         self.data_path = data_path
         self.use_sampler_loader = use_sampler_loader
         self.weight_decay = weight_decay
-        self.num_epochs_lr_warmup = num_epochs_lr_warmup
-        self.num_epochs_lr_decay = num_epochs_lr_decay
         self.lr_decay_factor = lr_decay_factor
         self.generic_representation = generic_representation
         self.clip_gradient_norm = clip_gradient_norm
@@ -137,8 +129,6 @@ class ExperimentConfig:
                 nodes_per_batch=params[7],
                 data_path=self.data_path,
                 use_sampler_loader=self.use_sampler_loader,
-                num_epochs_lr_warmup=self.num_epochs_lr_warmup,
-                num_epochs_lr_decay=self.num_epochs_lr_decay,
                 lr_decay_factor=self.lr_decay_factor,
                 generic_representation=self.generic_representation,
                 clip_gradient_norm=self.clip_gradient_norm,
@@ -181,8 +171,6 @@ class ExperimentConfig:
                 nodes_per_batch=params[7],
                 data_path=self.data_path,
                 use_sampler_loader=self.use_sampler_loader,
-                num_epochs_lr_warmup=self.num_epochs_lr_warmup,
-                num_epochs_lr_decay=self.num_epochs_lr_decay,
                 lr_decay_factor=self.lr_decay_factor,
                 generic_representation=self.generic_representation,
                 clip_gradient_norm=self.clip_gradient_norm,

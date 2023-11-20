@@ -37,8 +37,6 @@ if __name__ == "__main__":
     nodes_per_batch= [12000]
     use_sampler_loader = False
     weight_decay = [0.0000000001]
-    num_epochs_lr_warmup = 5
-    num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
     generic_representation = True
     target_deviation = 0.02
@@ -64,8 +62,6 @@ if __name__ == "__main__":
         data_path=data_path,
         use_sampler_loader=use_sampler_loader,
         weight_decay=weight_decay,
-        num_epochs_lr_warmup=num_epochs_lr_warmup,
-        num_epochs_lr_decay=num_epochs_lr_decay,
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
         target_deviation=target_deviation,

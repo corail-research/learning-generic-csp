@@ -50,8 +50,6 @@ if __name__ == "__main__":
     nodes_per_batch = [12000]
     use_sampler_loader = False
     weight_decay = [0.0000000001]
-    num_epochs_lr_warmup = 5
-    num_epochs_lr_decay = 20
     lr_decay_factor = 0.5
     generic_representation = True
     gnn_aggregation = "add"
@@ -94,8 +92,6 @@ if __name__ == "__main__":
         data_path=data_path,
         use_sampler_loader=use_sampler_loader,
         weight_decay=weight_decay,
-        num_epochs_lr_warmup=num_epochs_lr_warmup,
-        num_epochs_lr_decay=num_epochs_lr_decay,
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
         lr_scheduler_patience=10,
@@ -159,8 +155,10 @@ if __name__ == "__main__":
             config=params,
             group=group
         )
-        if params.lr_scheduler_patience is not None:
+        if params.lr_scheduler_type == "plateau":
             lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=params.lr_scheduler_factor, patience=params.lr_scheduler_patience, verbose=True)
+        elif params.lr_scheduler_type == "step":
+            lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=params.lr_scheduler_patience, gamma=params.lr_scheduler_factor, verbose=True)
         else:
             lr_scheduler = None
         train_model(

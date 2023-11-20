@@ -44,7 +44,7 @@ class GenericModel(AdaptedNeuroSAT):
         for node_type in metadata[0]:
             self.voting_MLPs[node_type] = MLP(self.hidden_size[node_type], self.num_mlp_layers, 1, self.hidden_size[node_type], device=self.device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
-        self.lstm_conv_layers = NeuroSatLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, layernorm_lstm_cell=layernorm_lstm_cell, **kwargs)
+        self.lstm_conv_layers = NeuroSatLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, num_mlp_layers=num_mlp_layers, metadata=metadata, device=device, layernorm_lstm_cell=layernorm_lstm_cell, **kwargs)
         for node_type in metadata[0]:
             projection_layer = torch.nn.Linear(in_channels[node_type], hidden_size[node_type], bias=False)
             torch.nn.init.normal_(projection_layer.weight, mean=0.0, std=1)
