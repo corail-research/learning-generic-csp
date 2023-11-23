@@ -83,6 +83,7 @@ class GenericGNNTSP(AdaptedNeuroSAT):
                  num_passes:int=32,
                  device="cpu",
                  layernorm_lstm_cell:bool=True,
+                 num_mlp_layers:int=3,
                  **kwargs
             ):
         """
@@ -104,9 +105,10 @@ class GenericGNNTSP(AdaptedNeuroSAT):
         self.device = device
         self.projection_layers = torch.nn.ModuleDict()
         self.projection_division = {}
-        self.vote = MLP(hidden_size["x"], 2, 1, hidden_size["x"], device=device)
+        self.num_mlp_layers = num_mlp_layers
+        self.vote = MLP(hidden_size["x"], num_mlp_layers, 1, hidden_size["x"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
-        self.lstm_conv_layers = DTSPLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, layernorm_lstm_cell=layernorm_lstm_cell)
+        self.lstm_conv_layers = DTSPLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, layernorm_lstm_cell=layernorm_lstm_cell, num_mlp_layers=num_mlp_layers)
         for node_type in metadata[0]:
             if node_type == "x" or node_type == "distance":
                 self.projection_layers[node_type] = MLPCustom([8, 16, 32], in_channels[node_type], hidden_size[node_type], device=device)
@@ -146,7 +148,7 @@ class DTSPLSTMConv(LSTMConvV1):
     has not yet been passed through an MLP layer. Instead, it concatenates the input features 
     coming from the neighboring nodes before passing them through the MLP.
     """
-    def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, layernorm_lstm_cell=True, **kwargs):
+    def __init__(self, in_channels:Dict, out_channels:Dict, device=None, metadata=None, layernorm_lstm_cell=True, num_mlp_layers:int=3, **kwargs):
         super().__init__(in_channels=in_channels, out_channels=out_channels, device=device, metadata=metadata, **kwargs)
         self.device = device if device is not None else torch.device('cpu')
         self.entering_edges_per_node_type = self.get_entering_edge_types_per_node_type(metadata[1], metadata[0])
@@ -154,13 +156,14 @@ class DTSPLSTMConv(LSTMConvV1):
         self.lstm_cells = torch.nn.ModuleDict()
         self.mlp_blocks = torch.nn.ModuleDict()
         self.lstm_sizes = {}
+        self.num_mlp_layers = num_mlp_layers
 
         for node_type in metadata[0]:            
             hidden_size = in_channels[node_type]
             for edge_type in self.entering_edges_per_node_type[node_type]:
                 src_node_type = edge_type[0]
                 mlp_input_size = in_channels[src_node_type]
-                self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, 2, hidden_size, hidden_size, device=self.device)
+                self.mlp_blocks[str(edge_type)] = MLP(mlp_input_size, num_mlp_layers, hidden_size, hidden_size, device=self.device)
             lstm_input_size = sum([in_channels[src_node_type] for src_node_type in self.input_type_per_node_type[node_type]])            
             self.lstm_sizes[node_type] = lstm_input_size
             if layernorm_lstm_cell:
