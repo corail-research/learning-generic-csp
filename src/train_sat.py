@@ -19,31 +19,46 @@ from models.sat.config import SATExperimentConfig
 from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
 from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
 
+import random
+import numpy as np
+
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+
 if __name__ == "__main__":
     import math
     search_method = "grid"  # Set to either "grid" or "random"
     # data_path = r"./src/models/sat/generic/temp_remote_date" # local
     data_path = r"/scratch1/boileo/sat/data/sat_specific" # servercd 
+    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\generic\train"
     # Hyperparameters for grid search or random search
-    batch_sizes = [2]
-    hidden_units = [128, 256]
-    start_learning_rates = [0.00002]
+    batch_sizes = [128]
+    # batch_sizes = [2]
+    hidden_units = [256]
+    start_learning_rates = [0.00008]
     num_lstm_passes = [26]
     num_layers = [3]
     dropout = [0.1]
     num_epochs = 400
     device = "cuda:0"
-    train_ratio = 0.8
+    train_ratio = 0.99
     samples_per_epoch = 200000
     nodes_per_batch= [12000]
     use_sampler_loader = False
     weight_decay = [0.0000000001]
     lr_decay_factor = 0.8
-    generic_representation = True
+    generic_representation = False
     gnn_aggregation = "add"
     model_save_path = "./scratch1/boileo/sat/models"
     # model_save_path = r"./src/models/sat/models/"
-    
+    set_seed(42)
+
     hostname = socket.gethostname()
 
     experiment_config = SATExperimentConfig(
@@ -63,9 +78,9 @@ if __name__ == "__main__":
         weight_decay=weight_decay,
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
-        flip_inputs=False,
-        lr_scheduler_patience=10,
-        lr_scheduler_factor=0.2,
+        flip_inputs=True,
+        lr_scheduler_patience=70,
+        lr_scheduler_factor=0.5,
         layernorm_lstm_cell=True,
         gnn_aggregation=gnn_aggregation,
         model_save_path=model_save_path
@@ -130,7 +145,7 @@ if __name__ == "__main__":
             group=group
         )
         if params.lr_scheduler_patience is not None:
-            lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=params.lr_scheduler_factor, patience=params.lr_scheduler_patience, verbose=True)
+            lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=params.lr_scheduler_patience, gamma=params.lr_scheduler_factor, verbose=True)
         else:
             lr_scheduler = None
         train_model(
