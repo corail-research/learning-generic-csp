@@ -16,6 +16,7 @@ class GNNTSP(AdaptedNeuroSAT):
                  num_passes:int=32,
                  device="cpu",
                  layernorm_lstm_cell:bool=True,
+                 num_mlp_layers:int=3,
                  **kwargs
             ):
         """
@@ -39,7 +40,8 @@ class GNNTSP(AdaptedNeuroSAT):
         self.device = device
         self.projection_layers = torch.nn.ModuleDict()
         self.projection_division = {}
-        self.vote = MLP(hidden_size["arc"], 2, 1, hidden_size["arc"], device=device)
+        self.num_mlp_layers = num_mlp_layers
+        self.vote = MLP(hidden_size["arc"], num_mlp_layers, 1, hidden_size["arc"], device=device)
         lstm_hidden_sizes = {node_type: hidden_size[node_type] for node_type in metadata[0]}
         self.lstm_conv_layers = DTSPLSTMConv(lstm_hidden_sizes, lstm_hidden_sizes, metadata=metadata, device=device, layernorm_lstm_cell=layernorm_lstm_cell)
         for node_type in metadata[0]:

@@ -23,10 +23,11 @@ if __name__ == "__main__":
     search_method = "random"  # Set to either "grid" or "random"
     #data_path = r"./src/models/graph_coloring/data"
     data_path = r"/scratch1/boileo/graph_coloring/data/gc_specific"
+    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\graph_coloring\data"
     # Hyperparameters for grid search or random search
-    batch_sizes = [16]
+    batch_sizes = [128]
     hidden_units = [64]
-    start_learning_rates = [0.00002]
+    start_learning_rates = [0.00008]
     num_lstm_passes = [26]
     num_layers = [3]
     dropout = [0.1]
@@ -37,9 +38,8 @@ if __name__ == "__main__":
     nodes_per_batch= [12000]
     use_sampler_loader = False
     weight_decay = [0.0000000001]
-    num_epochs_lr_decay = 20
     lr_decay_factor = 0.8
-
+    clip_value = 0.65
     generic_representation = False
     gnn_aggregation = "add"
     model_save_path = "/scratch1/boileo/graph_coloring/models"
@@ -56,18 +56,19 @@ if __name__ == "__main__":
         num_lstm_passes=num_lstm_passes,
         device=device,
         train_ratio=train_ratio,
+        test_ratio=0.05,
         samples_per_epoch=samples_per_epoch,
         nodes_per_batch=nodes_per_batch,
         data_path=data_path,
         use_sampler_loader=use_sampler_loader,
         weight_decay=weight_decay,
-        num_epochs_lr_decay=num_epochs_lr_decay,
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
-        lr_scheduler_patience=10,
-        lr_scheduler_factor=0.2,
+        lr_scheduler_patience=50,
+        lr_scheduler_factor=0.5,
         layernorm_lstm_cell=True,
-        gnn_aggregation=gnn_aggregation
+        gnn_aggregation=gnn_aggregation,
+        clip_gradient_norm=clip_value
     )
 
     # Generate parameters based on the search method
@@ -82,7 +83,7 @@ if __name__ == "__main__":
         dataset = GraphColoringDataset(root=experiment_config.data_path, graph_type="generic")
     else:
         dataset = GraphColoringDataset(root=experiment_config.data_path, graph_type="gc_specific")
-    delimiter_index = math.floor(len(dataset) * experiment_config.train_ratio)
+    delimiter_index = math.floor(len(dataset) * (experiment_config.train_ratio))
     delimiter_index -= delimiter_index % 2 # round to the closest even number
     train_dataset = dataset[:delimiter_index]
     test_dataset = dataset[delimiter_index:]
@@ -96,7 +97,7 @@ if __name__ == "__main__":
             train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         else:
             PairBatchSampler(train_dataset, params.batch_size)
-            train_loader = DataLoader(train_dataset, batch_size=1, num_workers=0)
+            train_loader = DataLoader(train_dataset, batch_size=params.batch_size, num_workers=0)
         
         test_loader = DataLoader(test_dataset, batch_size=2048, shuffle=False, num_workers=0)
         first_batch_iter = iter(train_loader)
@@ -132,7 +133,7 @@ if __name__ == "__main__":
             criterion,
             params.num_epochs,
             samples_per_epoch=params.samples_per_epoch,
-            clip_value=experiment_config.clip_value,
+            clip_value=experiment_config.clip_gradient_norm,
             model_save_path=model_save_path,
             wandb_run_name=wandb.run.name
         )

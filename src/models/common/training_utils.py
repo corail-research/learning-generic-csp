@@ -46,7 +46,10 @@ def train_model(model, train_loader, test_loader, optimizer, lr_scheduler, crite
         test_losses.append(test_loss)
         test_metrics.append(test_metric)
         if lr_scheduler is not None:
-            lr_scheduler.step(test_loss)
+            if lr_scheduler.__class__.__name__ == "ReduceLROnPlateau":
+                lr_scheduler.step(test_loss)
+            elif lr_scheduler.__class__.__name__ == "StepLR":
+                lr_scheduler.step()
 
         print(f"Epoch: {epoch:03d}, Train loss: {train_loss:.4f}, Train acc: {train_acc:.4f}, Train time: {train_time:.2f} seconds")
         print(f"Epoch: {epoch:03d}, Test loss: {test_loss:.4f}, Test acc: {test_acc:.4f}, Test time: {test_time:.2f} seconds")
