@@ -30,20 +30,20 @@ def set_seed(seed):
 if __name__ == "__main__":
     import math
     search_method = "random"  # Set to either "grid" or "random"
-    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data"
-    data_path = r"/scratch1/boileo/dtsp/data/dtsp_specific"
+    data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data"
+    # data_path = r"/scratch1/boileo/dtsp/data/dtsp_specific"
     # Hyperparameters for grid search or random search
-    batch_sizes = [32]
+    batch_sizes = [128]
     # batch_sizes = [2]
     hidden_units = [64]
     start_learning_rates = [0.00002]
-    num_lstm_passes = [32]
+    num_lstm_passes = [2]
     num_layers = [3]
     dropout = [0.1]
-    num_epochs = 500
+    num_epochs = 2
     device = "cuda:0"
     train_ratio = 0.99
-    samples_per_epoch = 200000
+    samples_per_epoch = 1000
     nodes_per_batch= [12000]
     use_sampler_loader = False
     weight_decay = [0.0000000001]
@@ -52,7 +52,7 @@ if __name__ == "__main__":
     target_deviation = 0.02
     clip_gradient_norm = 0.65
     gnn_aggregation = "add"
-    model_save_path = "/scratch1/boileo/dtsp/models"
+    model_save_path = None #"/scratch1/boileo/dtsp/models"
     # model_save_path = "./src/models/decision_tsp/models"
     set_seed(42)
     hostname = socket.gethostname()
@@ -107,9 +107,9 @@ if __name__ == "__main__":
             train_loader = DataLoader(train_dataset, batch_size=1,  num_workers=0)
         else:
             train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
-            train_loader = DataLoader(train_dataset, batch_size=1,  num_workers=0)
+            train_loader = DataLoader(train_dataset, batch_size=params.batch_size,  num_workers=0)
         
-        test_loader = DataLoader(test_dataset, batch_size=2, shuffle=False, num_workers=0)
+        test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
         first_batch_iter = iter(test_loader)
         first_batch = next(first_batch_iter)
         metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
@@ -137,21 +137,9 @@ if __name__ == "__main__":
             lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=params.lr_scheduler_patience, gamma=params.lr_scheduler_factor, verbose=True)
         else:
             lr_scheduler = None
-        train_model(
-            model,
-            train_loader,
-            test_loader,
-            optimizer,
-            lr_scheduler,
-            criterion,
-            params.num_epochs,
-            samples_per_epoch=params.samples_per_epoch,
-            clip_value=experiment_config.clip_gradient_norm,
-            model_save_path=params.model_save_path,
-            wandb_run_name=wandb.run.name
-        )
+        train_model(model,train_loader,test_loader,optimizer,lr_scheduler,criterion,params.num_epochs,samples_per_epoch=params.samples_per_epoch,clip_value=experiment_config.clip_gradient_norm,model_save_path=params.model_save_path,wandb_run_name=wandb.run.name)
         # profile = cProfile.Profile()
-        # profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=experiment_config.clip_gradient_norm)')
+        # profile.run('train_model(model,train_loader,test_loader,optimizer,lr_scheduler,criterion,params.num_epochs,samples_per_epoch=params.samples_per_epoch,clip_value=experiment_config.clip_gradient_norm,model_save_path=params.model_save_path,wandb_run_name=wandb.run.name)')
 
         # stats = pstats.Stats(profile)
         # stats.sort_stats('tottime')
