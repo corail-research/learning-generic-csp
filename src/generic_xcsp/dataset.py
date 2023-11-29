@@ -79,27 +79,23 @@ class XCSP3Dataset(Dataset):
             self.raw_paths
         num_files_to_process = len(self.raw_paths)
         num_digits = len(str(num_files_to_process)) # zero pad the file names so that they are sorted correctly
-        
+        data_list = []
         pbar = tqdm(total=num_files_to_process, position=0)
         for current_pair, filepath in enumerate(self.raw_paths):
             pbar.update(1)
             xcsp3_instance = parse_instance(filepath, optimal_deviation_factor=self.target_deviation)
-            
             graph_builder = XCSP3GraphBuilder(xcsp3_instance, filepath)
-            
             data = graph_builder.get_graph_representation()
             
             if type(data) == tuple:
-                filename_true = f"data_{str(current_pair).zfill(num_digits)}_{0}.pt"
-                out_path_true = os.path.join(self.processed_dir, filename_true)
-                torch.save(data[0], out_path_true, _use_new_zipfile_serialization=False)
-                filename_false = f"data_{str(current_pair).zfill(num_digits)}_{1}.pt"
-                out_path_false = os.path.join(self.processed_dir, filename_false)
-                torch.save(data[1], out_path_false, _use_new_zipfile_serialization=False)
+                data_list.extend(data)
             else:
-                filename = f"data_{str(current_pair).zfill(num_digits)}.pt"
-                out_path = os.path.join(self.processed_dir, filename)
-                torch.save(data, out_path, _use_new_zipfile_serialization=False)
+                data_list.append(data)
+            if len(data_list) == 32:
+                batch_id = current_pair // 32
+                out_path = os.path.join(self.processed_dir, f'data_batch={batch_id}.pt')
+                torch.save(data_list, out_path, _use_new_zipfile_serialization=False)
+                data_list = []
         
         pbar.close()
     

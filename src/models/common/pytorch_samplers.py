@@ -1,6 +1,13 @@
 from typing import List, Tuple
 from torch.utils.data import Sampler, Dataset
 import random
+from torch_geometric.data import HeteroData, Batch
+
+def custom_hetero_collate_fn(batch):
+
+    flat_list = [hetero_data for sublist in batch for hetero_data in sublist]
+
+    return Batch.from_data_list(flat_list)
 
 
 class BasePairSampler(Sampler):

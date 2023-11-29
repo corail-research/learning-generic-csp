@@ -11,12 +11,12 @@ import pstats
 from generic_xcsp.generic_model import GenericModel
 from generic_xcsp.dataset import XCSP3Dataset
 from generic_xcsp.training_config import GenericExperimentConfig
-from torch_geometric.loader import DataLoader
+from torch.utils.data import DataLoader
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
 
 from models.common.training_utils import train_model
-from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
+from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler, custom_hetero_collate_fn
 
 import random
 import numpy as np
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     # project_name = "Generic-SAT"
     # project_name = "Generic-TSP"
     # project_name = "Generic-GC"
-    project_name = "Generic-Knapsack"
+    project_name = "Test"
 
     if project_name == "Generic-TSP":
         data_path = r"/scratch1/boileo/dtsp/data/generic"
@@ -120,14 +120,14 @@ if __name__ == "__main__":
     date = str(datetime.now().date())
 
     for params in search_parameters:
-        if params.use_sampler_loader:
-            train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
-            train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
-        else:
-            train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
-            train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
+        # if params.use_sampler_loader:
+        #     train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
+        #     train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
+        # else:
+        #     train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
+        train_loader = DataLoader(train_dataset, batch_size=64//32, collate_fn=custom_hetero_collate_fn, shuffle=True, num_workers=0)
         
-        test_loader = DataLoader(test_dataset, batch_size=min(1024, len(test_dataset)), shuffle=False, num_workers=0)
+        test_loader = DataLoader(test_dataset, batch_size=min(1024//32, len(test_dataset)), collate_fn=custom_hetero_collate_fn, shuffle=False, num_workers=0)
         first_batch_iter = iter(test_loader)
         first_batch = next(first_batch_iter)
         metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))

@@ -10,14 +10,15 @@ import pstats
 from models.common.lstm_conv import AdaptedNeuroSAT
 from models.sat.neurosat_model import NeuroSAT
 from models.sat.dataset import SatDataset
-from torch_geometric.loader import DataLoader
+# from torch_geometric.loader import DataLoader
+from torch.utils.data import DataLoader
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
 
 from models.common.training_utils import train_model
 from models.sat.config import SATExperimentConfig
 from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
-from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler
+from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler, custom_hetero_collate_fn
 
 import random
 import numpy as np
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     search_method = "grid"  # Set to either "grid" or "random"
     # data_path = r"./src/models/sat/generic/temp_remote_date" # local
     data_path = r"/scratch1/boileo/sat/data/sat_specific" # servercd 
-    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\generic\train"
+    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\sat_specific\train_small"
     # Hyperparameters for grid search or random search
     batch_sizes = [128]
     # batch_sizes = [2]
@@ -100,21 +101,14 @@ if __name__ == "__main__":
         dataset = SatDataset(root=experiment_config.data_path, graph_type="sat_specific", meta_connected_to_all=False, in_memory=False)
     train_dataset = dataset[:math.floor(len(dataset) * experiment_config.train_ratio)]
     test_dataset = dataset[math.floor(len(dataset) * experiment_config.train_ratio):]
-            
+    train_dataset[1]
     criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
     date = str(datetime.now().date())
 
     for params in search_parameters:
-        if params.use_sampler_loader:
-            train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
-            train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
-        else:
-            train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
-            train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
-        
-        test_loader = DataLoader(test_dataset, batch_size=1024, shuffle=False, num_workers=0)
-        first_batch_iter = iter(test_loader)
-        first_batch = next(first_batch_iter)
+        train_loader = DataLoader(train_dataset, batch_size=64//32, shuffle=True, collate_fn=custom_hetero_collate_fn, num_workers=0)
+        test_loader = DataLoader(test_dataset, batch_size=1024//32, shuffle=False, collate_fn=custom_hetero_collate_fn, num_workers=0)
+        first_batch = train_dataset[0][0]
         metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
         num_hidden_channels = params.hidden_units
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}

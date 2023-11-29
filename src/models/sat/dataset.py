@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 import torch
 from torch_geometric.data import InMemoryDataset, Dataset
 import torch_geometric
@@ -88,6 +88,7 @@ class SatDataset(Dataset):
         num_digits = len(str(num_files_to_process)) # zero pad the file names so that they are sorted correctly
         
         pbar = tqdm(total=num_files_to_process, position=0)
+        data_list = []
         for i, filepath in enumerate(self.raw_paths):
 
             current_pair = str(i // 2)
@@ -101,8 +102,11 @@ class SatDataset(Dataset):
                 data = cnf.build_generic_heterogeneous_graph(meta_connected_to_all=self.meta_connected_to_all)
             
             is_sat = filepath[-8]
-            out_path = os.path.join(self.processed_dir, f"data_{current_pair.zfill(num_digits)}_{current_element}_sat={is_sat}.pt")
-            torch.save(data, out_path, _use_new_zipfile_serialization=False)
+            data_list.append(data)
+            if i % 32 == 31 or i == num_files_to_process - 1:
+                out_path = os.path.join(self.processed_dir, f"data_positive_batch{i//32}.pt")
+                torch.save(data_list, out_path, _use_new_zipfile_serialization=False)
+                data_list = []
         
         pbar.close()
     
@@ -128,7 +132,7 @@ class SatDataset(Dataset):
             return [self[i] for i in idx]
         else:
             raise TypeError('Invalid argument type')
-    
+
     def processed_data(self) -> List[torch.Tensor]:
         processed_paths = self.processed_paths
         return [torch.load(path) for path in processed_paths]
