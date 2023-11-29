@@ -262,9 +262,9 @@ class XCSP3GraphBuilder:
             
             self.operator_to_constraint_edges.append([tuple_id, extension_constraint_id])
         # add edge between everry variable and the constraint
-        for variable_name in constraint_variables:
-            variable_id = self.variable_type_ids.get_node_id(name=variable_name)
-            self.variable_to_constraint_edges.append([variable_id, extension_constraint_id])
+        # for variable_name in constraint_variables:
+        #     variable_id = self.variable_type_ids.get_node_id(name=variable_name)
+        #     self.variable_to_constraint_edges.append([variable_id, extension_constraint_id])
         
         self.constraint_to_objective_edges.append([extension_constraint_id, 0])
         
