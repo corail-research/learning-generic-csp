@@ -131,7 +131,8 @@ class CNF:
                     if [variable_index, variable_index] not in variable_to_operator_edges:
                         variable_to_operator_edges.append([variable_index, variable_index]) # the operator index is the same as the variable index
                     operator_to_constraint_edges.append([variable_index, current_constraint_index])
-                variable_to_constraint_edges.append([variable_index, current_constraint_index])
+                else:               
+                    variable_to_constraint_edges.append([variable_index, current_constraint_index])
             meta_to_constraint_edges.append([0, current_constraint_index])
             clause_id += 1
         
