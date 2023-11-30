@@ -3,7 +3,7 @@ from ..common.config import ExperimentConfig, Config
 
 class GraphColoringConfig(Config):
     def __init__(self, 
-                    test_ratio:float=0.05
+                    test_ratio:float=0.05,
                     **kwargs
                  ):
         super().__init__(**kwargs)
@@ -12,7 +12,7 @@ class GraphColoringConfig(Config):
 class GraphColoringExperimentConfig(ExperimentConfig):
     def __init__(
                     self,
-                    test_ratio:float=0.05
+                    test_ratio:float=0.05,
                     **kwargs
                 ):
         super().__init__(**kwargs)
