@@ -12,9 +12,10 @@ from generic_xcsp.generic_model import GenericModel
 from generic_xcsp.dataset import XCSP3Dataset
 from generic_xcsp.training_config import GenericExperimentConfig
 from torch.utils.data import DataLoader
+from torch_geometric.loader import DataListLoader 
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
-
+# from torch_geometric.nn import DataParallel
 from models.common.training_utils import train_model
 from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler, custom_hetero_collate_fn
 
@@ -32,10 +33,12 @@ set_seed(42)
 
 if __name__ == "__main__":
     import math
+    import itertools
+
     search_method = "grid"  # Set to either "grid" or "random"
     # data_path = r"./src/models/sat/generic/temp_remote_date" # local
     # data_path = r"/scratch1/boileo/knapsack/data"
-    data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
+    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
     # Hyperparameters for grid search or random search
     batch_sizes = [128]
     hidden_units = [128, 256]
@@ -44,7 +47,7 @@ if __name__ == "__main__":
     num_layers = [3]
     dropout = [0.1]
     num_epochs = 1000
-    device = "cuda:0"
+    device = "cuda"
     train_ratio = 0.8
     samples_per_epoch = 100000
     nodes_per_batch = [12000]
@@ -113,8 +116,11 @@ if __name__ == "__main__":
     
     dataset = XCSP3Dataset(root=experiment_config.data_path, in_memory=False, target_deviation=0.02)
     limit_index = int(((len(dataset) * experiment_config.train_ratio) // 2) * 2)
+    
     train_dataset = dataset[:limit_index]
+    # flat_train_dataset = list(itertools.chain(*train_dataset))
     test_dataset = dataset[limit_index:]
+    # flat_test_dataset = list(itertools.chain(*test_dataset))
             
     criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
     date = str(datetime.now().date())
@@ -125,11 +131,11 @@ if __name__ == "__main__":
         #     train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
         # else:
         #     train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
-        train_loader = DataLoader(train_dataset, batch_size=64//32, collate_fn=custom_hetero_collate_fn, shuffle=True, num_workers=0)
+        train_loader = DataLoader(train_dataset, batch_size=64//32, shuffle=True, collate_fn=custom_hetero_collate_fn, num_workers=0)
         
-        test_loader = DataLoader(test_dataset, batch_size=min(1024//32, len(test_dataset)), collate_fn=custom_hetero_collate_fn, shuffle=False, num_workers=0)
-        first_batch_iter = iter(test_loader)
-        first_batch = next(first_batch_iter)
+        
+        test_loader = DataLoader(test_dataset, batch_size=min(1024, len(test_dataset)), shuffle=False, collate_fn=custom_hetero_collate_fn, num_workers=0)
+        first_batch = train_dataset[0][0]
         metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
         num_hidden_channels = params.hidden_units
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
@@ -147,6 +153,7 @@ if __name__ == "__main__":
             layernorm_lstm_cell=params.layernorm_lstm_cell,
             aggr=params.gnn_aggregation
         )
+        model = torch.nn.DataParallel(model)
         model = model.cuda()
         optimizer = torch.optim.Adam(model.parameters(),lr=params.start_learning_rate, weight_decay=params.weight_decay)
         group = hostname

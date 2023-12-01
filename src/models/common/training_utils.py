@@ -10,8 +10,9 @@ from models.decision_tsp.base_model import GNNTSP, GenericGNNTSP
 from models.graph_coloring.base_model import GCGNN
 from models.sat.neurosat_model import NeuroSAT
 import torch.nn.utils as utils
+from models.common.pytorch_samplers import custom_hetero_collate_fn
 
-
+from torch_geometric.data import Batch
 def get_args():
     parser = argparse.ArgumentParser(description="Your script description here.")
     parser.add_argument("-path", type=str, default="./data",help="Path to the data directory. Default: ./data")
@@ -74,7 +75,9 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
     
     num_samples = 0
     for data in loader:
-        data = data.to(device="cuda:0")
+        data = data.to(device="cuda")
+        small_batch_list = [data[0], data[1]]
+        data = Batch.from_data_list(small_batch_list)
         if type(model) == NeuroSAT:
             label = data["variable"].y.float()
         else: # type(model) == GNNTSP or type(model) == GenericGNNTSP or type(model) == GCGNN:
