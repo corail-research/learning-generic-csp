@@ -44,16 +44,16 @@ if __name__ == "__main__":
     # data_path = r"/scratch1/boileo/knapsack/data"
     # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
     # Hyperparameters for grid search or random search
-    batch_sizes = [64]
-    hidden_units = [4]
-    start_learning_rates = [0.00002]
-    num_lstm_passes = [2]
+    batch_sizes = [32]
+    hidden_units = [64]
+    start_learning_rates = [0.00001]
+    num_lstm_passes = [26]
     num_layers = [3]
     dropout = [0.1]
     num_epochs = 1000
     device = "cuda"
-    train_ratio = 0.8
-    samples_per_epoch = 1000
+    train_ratio = 0.99
+    samples_per_epoch = 100000
     nodes_per_batch = [12000]
     use_sampler_loader = False
     weight_decay = [0.0000000001]
@@ -101,8 +101,8 @@ if __name__ == "__main__":
         weight_decay=weight_decay,
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
-        lr_scheduler_patience=10,
-        lr_scheduler_factor=0.2,
+        lr_scheduler_patience=25,
+        lr_scheduler_factor=0.4,
         layernorm_lstm_cell=True,
         gnn_aggregation=gnn_aggregation,
         model_save_path=model_save_path,
