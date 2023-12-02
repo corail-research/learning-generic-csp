@@ -8,12 +8,38 @@ import xml.etree.ElementTree as ET
 
 def parse_element_constraint(constraint: ET.Element, instance_variables: Dict) -> Dict:
     """Parses an element constraint. Returns a dict with the parsed constraint"""
-    pass
+    elm_list_text = constraint.find("list").text
+    elm_list = elm_list_text.strip().split(" ")
+    elm_list_contains_variables = False
+    if instance_variables.contains_variable(elm_list[0]):
+        elm_list = parse_arg_variables(elm_list_text, instance_variables)
+        elm_list_contains_variables = True
+    else:
+        elm_list = [float(elm) for elm in elm_list]
+    # value_position = int(constraint.find("value").text.strip().replace("%", ""))
+    index_position = None
+    index_element = constraint.find("index")
+    if index_element is not None:
+        index_text = index_element.text.strip()
+        if instance_variables.contains_variable(index_text):
+            index_position = index_text
+        else:
+            index_position = int(index_text)
+    value_position = None
+    value_element = constraint.find("value")
+    if value_element is not None:
+        value_text = value_element.text.strip()
+        if instance_variables.contains_variable(value_text):
+            value_position = value_text
+        else:
+            value_position = int(value_text)
+            
+    return "element", {"list": elm_list, "index": index_position, "value": value_position, "list_contains_variables": elm_list_contains_variables}
+    
 
 def parse_element_group(group: ET.Element, instance_variables: Dict) -> Dict:
     """Parses an element group. Returns a dict with the parsed constraint"""
     parsed_group = []
-    # Parse the <sum> element
     elm_list_contains_variables = False
     elm_element = group.find("element")
     elm_list_text = elm_element.find("list").text
@@ -22,13 +48,18 @@ def parse_element_group(group: ET.Element, instance_variables: Dict) -> Dict:
         elm_list = parse_arg_variables(elm_list_text, instance_variables)
         elm_list_contains_variables = True
     else:
-        elm_list = [int(elm) for elm in elm_list]
+        elm_list = [float(elm) for elm in elm_list]
     
     value_position = int(elm_element.find("value").text.strip().replace("%", ""))
     index_position = None
     index_element = elm_element.find("index")
+
     if index_element is not None:
-        index_position = int(index_element.text.strip().replace("%", ""))
+        index_text = index_element.text.strip().replace("%", "")
+        if instance_variables.contains_variable(index_text):
+            index_position = parse_arg_variables(index_text, instance_variables)
+        else:
+            index_position = int(index_text)    
     
     args_elements = group.findall("args")
     for args_element in args_elements:
@@ -43,4 +74,3 @@ def parse_element_group(group: ET.Element, instance_variables: Dict) -> Dict:
 
     return "element", parsed_group
 
-# def parse_element_list

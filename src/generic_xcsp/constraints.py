@@ -74,7 +74,7 @@ def parse_constraint_section(instance_variables:Dict, block: ET.Element, constra
                 constraints[constraint_type].append(new_constraint)
 
         elif name == "element":
-            constraint_type, new_constraint = parse_element(child, instance_variables)
+            constraint_type, new_constraint = parse_element_constraint(child, instance_variables)
             if constraints.get(constraint_type) is None:
                 constraints[constraint_type] = [new_constraint]
             else:

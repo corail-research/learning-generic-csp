@@ -94,7 +94,9 @@ class XCSP3GraphBuilder:
                 for constraint in constraints:
                     self.add_intension_constraint_to_graph(constraint)
             elif constraint_type == "element":
-                pass
+                for constraint in constraints:
+                    self.add_element_constraint_to_graph(constraint)
+
         self.add_objective_to_graph()
         if self.operator_features:
             self.operator_features = self.one_hot_encode(self.operator_features, self.operator_node_values)
@@ -261,10 +263,6 @@ class XCSP3GraphBuilder:
                 self.operator_features.append(combo_subtype_id)
             
             self.operator_to_constraint_edges.append([tuple_id, extension_constraint_id])
-        # add edge between everry variable and the constraint
-        # for variable_name in constraint_variables:
-        #     variable_id = self.variable_type_ids.get_node_id(name=variable_name)
-        #     self.variable_to_constraint_edges.append([variable_id, extension_constraint_id])
         
         self.constraint_to_objective_edges.append([extension_constraint_id, 0])
         
@@ -358,6 +356,53 @@ class XCSP3GraphBuilder:
         
         self.constraint_to_objective_edges.append([intension_id, 0])
 
+    def add_element_constraint_to_graph(self, constraint):
+        index = constraint["index"]
+        value = constraint["value"]
+        element_list = constraint["list"]
+        element_subtype_id = self.constraint_type_ids.add_subtype_id("element")["id"]
+        element_id = self.constraint_type_ids.add_node_id("element")
+        self.constraint_features.append(element_subtype_id)
+        element_index_operator_subtype_id = self.operator_type_ids.add_subtype_id("element_index")["id"]
+        element_index_operator_id = self.operator_type_ids.add_node_id("element_index")
+        self.operator_features.append(element_index_operator_subtype_id)
+        element_value_operator_subtype_id = self.operator_type_ids.add_subtype_id("element_value")["id"]
+        element_value_operator_id = self.operator_type_ids.add_node_id("element_value")
+        self.operator_features.append(element_value_operator_subtype_id)
+        element_list_assignment_operator_subtype_id = self.operator_type_ids.add_subtype_id("element_list_assignment")["id"]
+
+        for i, current_element in enumerate(element_list):
+            element_assignment_name = "elm_assignment_" + str(current_element)
+            element_assignment_id = self.operator_type_ids.get_node_id(name=element_assignment_name)
+            if not element_assignment_id:
+                element_assignment_id = self.operator_type_ids.add_node_id(subtype_name="element_list_assignment", name=element_assignment_name)
+                self.operator_features.append(element_list_assignment_operator_subtype_id)
+            if type(current_element) == float or type(current_element) == int:
+                current_element_id = self.value_type_ids.get_node_id(name=current_element)
+                self.value_to_operator_edges.append([current_element_id, element_assignment_id])
+            else:
+                current_element_id = self.variable_type_ids.get_node_id(name=current_element)
+                self.variable_to_operator_edges.append([current_element_id, element_assignment_id])
+            self.operator_to_constraint_edges.append([element_assignment_id, element_id])
+        
+        if type(index) == float or type(index) == int:
+            index_id = self.value_type_ids.get_node_id(name=index)
+            self.value_to_operator_edges.append([index_id, element_index_operator_id])
+        else:
+            index_id = self.variable_type_ids.get_node_id(name=index)
+            self.variable_to_operator_edges.append([index_id, element_index_operator_id])
+        self.operator_to_constraint_edges.append([element_index_operator_id, element_id])
+        
+        if type(value) == float or type(value) == int:
+            value_id = self.value_type_ids.get_node_id(name=value)
+            self.value_to_operator_edges.append([value_id, element_value_operator_id])
+        else:
+            value_id = self.variable_type_ids.get_node_id(name=value)
+            self.variable_to_operator_edges.append([value_id, element_value_operator_id])
+        self.operator_to_constraint_edges.append([element_value_operator_id, element_id])
+        
+        self.constraint_to_objective_edges.append([element_id, 0])
+
     def one_hot_encode(self, subtype_ids, id_to_value={}):
         """
         Creates a one-hot encoding of a list of integers.
@@ -426,7 +471,8 @@ if __name__ == "__main__":
     # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text.xml"
     # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\sample_problems\ClockTriplet-03-12_c22.xml"
     # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\knapsack_instances\instance_1.xml"
-    filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\graph_coloring_instances\data0_0.xml"
+    # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\graph_coloring_instances\data0_0.xml"
+    filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data\raw_elem\0.xml"
     instance = parse_instance(filepath)
     graph_builder = XCSP3GraphBuilder(instance, filepath)
     graph_builder.get_graph_representation()
