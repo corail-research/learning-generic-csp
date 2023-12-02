@@ -10,7 +10,6 @@ from models.decision_tsp.base_model import GNNTSP, GenericGNNTSP
 from models.graph_coloring.base_model import GCGNN
 from models.sat.neurosat_model import NeuroSAT
 import torch.nn.utils as utils
-from models.common.pytorch_samplers import custom_hetero_collate_fn
 
 from torch_geometric.data import Batch
 def get_args():
