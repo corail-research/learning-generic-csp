@@ -1,12 +1,14 @@
 from typing import List
 import torch
-from torch_geometric.data import InMemoryDataset, Dataset
+from torch_geometric.data import InMemoryDataset, Dataset, Batch
 import torch_geometric
 from torch_geometric.data.makedirs import makedirs
 from tqdm import tqdm
 import re
 import os
 import sys
+
+
 if __name__ == "__main__":
     from .instance import parse_instance
     from .graph_builder import XCSP3GraphBuilder
@@ -94,7 +96,8 @@ class XCSP3Dataset(Dataset):
             if len(data_list) == 32:
                 batch_id = current_pair // 32
                 out_path = os.path.join(self.processed_dir, f'data_batch={batch_id}.pt')
-                torch.save(data_list, out_path, _use_new_zipfile_serialization=False)
+                batched = Batch.from_data_list(data_list)
+                torch.save(batched, out_path, _use_new_zipfile_serialization=False)
                 data_list = []
         
         pbar.close()
