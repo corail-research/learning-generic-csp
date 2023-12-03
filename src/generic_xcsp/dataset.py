@@ -28,7 +28,7 @@ def _repr(obj) -> str:
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
 class XCSP3Dataset(Dataset):
-    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, target_deviation=0.02, in_memory: bool=True):
+    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, target_deviation=0.02, batch_size:int=32, in_memory: bool=True):
         """
         Args:
             root : directory containing the dataset. This directory contains 2 sub-directories: raw (raw data) and processed (processed data)
@@ -39,6 +39,7 @@ class XCSP3Dataset(Dataset):
         self.sorted_raw_paths = None
         self.sorted_processed_paths = None
         self.target_deviation = target_deviation
+        self.batch_size = batch_size
         super(XCSP3Dataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
         if self.in_memory:
             self.data = self.processed_data()
@@ -93,8 +94,8 @@ class XCSP3Dataset(Dataset):
                 data_list.extend(data)
             else:
                 data_list.append(data)
-            if len(data_list) == 32:
-                batch_id = current_pair // 32
+            if len(data_list) == self.batch_size:
+                batch_id = current_pair // self.batch_size
                 out_path = os.path.join(self.processed_dir, f'data_batch={batch_id}.pt')
                 batched = Batch.from_data_list(data_list)
                 torch.save(batched, out_path, _use_new_zipfile_serialization=False)
@@ -139,5 +140,5 @@ class XCSP3Dataset(Dataset):
         return data
 
 if __name__ == "__main__":
-    data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data"
+    data_path = r"/scratch1/boileo/dtsp/data/generic_batched"
     dataset = XCSP3Dataset(root=data_path)
