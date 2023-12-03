@@ -9,17 +9,13 @@ import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 import cProfile
 import pstats
-# from models.common.lstm_conv import AdaptedNeuroSAT
 from generic_xcsp.generic_model import GenericModel
 from generic_xcsp.dataset import XCSP3Dataset
 from generic_xcsp.training_config import GenericExperimentConfig
-from torch.utils.data import DataLoader
-from torch.nn.parallel import DistributedDataParallel
-from torch.utils.data.distributed import DistributedSampler
-from torch_geometric.loader import DataListLoader 
+
+from torch_geometric.loader import DataLoader
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
-# from torch_geometric.nn import DataParallel
 from models.common.training_utils import train_model
 from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler, custom_batch_collate_fn
 
@@ -38,20 +34,26 @@ set_seed(42)
 if __name__ == "__main__":
     import math
     import itertools
+    from models.decision_tsp import xml_element_generator
+
+    base_files_directory = r"/scratch2/boileo/dtsp/data/generic_element_batched/raw_graph"
+    xml_files_directory = r"/scratch2/boileo/dtsp/data/generic_element_batched/raw"
+    xml_element_generator.generate_xml_files(base_files_directory, xml_files_directory)
+
 
     search_method = "grid"  # Set to either "grid" or "random"
     # data_path = r"./src/models/sat/generic/temp_remote_date" # local
     # data_path = r"/scratch1/boileo/knapsack/data"
     # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
     # Hyperparameters for grid search or random search
-    batch_sizes = [32]
-    hidden_units = [64]
-    start_learning_rates = [0.00001]
-    num_lstm_passes = [26]
+    batch_sizes = [128]
+    hidden_units = [128]
+    start_learning_rates = [0.00002]
+    num_lstm_passes = [30]
     num_layers = [3]
     dropout = [0.1]
     num_epochs = 1000
-    device = "cuda"
+    device = "cuda:0"
     train_ratio = 0.99
     samples_per_epoch = 100000
     nodes_per_batch = [12000]
@@ -62,12 +64,15 @@ if __name__ == "__main__":
     gnn_aggregation = "add"
     model_save_path = None
     # project_name = "Generic-SAT"
-    project_name = "Generic-TSP"
+    project_name = "Knapsack"
     # project_name = "Generic-GC"
 #    project_name = "Test"
 
     if project_name == "Generic-TSP":
         data_path = r"/scratch1/boileo/dtsp/data/generic_batched"
+        model_save_path = r"/scratch1/boileo/dtsp/models"
+    elif project_name == "Generic-TSP-Element":
+        data_path = r"/scratch2/boileo/dtsp/data/generic_element_batched"
         model_save_path = r"/scratch1/boileo/dtsp/models"
     elif project_name == "Generic-GC":
         data_path = r"/scratch1/boileo/graph_coloring/data/generic"
@@ -118,7 +123,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid search_method. Must be 'grid' or 'random'")
     
-    dataset = XCSP3Dataset(root=experiment_config.data_path, in_memory=False, target_deviation=0.02)
+    dataset = XCSP3Dataset(root=experiment_config.data_path, in_memory=False, batch_size=batch_sizes[0], target_deviation=0.02)
     limit_index = int(((len(dataset) * experiment_config.train_ratio) // 2) * 2)
     
     train_dataset = dataset[:limit_index]
@@ -129,24 +134,19 @@ if __name__ == "__main__":
     
 
     for params in search_parameters:
-        # if params.use_sampler_loader:
-        #     train_sampler = PairNodeSampler(train_dataset, params.nodes_per_batch)
-        #     train_loader = DataLoader(train_dataset, batch_size=1, sampler=train_sampler, num_workers=0)
-        # else:
-        #     train_sampler = PairBatchSampler(train_dataset, params.batch_size) 
-
-
-        # train_loader = DataLoader(train_dataset, batch_size=128, sampler=train_sampler)
+        # break
+    
         train_loader = DataLoader(train_dataset, batch_size=32//32, shuffle=True, collate_fn=custom_batch_collate_fn, num_workers=0)
-        
         test_loader = DataLoader(test_dataset, batch_size=min(32//32, len(test_dataset)), shuffle=False, collate_fn=custom_batch_collate_fn, num_workers=0)
+        # train_loader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=False, sampler=train_sampler, num_workers=0)
+        # test_loader = DataLoader(test_dataset, batch_size=min(1024, len(test_dataset)), shuffle=False,  num_workers=0)
         first_batch = train_dataset[0][0]
         metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
         num_hidden_channels = params.hidden_units
         input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
         hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
         out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        # model_type = "sat_spec"
+        
         model = GenericModel(
             metadata=metadata,
             in_channels=input_size,
@@ -167,12 +167,9 @@ if __name__ == "__main__":
             config=params,
             group=group
         )
-        if params.lr_scheduler_type == "plateau":
-            lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=params.lr_scheduler_factor, patience=params.lr_scheduler_patience, verbose=True)
-        elif params.lr_scheduler_type == "step":
-            lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=params.lr_scheduler_patience, gamma=params.lr_scheduler_factor, verbose=True)
-        else:
-            lr_scheduler = None
+        
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=params.lr_scheduler_patience, gamma=params.lr_scheduler_factor, verbose=True)
+        
         train_model(
             model,
             train_loader,
@@ -186,10 +183,5 @@ if __name__ == "__main__":
             model_save_path=params.model_save_path,
             wandb_run_name=wandb.run.name
         )
-        # profile = cProfile.Profile()
-        # profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=0.65)')
-
-        # stats = pstats.Stats(profile)
-        # stats.sort_stats('tottime')
-        # stats.print_stats()
-        wandb.finish() 
+        
+        wandb.finish()

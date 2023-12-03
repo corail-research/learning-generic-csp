@@ -150,4 +150,5 @@ class PairBatchSampler(BasePairSampler):
         Returns:
             int: The total number of batches in the sampler.
         """
-        return len(self.pair_list) // (self.batch_size // 2)
+        # return len(self.pair_list) // (self.batch_size // 2)
+        return  len(self.pair_list) * 2
