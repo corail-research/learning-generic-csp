@@ -75,8 +75,6 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
     num_samples = 0
     for data in loader:
         data = data.to(device="cuda")
-        small_batch_list = [data[0], data[1]]
-        data = Batch.from_data_list(small_batch_list)
         if type(model) == NeuroSAT:
             label = data["variable"].y.float()
         else: # type(model) == GNNTSP or type(model) == GenericGNNTSP or type(model) == GCGNN:
