@@ -34,6 +34,69 @@ class XCSP3GraphBuilder:
         self.constraint_type_ids = SubTypeIDManager("self.constraint_features")
         self.filename = filename
     
+    def get_marty_et_al_graph_representation(self):
+        """Builds a heterogeneous graph representation based on the "generic" representation of Marty et al.
+        Returns:
+            data (torch_geometric.data.HeteroData): graph for the SAT problem
+        
+        Edge Types:
+        - value_to_operator: value -> operator (for combo operators used in extension self.constraint_features)
+        - variable_to_value: variable -> value
+        - variable_to_constraint: variable -> constraint
+        """
+        int_value_subtype_dict = self.value_type_ids.add_subtype_id("int")
+        real_value_subtype_dict = self.value_type_ids.add_subtype_id("real")
+        for value in self.domain_union:
+            value_type = "int" if isinstance(value, int) else "real"
+            self.value_type_ids.add_node_id(subtype_name=value_type, name=value)
+            current_value_features = [value]
+            self.value_features.append(current_value_features)
+        
+        base_variables = self.instance.get_all_variables()
+
+        for var_name, var in base_variables.items():
+            variable_type = var.variable_type
+            self.variable_type_ids.add_node_id(subtype_name=variable_type, name=var_name) # type of the variable?
+            current_variable_features = [len(var.domain), 0]
+            self.variable_features.append(current_variable_features)
+
+        for variable_name, variable in base_variables.items():
+            for value in variable.domain:
+                variable_id = self.variable_type_ids.get_node_id(name=variable_name)
+                value_id = self.value_type_ids.get_node_id(name=value)
+                new_pair = [variable_id, value_id]
+                self.variable_to_value_edges.append(new_pair)
+        
+        for constraint_type, constraints in self.instance.constraints.items():
+
+            if constraint_type == "extension":
+                for constraint in constraints:
+                    self.add_extension_marty_et_al(constraint)
+            elif constraint_type == "sum":
+                for constraint in constraints:
+                    self.add_sum_marty_et_al(constraint)
+            elif constraint_type == "allDifferent":
+                for constraint in constraints:
+                    self.add_all_different_marty_et_al(constraint)
+            elif constraint_type == "intension":
+                for constraint in constraints:
+                    self.add_intension_marty_et_al(constraint)
+            elif constraint_type == "element":
+                for constraint in constraints:
+                    self.add_element_marty_et_al(constraint)
+        
+        self.constraint_features = self.one_hot_encode(self.constraint_features)
+        if self.instance.optimal_deviation_factor is not None:
+            data_positive, data_negative = self.build_positive_and_negative_pair()
+            data_positive.filename = self.filename
+            data_negative.filename = self.filename
+
+            return data_positive, data_negative
+        else:
+            data = self.build_graph()
+            data.filename = self.filename
+        return data
+
     def get_graph_representation(self) -> HeteroData:
         """Builds a heterogeneous graph representation of the instance
         Returns:
@@ -145,9 +208,9 @@ class XCSP3GraphBuilder:
         if self.constraint_features:
             data_positive["constraint"].x = torch.Tensor(self.constraint_features)
             data_negative["constraint"].x = torch.Tensor(self.constraint_features)
-        
-        data_positive["objective"].x = torch.Tensor([objective_features_positive]).unsqueeze(0)
-        data_negative["objective"].x = torch.Tensor([objective_features_negative]).unsqueeze(0)
+        if self.objective_features":
+            data_positive["objective"].x = torch.Tensor([objective_features_positive]).unsqueeze(0)
+            data_negative["objective"].x = torch.Tensor([objective_features_negative]).unsqueeze(0)
 
         data_positive["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
         data_negative["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
@@ -198,7 +261,8 @@ class XCSP3GraphBuilder:
             objective_features = self.instance.optimal_value + self.instance.optimal_deviation_difference
         else:
             objective_features = 1
-        data["objective"].x = torch.Tensor([objective_features]).unsqueeze(0)
+        if self.objective_features:
+            data["objective"].x = torch.Tensor([objective_features]).unsqueeze(0)
 
         data["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
         if self.variable_to_operator_edges:
@@ -222,6 +286,41 @@ class XCSP3GraphBuilder:
         
         return data
 
+    def add_extension_marty_et_al(self, constraint):
+        if "supports" in constraint:
+            constraint_subtype_name = "extension+"
+
+        elif "conflicts" in constraint:
+            constraint_subtype_name = "extension-"
+
+        constraint_subtype_dict = self.constraint_type_ids.add_subtype_id(constraint_subtype_name)
+        extension_constraint_id = self.constraint_type_ids.add_node_id(constraint_subtype_name)
+        self.constraint_features.append(constraint_subtype_dict["id"])
+
+        constraint_variables = constraint["variables"]
+
+        for i in range(len(constraint_variables)):
+            variable_id = self.variable_type_ids.get_node_id(name=constraint_variables[i])
+            self.variable_to_constraint_edges.append([variable_id, extension_constraint_id])
+    
+    def add_sum_marty_et_al(self, constraint):
+        variables = constraint["variables"]
+        
+        sum_subtype_id = self.constraint_type_ids.add_subtype_id("sum")["id"]
+        self.constraint_features.append(sum_subtype_id)
+        sum_id = self.constraint_type_ids.add_node_id("sum")
+        
+        condition = constraint["condition"]
+        condition_operand = condition["operand"]
+        
+        if not condition_operand.isdigit(): # in this case, the sum is compared to a variable
+            condition_operand_id = self.variable_type_ids.get_node_id(name=condition_operand)
+            self.variable_to_constraint_edges.append([condition_operand_id, sum_id])
+        
+        for variable in variables:
+            variable_id = self.variable_type_ids.get_node_id(name=variable)
+            self.variable_to_constraint_edges.append([variable_id, sum_id])
+            
     def add_extension_constraint_to_graph(self, constraint):
         if "supports" in constraint:
             constraint_subtype_name = "extension+"
@@ -265,6 +364,50 @@ class XCSP3GraphBuilder:
             self.operator_to_constraint_edges.append([tuple_id, extension_constraint_id])
         
         self.constraint_to_objective_edges.append([extension_constraint_id, 0])
+        
+    def add_all_different_marty_et_al(self, constraint):
+        all_different_subtype_id = self.constraint_type_ids.add_subtype_id("allDifferent")["id"]
+        all_different_id = self.constraint_type_ids.add_node_id("allDifferent")
+        for variable_name in constraint:
+            variable_id = self.variable_type_ids.get_node_id(name=variable_name)
+            self.variable_to_constraint_edges.append([variable_id, all_different_id])
+            self.constraint_features.append(all_different_subtype_id)
+
+    def add_intension_marty_et_al(self, constraint):
+        # TODO: extend to other, non-graph coloring problems
+        intension_subtype_id = self.constraint_type_ids.add_subtype_id("intension")["id"]
+        intension_id = self.constraint_type_ids.add_node_id("intension")
+        self.constraint_features.append(intension_subtype_id)
+        for variable_name in constraint.children:
+            variable_id = self.variable_type_ids.get_node_id(name=variable_name)
+            self.variable_to_constraint_edges.append([variable_id, intension_id])
+    
+    def add_element_marty_et_al(self, constraint):
+        index = constraint["index"]
+        value = constraint["value"]
+        element_list = constraint["list"]
+        element_subtype_id = self.constraint_type_ids.add_subtype_id("element")["id"]
+        element_id = self.constraint_type_ids.add_node_id("element")
+        self.constraint_features.append(element_subtype_id)
+
+        for i, current_element in enumerate(element_list):
+            if type(current_element) == float or type(current_element) == int:
+                pass
+            else:
+                current_element_id = self.variable_type_ids.get_node_id(name=current_element)
+                self.variable_to_constraint_edges.append([current_element_id, element_id])
+        
+        if type(index) == float or type(index) == int:
+            pass
+        else:
+            index_id = self.variable_type_ids.get_node_id(name=index)
+            self.variable_to_constraint_edges.append([index_id, element_id])
+        
+        if type(value) == float or type(value) == int:
+            pass
+        else:
+            value_id = self.variable_type_ids.get_node_id(name=value)
+            self.variable_to_operato_edges.append([value_id, element_id])
         
     def add_all_different_constraint_to_graph(self, constraint):
         all_different_subtype_id = self.constraint_type_ids.add_subtype_id("allDifferent")["id"]
@@ -398,7 +541,7 @@ class XCSP3GraphBuilder:
             self.value_to_operator_edges.append([value_id, element_value_operator_id])
         else:
             value_id = self.variable_type_ids.get_node_id(name=value)
-            self.variable_to_operator_edges.append([value_id, element_value_operator_id])
+            self.variable_to_operato_edges.append([value_id, element_value_operator_id])
         self.operator_to_constraint_edges.append([element_value_operator_id, element_id])
         
         self.constraint_to_objective_edges.append([element_id, 0])
