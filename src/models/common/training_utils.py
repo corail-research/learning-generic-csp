@@ -11,24 +11,6 @@ from models.graph_coloring.base_model import GCGNN
 from models.sat.neurosat_model import NeuroSAT
 import torch.nn.utils as utils
 
-from torch_geometric.data import Batch
-def get_args():
-    parser = argparse.ArgumentParser(description="Your script description here.")
-    parser.add_argument("-path", type=str, default="./data",help="Path to the data directory. Default: ./data")
-    parser.add_argument("-lr", type=float, required=True,help="Learning rate for the optimizer.")
-    parser.add_argument("-batch_size", type=int, required=True, help="Batch size for training.")
-    parser.add_argument("-num_layers", type=int, required=True, help="Number of transformer layers.")
-    parser.add_argument("-num_heads", type=int, required=True, help="Number of attention heads in each transformer layer.")
-    parser.add_argument("-num_epochs", type=int, default=100, help="Number of epochs to train. Default: 100")
-    parser.add_argument("-hidden_size", type=int, required=True, help="Hidden size of the transformer layers.")
-    parser.add_argument("-device", type=str, default="cuda:0", help="Device to use for training. Default: cuda:0")
-    parser.add_argument("-train_bounds", nargs="+", type=int, required=True,help="Start and end indices of the training set.")
-    parser.add_argument("-valid_bounds", nargs="+", type=int, required=True,help="Start and end indices of the validation set.")
-    parser.add_argument("-dropout", type=float, default=0.0, help="Dropout probability. Default: 0.0")
-    args = parser.parse_args()
-    
-    return args
-
 def train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, num_epochs, samples_per_epoch=None, clip_value=None, model_save_path=None, wandb_run_name=None):
     train_losses, test_losses, train_metrics, test_metrics = [], [], [], []
     best_acc = 0.0

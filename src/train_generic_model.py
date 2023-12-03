@@ -1,3 +1,4 @@
+import argparse
 import socket
 from datetime import datetime
 import wandb
@@ -11,7 +12,7 @@ import cProfile
 import pstats
 from generic_xcsp.generic_model import GenericModel
 from generic_xcsp.dataset import XCSP3Dataset
-from generic_xcsp.training_config import GenericExperimentConfig
+from generic_xcsp.training_config import GenericTrainingConfig
 
 from torch_geometric.loader import DataLoader
 import multiprocessing
@@ -31,37 +32,57 @@ def set_seed(seed):
 
 set_seed(42)
 
+# Create the parser
+parser = argparse.ArgumentParser(description='Train a generic model')
+
+# Add the arguments
+parser.add_argument('--search_method', type=str, default='grid', help='Set to either "grid" or "random"')
+parser.add_argument('--batch_size', type=int, default=128)
+parser.add_argument('--hidden_units', type=int, default=128)
+parser.add_argument('--start_learning_rate', type=float, default=0.00002)
+parser.add_argument('--num_lstm_passes', type=int, default=30)
+parser.add_argument('--num_layers', type=int, default=3)
+parser.add_argument('--dropout', type=float, default=0.1)
+parser.add_argument('--num_epochs', type=int, default=1000)
+parser.add_argument('--device', type=str, default='cuda:0')
+parser.add_argument('--train_ratio', type=float, default=0.99)
+parser.add_argument('--samples_per_epoch', type=int, default=100000)
+parser.add_argument('--nodes_per_batch', type=int, default=12000)
+parser.add_argument('--use_sampler_loader', type=bool, default=False)
+parser.add_argument('--weight_decay', type=float, default=0.0000000001)
+parser.add_argument('--lr_decay_factor', type=float, default=0.5)
+parser.add_argument('--lr_scheduler_patience', type=float, default=25)
+parser.add_argument('--generic_representation', type=bool, default=True)
+parser.add_argument('--gnn_aggregation', type=str, default='add')
+parser.add_argument('--model_save_path', type=str, default=None)
+parser.add_argument('--project_name', type=str, default='Knapsack')
+
+# Parse the arguments
+args = parser.parse_args()
+
+batch_size = args.batch_size
+hidden_units = args.hidden_units
+start_learning_rate = args.start_learning_rate
+num_lstm_passes = args.num_lstm_passes
+num_layers = args.num_layers
+dropout = args.dropout
+num_epochs = args.num_epochs
+device = args.device
+train_ratio = args.train_ratio
+samples_per_epoch = args.samples_per_epoch
+nodes_per_batch = args.nodes_per_batch
+use_sampler_loader = args.use_sampler_loader
+weight_decay = args.weight_decay
+lr_decay_factor = args.lr_decay_factor
+lr_scheduler_patience = args.lr_scheduler_patience
+gnn_aggregation = args.gnn_aggregation
+model_save_path = args.model_save_path
+project_name = args.project_name
+print(batch_size)
+
 if __name__ == "__main__":
-    import math
-    import itertools
-    from models.decision_tsp import xml_element_generator
-
-    base_files_directory = r"/scratch2/boileo/dtsp/data/generic_element_batched/raw_graph"
-    xml_files_directory = r"/scratch2/boileo/dtsp/data/generic_element_batched/raw"
-    xml_element_generator.generate_xml_files(base_files_directory, xml_files_directory)
-
-
     search_method = "grid"  # Set to either "grid" or "random"
-    # data_path = r"./src/models/sat/generic/temp_remote_date" # local
-    # data_path = r"/scratch1/boileo/knapsack/data"
-    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
     # Hyperparameters for grid search or random search
-    batch_sizes = [128]
-    hidden_units = [128]
-    start_learning_rates = [0.00002]
-    num_lstm_passes = [30]
-    num_layers = [3]
-    dropout = [0.1]
-    num_epochs = 1000
-    device = "cuda:0"
-    train_ratio = 0.99
-    samples_per_epoch = 100000
-    nodes_per_batch = [12000]
-    use_sampler_loader = False
-    weight_decay = [0.0000000001]
-    lr_decay_factor = 0.5
-    generic_representation = True
-    gnn_aggregation = "add"
     model_save_path = None
     # project_name = "Generic-SAT"
     project_name = "Knapsack"
@@ -89,12 +110,12 @@ if __name__ == "__main__":
     
     hostname = socket.gethostname()
 
-    experiment_config = GenericExperimentConfig(
-        batch_sizes=batch_sizes,
+    experiment_config = GenericTrainingConfig(
+        batch_size=batch_size,
         hidden_units=hidden_units,
-        start_learning_rates=start_learning_rates,
+        start_learning_rate=start_learning_rate,
         num_layers=num_layers,
-        dropouts=dropout,
+        dropout=dropout,
         num_epochs=num_epochs,
         num_lstm_passes=num_lstm_passes,
         device=device,
@@ -105,9 +126,8 @@ if __name__ == "__main__":
         use_sampler_loader=use_sampler_loader,
         weight_decay=weight_decay,
         lr_decay_factor=lr_decay_factor,
-        generic_representation=generic_representation,
-        lr_scheduler_patience=25,
-        lr_scheduler_factor=0.4,
+        lr_scheduler_patience=lr_scheduler_patience,
+        lr_scheduler_factor=lr_decay_factor,
         layernorm_lstm_cell=True,
         gnn_aggregation=gnn_aggregation,
         model_save_path=model_save_path,
@@ -115,15 +135,8 @@ if __name__ == "__main__":
     )
 
     # Generate parameters based on the search method
-    if search_method == "grid":
-        search_parameters = experiment_config.generate_grid_search_parameters()
-    elif search_method == "random":
-        num_random_combinations = 10
-        search_parameters = experiment_config.generate_random_search_parameters(num_random_combinations)
-    else:
-        raise ValueError("Invalid search_method. Must be 'grid' or 'random'")
     
-    dataset = XCSP3Dataset(root=experiment_config.data_path, in_memory=False, batch_size=batch_sizes[0], target_deviation=0.02)
+    dataset = XCSP3Dataset(root=experiment_config.data_path, in_memory=False, batch_size=batch_size, target_deviation=0.02)
     limit_index = int(((len(dataset) * experiment_config.train_ratio) // 2) * 2)
     
     train_dataset = dataset[:limit_index]
@@ -132,56 +145,52 @@ if __name__ == "__main__":
     criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
     date = str(datetime.now().date())
     
-
-    for params in search_parameters:
-        # break
+    train_loader = DataLoader(train_dataset, batch_size=32//32, shuffle=True, collate_fn=custom_batch_collate_fn, num_workers=0)
+    test_loader = DataLoader(test_dataset, batch_size=min(32//32, len(test_dataset)), shuffle=False, collate_fn=custom_batch_collate_fn, num_workers=0)
+    # train_loader = DataLoader(train_dataset, batch_size=experiment_config.batch_size, shuffle=False, sampler=train_sampler, num_workers=0)
+    # test_loader = DataLoader(test_dataset, batch_size=min(1024, len(test_dataset)), shuffle=False,  num_workers=0)
+    first_batch = train_dataset[0][0]
+    metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
+    num_hidden_channels = experiment_config.hidden_units
+    input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
+    hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
+    out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
     
-        train_loader = DataLoader(train_dataset, batch_size=32//32, shuffle=True, collate_fn=custom_batch_collate_fn, num_workers=0)
-        test_loader = DataLoader(test_dataset, batch_size=min(32//32, len(test_dataset)), shuffle=False, collate_fn=custom_batch_collate_fn, num_workers=0)
-        # train_loader = DataLoader(train_dataset, batch_size=params.batch_size, shuffle=False, sampler=train_sampler, num_workers=0)
-        # test_loader = DataLoader(test_dataset, batch_size=min(1024, len(test_dataset)), shuffle=False,  num_workers=0)
-        first_batch = train_dataset[0][0]
-        metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
-        num_hidden_channels = params.hidden_units
-        input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
-        hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
-        out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        
-        model = GenericModel(
-            metadata=metadata,
-            in_channels=input_size,
-            out_channels=out_channels,
-            hidden_size=hidden_size,
-            num_mlp_layers=params.num_layers,
-            num_passes=params.num_lstm_passes,
-            device=device,
-            layernorm_lstm_cell=params.layernorm_lstm_cell,
-            aggr=params.gnn_aggregation
-        )
-        
-        model = model.cuda()
-        optimizer = torch.optim.Adam(model.parameters(),lr=params.start_learning_rate, weight_decay=params.weight_decay)
-        group = hostname
-        wandb.init(
-            project=project_name,
-            config=params,
-            group=group
-        )
-        
-        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=params.lr_scheduler_patience, gamma=params.lr_scheduler_factor, verbose=True)
-        
-        train_model(
-            model,
-            train_loader,
-            test_loader,
-            optimizer,
-            lr_scheduler,
-            criterion,
-            params.num_epochs,
-            samples_per_epoch=params.samples_per_epoch,
-            clip_value=params.clip_gradient_norm,
-            model_save_path=params.model_save_path,
-            wandb_run_name=wandb.run.name
-        )
-        
-        wandb.finish()
+    model = GenericModel(
+        metadata=metadata,
+        in_channels=input_size,
+        out_channels=out_channels,
+        hidden_size=hidden_size,
+        num_mlp_layers=experiment_config.num_layers,
+        num_passes=experiment_config.num_lstm_passes,
+        device=device,
+        layernorm_lstm_cell=experiment_config.layernorm_lstm_cell,
+        aggr=experiment_config.gnn_aggregation
+    )
+    
+    model = model.cuda()
+    optimizer = torch.optim.Adam(model.parameters(),lr=experiment_config.start_learning_rate, weight_decay=experiment_config.weight_decay)
+    group = hostname
+    wandb.init(
+        project=project_name,
+        config=experiment_config,
+        group=group
+    )
+    
+    lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=experiment_config.lr_scheduler_patience, gamma=experiment_config.lr_scheduler_factor, verbose=True)
+    
+    train_model(
+        model,
+        train_loader,
+        test_loader,
+        optimizer,
+        lr_scheduler,
+        criterion,
+        experiment_config.num_epochs,
+        samples_per_epoch=experiment_config.samples_per_epoch,
+        clip_value=experiment_config.clip_gradient_norm,
+        model_save_path=experiment_config.model_save_path,
+        wandb_run_name=wandb.run.name
+    )
+    
+    wandb.finish()

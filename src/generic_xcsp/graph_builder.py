@@ -208,7 +208,7 @@ class XCSP3GraphBuilder:
         if self.constraint_features:
             data_positive["constraint"].x = torch.Tensor(self.constraint_features)
             data_negative["constraint"].x = torch.Tensor(self.constraint_features)
-        if self.objective_features":
+        if self.objective_features:
             data_positive["objective"].x = torch.Tensor([objective_features_positive]).unsqueeze(0)
             data_negative["objective"].x = torch.Tensor([objective_features_negative]).unsqueeze(0)
 
