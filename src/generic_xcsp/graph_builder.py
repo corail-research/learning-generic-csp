@@ -33,7 +33,7 @@ class XCSP3GraphBuilder:
         self.value_type_ids = SubTypeIDManager("values")
         self.constraint_type_ids = SubTypeIDManager("self.constraint_features")
         self.filename = filename
-    
+
     def get_marty_et_al_graph_representation(self):
         """Builds a heterogeneous graph representation based on the "generic" representation of Marty et al.
         Returns:

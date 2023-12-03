@@ -28,7 +28,14 @@ def _repr(obj) -> str:
     return re.sub('(<.*?)\\s.*(>)', r'\1\2', obj.__repr__())
 
 class XCSP3Dataset(Dataset):
-    def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, target_deviation=0.02, batch_size:int=32, in_memory: bool=True):
+    def __init__(self,
+                 root:str,
+                 transform:torch_geometric.transforms=None,
+                 pre_transform=None,
+                 target_deviation=0.02,
+                 batch_size:int=32,
+                 use_marty_et_al_graph:bool=False,
+                 in_memory: bool=True):
         """
         Args:
             root : directory containing the dataset. This directory contains 2 sub-directories: raw (raw data) and processed (processed data)
@@ -40,6 +47,7 @@ class XCSP3Dataset(Dataset):
         self.sorted_processed_paths = None
         self.target_deviation = target_deviation
         self.batch_size = batch_size
+        self.use_marty_et_al_graph = use_marty_et_al_graph
         super(XCSP3Dataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
         if self.in_memory:
             self.data = self.processed_data()
@@ -88,7 +96,10 @@ class XCSP3Dataset(Dataset):
             pbar.update(1)
             xcsp3_instance = parse_instance(filepath, optimal_deviation_factor=self.target_deviation)
             graph_builder = XCSP3GraphBuilder(xcsp3_instance, filepath)
-            data = graph_builder.get_graph_representation()
+            if self.use_marty_et_al_graph:
+                data = graph_builder.get_marty_et_al_graph_representation()
+            else:
+                data = graph_builder.get_graph_representation()
             
             if type(data) == tuple:
                 data_list.extend(data)
