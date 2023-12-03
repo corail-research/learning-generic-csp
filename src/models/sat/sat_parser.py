@@ -155,6 +155,47 @@ class CNF:
         data.filename = self.filename
         return data
     
+    def get_marty_et_al_graph(self):
+        """Build generic graph representation used in Marty et al. 
+        Returns:
+            data (torch_geometric.data.HeteroData): graph for the SAT problem
+        """
+        constraints = []
+
+        # Edges and edge stuff
+        variable_to_value_edges = self.get_sat_variable_to_domain_edges(self.base_variables)
+        variable_to_constraint_edges = []
+        
+        seen_clauses = set()
+        clause_id = 0
+        for _, clause in enumerate(self.clauses):
+            sorted_clause = str(sorted(clause.variables))
+            if sorted_clause in seen_clauses:
+                continue
+            seen_clauses.add(sorted_clause)
+            current_constraint_index = clause_id
+            constraints.append([1])
+            for variable in clause.variables:
+                variable_index = abs(variable) - 1
+                variable_to_constraint_edges.append([variable_index, current_constraint_index])
+            clause_id += 1
+        
+        data = HeteroData()
+        var_tensor = torch.Tensor([[1] for _ in self.base_variables])
+
+        data["variable"].x = var_tensor
+        label = 1 if self.is_sat else 0
+        data["variable"].y = torch.tensor([label])
+        data["value"].x = torch.Tensor([[0], [1]])
+        data["constraint"].x = torch.Tensor(constraints)
+
+        data["variable", "has_domain", "value"].edge_index = self.build_edge_index_tensor(variable_to_value_edges)
+        data["variable", "appears_in", "constraint"].edge_index = self.build_edge_index_tensor(variable_to_constraint_edges)
+        
+        T.ToUndirected()(data)
+        data.filename = self.filename
+        return data
+
     def get_updated_heterodata(self, data):
         node_id_mapping = create_node_id_mapping(data)
         homogeneous = hetero_data_to_homogeneous(data, node_id_mapping)
