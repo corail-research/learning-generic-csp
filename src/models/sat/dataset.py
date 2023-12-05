@@ -25,7 +25,7 @@ def _repr(obj) -> str:
 
 class SatDataset(Dataset):
     def __init__(self, root:str, transform:torch_geometric.transforms=None, pre_transform=None, graph_type:str="generic", 
-                 meta_connected_to_all:bool=False, use_sat_label_as_feature:bool=False, in_memory: bool=True):
+                 meta_connected_to_all:bool=False, use_sat_label_as_feature:bool=False, in_memory: bool=True, use_marty_et_al_graph:bool=False):
         """
         Args:
             root : directory containing the dataset. This directory contains 2 sub-directories: raw (raw data) and processed (processed data)
@@ -43,6 +43,7 @@ class SatDataset(Dataset):
         self.in_memory = in_memory
         self.sorted_raw_paths = None
         self.sorted_processed_paths = None
+        self.use_marty_et_al_graph = use_marty_et_al_graph
         super(SatDataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
 
         if self.in_memory:
@@ -96,7 +97,9 @@ class SatDataset(Dataset):
             pbar.update(1)
             cnf = parse_dimacs_cnf(filepath)
             
-            if self.graph_type == "sat_specific":
+            if self.use_marty_et_al_graph:
+                data = cnf.get_marty_et_al_graph()
+            elif self.graph_type == "sat_specific":
                 data = cnf.build_sat_specific_heterogeneous_graph(use_sat_label_as_feature=self.use_sat_label_as_feature)
             elif self.graph_type == "generic":
                 data = cnf.build_generic_heterogeneous_graph(meta_connected_to_all=self.meta_connected_to_all)

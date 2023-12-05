@@ -53,9 +53,11 @@ class XCSP3GraphBuilder:
             self.value_features.append(current_value_features)
         
         base_variables = self.instance.get_all_variables()
-
+        
+        var_subtype_dict = self.variable_type_ids.add_subtype_id("var")
+       
         for var_name, var in base_variables.items():
-            variable_type = var.variable_type
+            variable_type = "var"
             self.variable_type_ids.add_node_id(subtype_name=variable_type, name=var_name) # type of the variable?
             current_variable_features = [len(var.domain), 0]
             self.variable_features.append(current_variable_features)
