@@ -10,8 +10,8 @@ import sys
 
 
 if __name__ == "__main__":
-    from .instance import parse_instance
-    from .graph_builder import XCSP3GraphBuilder
+    from instance import parse_instance
+    from graph_builder import XCSP3GraphBuilder
 else:
     from generic_xcsp.instance import parse_instance
     from generic_xcsp.graph_builder import XCSP3GraphBuilder
@@ -35,6 +35,7 @@ class XCSP3Dataset(Dataset):
                  target_deviation=0.02,
                  batch_size:int=32,
                  use_marty_et_al_graph:bool=False,
+                 use_knapsack_specific_graph:bool=False,
                  in_memory: bool=True):
         """
         Args:
@@ -48,6 +49,7 @@ class XCSP3Dataset(Dataset):
         self.target_deviation = target_deviation
         self.batch_size = batch_size
         self.use_marty_et_al_graph = use_marty_et_al_graph
+        self.use_knapsack_specific_graph = use_knapsack_specific_graph
         super(XCSP3Dataset, self).__init__(root, transform=transform, pre_transform=pre_transform)
         if self.in_memory:
             self.data = self.processed_data()
@@ -98,6 +100,8 @@ class XCSP3Dataset(Dataset):
             graph_builder = XCSP3GraphBuilder(xcsp3_instance, filepath)
             if self.use_marty_et_al_graph:
                 data = graph_builder.get_marty_et_al_graph_representation()
+            elif self.use_knapsack_specific_graph:
+                data = graph_builder.get_knapsack_specific_graph_representation()
             else:
                 data = graph_builder.get_graph_representation()
             
@@ -151,5 +155,5 @@ class XCSP3Dataset(Dataset):
         return data
 
 if __name__ == "__main__":
-    data_path = r"/scratch1/boileo/dtsp/data/generic_batched"
-    dataset = XCSP3Dataset(root=data_path)
+    data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
+    dataset = XCSP3Dataset(root=data_path, use_knapsack_specific_graph=True, in_memory=False, target_deviation=None, batch_size=32)

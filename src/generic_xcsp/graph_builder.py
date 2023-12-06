@@ -17,6 +17,7 @@ class XCSP3GraphBuilder:
         self.variable_to_value_edges = []
         self.variable_to_constraint_edges = []
         self.variable_to_objective_edges = []
+        self.variable_to_variable_edges = []
         self.value_to_operator_edges = []
         self.operator_to_operator_edges = []
         self.operator_to_constraint_edges = []
@@ -441,7 +442,118 @@ class XCSP3GraphBuilder:
         self.variable_to_operator_edges.append(new_var_op_pair)
         self.operator_to_objective_edges.append([new_multiply_node_id, 0])
         self.operator_node_values[new_multiply_node_id] = float(coeff)
+        
+    def get_knapsack_specific_graph_representation(self):
+        """Builds a heterogeneous graph representation of the instance
+        Returns:
+            data (torch_geometric.data.HeteroData): graph for the SAT problem
+        
+        Edge Types:
+        - value_to_operator: value -> operator (for combo operators used in extension self.constraint_features)
+        - variable_to_value: variable -> value
+        - variable_to_constraint: variable -> constraint
+        - variable_to_operator: variable -> operator        
+        - operator_to_constraint: operator -> constraint
+        - operator_to_operator: constraint -> operator
+        - constraint_to_meta: constraint -> meta    
+        """
+        base_variables = self.instance.get_all_variables()
+        
+        int_var_subtype_dict = self.variable_type_ids.add_subtype_id("int")
 
+        for var_name, var in base_variables.items():
+            self.variable_type_ids.add_node_id(subtype_name="int", name=var_name) # type of the variable?
+            positive_variable_features = [1]
+            self.variable_features.append(positive_variable_features)
+
+            negative_variable_name = "neg_" + var_name
+            self.variable_type_ids.add_node_id(subtype_name="int", name=negative_variable_name) # type of the variable
+            negative_variable_features = [1]
+            self.variable_features.append(negative_variable_features)
+            self.variable_to_variable_edges.append(
+                [
+                    self.variable_type_ids.get_node_id(name=var_name),
+                    self.variable_type_ids.get_node_id(name=negative_variable_name)
+                ]
+            ) #variable connected to its negation
+
+        
+        for constraint_type, constraints in self.instance.constraints.items():
+            for constraint in constraints:
+                constraint_weights = self.add_knapsack_specific_sum_constraint_to_graph(constraint)
+        
+        objective_value_positive = self.instance.optimal_value * (1.02) 
+        objective_value_negative = self.instance.optimal_value * (0.98)
+
+        objective_weights_positive, positive_variable_to_constraint_edges = self.add_knapsack_specific_objective_to_graph(objective_value_positive)
+        objective_weights_negative, negative_variable_to_constraint_edges = self.add_knapsack_specific_objective_to_graph(objective_value_negative)
+                    
+        data_positive, data_negative = HeteroData(), HeteroData()
+
+        if self.variable_features:
+            data_positive["variable"].x = torch.Tensor(self.variable_features)
+            data_negative["variable"].x = torch.Tensor(self.variable_features)
+        
+        data_positive["constraint"].x = torch.Tensor([[1], [1]])
+        data_negative["constraint"].x = torch.Tensor([[1], [1]])
+
+        if self.variable_to_constraint_edges:
+            data_positive["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges + positive_variable_to_constraint_edges)
+            data_negative["variable", "connected_to", "constraint"].edge_index = self.build_edge_index_tensor(self.variable_to_constraint_edges + negative_variable_to_constraint_edges)
+        if self.variable_to_variable_edges:
+            data_positive["variable", "connected_to", "variable"].edge_index = self.build_edge_index_tensor(self.variable_to_variable_edges)
+            data_negative["variable", "connected_to", "variable"].edge_index = self.build_edge_index_tensor(self.variable_to_variable_edges)
+        
+        data_positive.label = 1
+        T.ToUndirected()(data_positive)
+
+        data_negative.label = 0
+        T.ToUndirected()(data_negative)
+        
+        data_positive.filename = self.filename
+        data_positive.sum_weights = constraint_weights
+        data_positive.objective_weights = objective_weights_positive
+        data_negative.filename = self.filename
+        data_negative.sum_weights = constraint_weights
+        data_negative.objective_weights = objective_weights_negative
+
+        return data_positive, data_negative
+    
+    def add_knapsack_specific_sum_constraint_to_graph(self, constraint):
+        variables = constraint["variables"]
+        coeffs = constraint["coeffs"]
+        
+        sum_subtype_id = self.constraint_type_ids.add_subtype_id("sum")["id"]
+        sum_id = self.constraint_type_ids.add_node_id("sum")
+        
+        condition = constraint["condition"]
+        condition_operand = condition["operand"]
+        sum_constraint_weights = []
+
+        for i, variable in enumerate(variables):
+            negative_variable_name = "neg_" + variable
+            variable_id = self.variable_type_ids.get_node_id(name=negative_variable_name)
+            corrected_weight = coeffs[i] * -1/float(condition_operand)
+            sum_constraint_weights.append(corrected_weight)
+
+            self.variable_to_constraint_edges.append([variable_id, sum_id])
+        
+        return sum_constraint_weights
+    
+    def add_knapsack_specific_objective_to_graph(self, optimal_value):
+        sum_subtype_id = self.constraint_type_ids.add_subtype_id("sum")["id"]
+        sum_id = self.constraint_type_ids.add_node_id("sum")
+        weights = []
+        new_variable_to_constraint_edges = []
+        for i, variable in enumerate(self.instance.objective.variables):
+            variable_id = self.variable_type_ids.get_node_id(name=variable)
+            new_variable_to_constraint_edges.append([variable_id, sum_id])
+            coeff = self.instance.objective.coeffs[i]
+            corrected_weight = coeff/optimal_value
+            weights.append(corrected_weight)
+
+        return weights, new_variable_to_constraint_edges
+    
     def add_sum_constraint_to_graph(self, constraint):
         variables = constraint["variables"]
         coeffs = constraint["coeffs"]
