@@ -67,7 +67,7 @@ num_lstm_passes = args.num_lstm_passes
 num_layers = args.num_layers
 dropout = args.dropout
 num_epochs = args.num_epochs
-device = "cpu" #args.device
+device = args.device
 train_ratio = args.train_ratio
 samples_per_epoch = args.samples_per_epoch
 nodes_per_batch = args.nodes_per_batch
@@ -150,7 +150,7 @@ if __name__ == "__main__":
         aggr=experiment_config.gnn_aggregation
     )
 
-    model = model #.cuda()
+    model = model.cuda()
     optimizer = torch.optim.Adam(model.parameters(),lr=experiment_config.start_learning_rate, weight_decay=experiment_config.weight_decay)
     group = hostname
     wandb.init(
