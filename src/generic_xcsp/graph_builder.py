@@ -475,9 +475,8 @@ class XCSP3GraphBuilder:
                     self.variable_type_ids.get_node_id(name=var_name),
                     self.variable_type_ids.get_node_id(name=negative_variable_name)
                 ]
-            ) #variable connected to its negation
+            )
 
-        
         for constraint_type, constraints in self.instance.constraints.items():
             for constraint in constraints:
                 constraint_weights = self.add_knapsack_specific_sum_constraint_to_graph(constraint)
@@ -511,11 +510,9 @@ class XCSP3GraphBuilder:
         T.ToUndirected()(data_negative)
         
         data_positive.filename = self.filename
-        data_positive.sum_weights = constraint_weights
-        data_positive.objective_weights = objective_weights_positive
+        data_positive.variable_weights = torch.Tensor(constraint_weights + objective_weights_positive)
         data_negative.filename = self.filename
-        data_negative.sum_weights = constraint_weights
-        data_negative.objective_weights = objective_weights_negative
+        data_negative.variable_weights = torch.Tensor(constraint_weights + objective_weights_negative)
 
         return data_positive, data_negative
     
@@ -524,7 +521,9 @@ class XCSP3GraphBuilder:
         coeffs = constraint["coeffs"]
         
         sum_subtype_id = self.constraint_type_ids.add_subtype_id("sum")["id"]
-        sum_id = self.constraint_type_ids.add_node_id("sum")
+        sum_id = self.constraint_type_ids.get_node_id(name="sum")
+        if sum_id is None:
+            sum_id = self.constraint_type_ids.add_node_id(subtype_name="sum", name="sum")
         
         condition = constraint["condition"]
         condition_operand = condition["operand"]
@@ -542,7 +541,9 @@ class XCSP3GraphBuilder:
     
     def add_knapsack_specific_objective_to_graph(self, optimal_value):
         sum_subtype_id = self.constraint_type_ids.add_subtype_id("sum")["id"]
-        sum_id = self.constraint_type_ids.add_node_id("sum")
+        sum_id = self.constraint_type_ids.get_node_id(name="objective")
+        if sum_id is None:
+            sum_id = self.constraint_type_ids.add_node_id(subtype_name="sum", name="objective")
         weights = []
         new_variable_to_constraint_edges = []
         for i, variable in enumerate(self.instance.objective.variables):
