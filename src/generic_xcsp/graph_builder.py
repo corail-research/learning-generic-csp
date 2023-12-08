@@ -211,9 +211,9 @@ class XCSP3GraphBuilder:
         if self.constraint_features:
             data_positive["constraint"].x = torch.Tensor(self.constraint_features)
             data_negative["constraint"].x = torch.Tensor(self.constraint_features)
-        if self.objective_features:
-            data_positive["objective"].x = torch.Tensor([objective_features_positive]).unsqueeze(0)
-            data_negative["objective"].x = torch.Tensor([objective_features_negative]).unsqueeze(0)
+        #if self.objective_features:
+        data_positive["objective"].x = torch.Tensor([objective_features_positive]).unsqueeze(0)
+        data_negative["objective"].x = torch.Tensor([objective_features_negative]).unsqueeze(0)
 
         data_positive["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
         data_negative["variable", "connected_to", "value"].edge_index = self.build_edge_index_tensor(self.variable_to_value_edges)
