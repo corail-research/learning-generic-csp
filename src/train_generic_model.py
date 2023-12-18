@@ -3,13 +3,9 @@ import socket
 from datetime import datetime
 import wandb
 import torch
-import torch.distributed as dist
-import torch.multiprocessing as mp
-from torch.optim.lr_scheduler import LambdaLR
 import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-import cProfile
-import pstats
+
 from generic_xcsp.generic_model import GenericModel
 from generic_xcsp.dataset import XCSP3Dataset
 from generic_xcsp.training_config import GenericTrainingConfig
@@ -18,7 +14,7 @@ from torch_geometric.loader import DataLoader
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
 from models.common.training_utils import train_model
-from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler, custom_batch_collate_fn
+from src.models.common.pytorch_utilities import custom_batch_collate_fn
 
 import random
 import numpy as np
@@ -33,10 +29,9 @@ def set_seed(seed):
 set_seed(42)
 
 # Create the parser
-parser = argparse.ArgumentParser(description='Train a generic model')
+parser = argparse.ArgumentParser(description='Train a SAT model')
 
 # Add the arguments
-parser.add_argument('--search_method', type=str, default='grid', help='Set to either "grid" or "random"')
 parser.add_argument('--batch_size', type=int, default=128)
 parser.add_argument('--hidden_units', type=int, default=128)
 parser.add_argument('--start_learning_rate', type=float, default=0.00002)
@@ -52,10 +47,13 @@ parser.add_argument('--use_sampler_loader', type=bool, default=False)
 parser.add_argument('--weight_decay', type=float, default=0.0000000001)
 parser.add_argument('--lr_decay_factor', type=float, default=0.5)
 parser.add_argument('--lr_scheduler_patience', type=float, default=25)
+parser.add_argument('--clip_gradient_norm', type=float, default=0.5)
 parser.add_argument('--generic_representation', type=bool, default=True)
 parser.add_argument('--gnn_aggregation', type=str, default='add')
 parser.add_argument('--model_save_path', type=str, default=None)
-parser.add_argument('--project_name', type=str, default='Knapsack')
+parser.add_argument('--project_name', type=str, default='SAT')
+parser.add_argument('--data_path', type=str)
+parser.add_argument('--model_save_path', type=str)
 
 # Parse the arguments
 args = parser.parse_args()
@@ -75,38 +73,16 @@ use_sampler_loader = args.use_sampler_loader
 weight_decay = args.weight_decay
 lr_decay_factor = args.lr_decay_factor
 lr_scheduler_patience = args.lr_scheduler_patience
+clip_gradient_norm = args.clip_gradient_norm
 gnn_aggregation = args.gnn_aggregation
 model_save_path = args.model_save_path
 project_name = args.project_name
-print(batch_size)
+data_path = args.data_path
+model_save_path = args.model_save_path
+generic_representation = args.generic_representation
 
 if __name__ == "__main__":
-    search_method = "grid"  # Set to either "grid" or "random"
-    # Hyperparameters for grid search or random search
-    model_save_path = None
-    # project_name = "Generic-SAT"
-    project_name = "Knapsack"
-    # project_name = "Generic-GC"
-#    project_name = "Test"
 
-    if project_name == "Generic-TSP":
-        data_path = r"/scratch1/boileo/dtsp/data/generic_batched"
-        model_save_path = r"/scratch1/boileo/dtsp/models"
-    elif project_name == "Generic-TSP-Element":
-        data_path = r"/scratch2/boileo/dtsp/data/generic_element_batched"
-        model_save_path = r"/scratch1/boileo/dtsp/models"
-    elif project_name == "Generic-GC":
-        data_path = r"/scratch1/boileo/graph_coloring/data/generic"
-        model_save_path = r"/scratch1/boileo/graph_coloring/models"
-    elif project_name == "Generic-Knapsack":
-        data_path = r"/scratch1/boileo/knapsack/data"
-        model_save_path = r"/scratch1/boileo/knapsack/models"
-    elif project_name == "Generic-SAT":
-        data_path = r"/scratch1/boileo/sat/data/generic"
-        model_save_path = r"/scratch1/boileo/sat/models"
-    else:
-        data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\data"
-        model_save_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\knapsack\models"
     
     hostname = socket.gethostname()
 
@@ -131,12 +107,13 @@ if __name__ == "__main__":
         layernorm_lstm_cell=True,
         gnn_aggregation=gnn_aggregation,
         model_save_path=model_save_path,
-        optimal_deviation_difference=0.02
+        optimal_deviation_difference=0.02,
+        clip_gradient_norm=clip_gradient_norm
     )
 
     # Generate parameters based on the search method
     
-    dataset = XCSP3Dataset(root=experiment_config.data_path, in_memory=False, batch_size=batch_size, target_deviation=0.02)
+    dataset = XCSP3Dataset(root=experiment_config.data_path, in_memory=False, batch_size=batch_size, target_deviation=0.02, use_knapsack_specific_graph=True)
     limit_index = int(((len(dataset) * experiment_config.train_ratio) // 2) * 2)
     
     train_dataset = dataset[:limit_index]
@@ -145,17 +122,17 @@ if __name__ == "__main__":
     criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
     date = str(datetime.now().date())
     
-    train_loader = DataLoader(train_dataset, batch_size=32//32, shuffle=True, collate_fn=custom_batch_collate_fn, num_workers=0)
-    test_loader = DataLoader(test_dataset, batch_size=min(32//32, len(test_dataset)), shuffle=False, collate_fn=custom_batch_collate_fn, num_workers=0)
-    # train_loader = DataLoader(train_dataset, batch_size=experiment_config.batch_size, shuffle=False, sampler=train_sampler, num_workers=0)
-    # test_loader = DataLoader(test_dataset, batch_size=min(1024, len(test_dataset)), shuffle=False,  num_workers=0)
+    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True, collate_fn=custom_batch_collate_fn, num_workers=0)
+    test_loader = DataLoader(test_dataset, batch_size=min(1, len(test_dataset)), shuffle=False, collate_fn=custom_batch_collate_fn, num_workers=0)
+    
     first_batch = train_dataset[0][0]
+    
     metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
     num_hidden_channels = experiment_config.hidden_units
     input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
     hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
     out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-    
+
     model = GenericModel(
         metadata=metadata,
         in_channels=input_size,
@@ -167,7 +144,7 @@ if __name__ == "__main__":
         layernorm_lstm_cell=experiment_config.layernorm_lstm_cell,
         aggr=experiment_config.gnn_aggregation
     )
-    
+
     model = model.cuda()
     optimizer = torch.optim.Adam(model.parameters(),lr=experiment_config.start_learning_rate, weight_decay=experiment_config.weight_decay)
     group = hostname

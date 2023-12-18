@@ -1,7 +1,7 @@
 from typing import List, Tuple
 from torch.utils.data import Sampler, Dataset
 import random
-from torch_geometric.data import HeteroData, Batch
+from torch_geometric.data import Batch
 
 def custom_hetero_list_collate_fn(batch):
 

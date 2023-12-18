@@ -92,8 +92,7 @@ def generate_xml_files(directory, output_directory):
         build_xml_tsp_instance(input_file, output_file)
 
 if __name__ == "__main__":
-    # base_files_directory = r"/scratch1/boileo/dtsp/data/generic/raw_graph"
-    # xml_files_directory = r"/scratch1/boileo/dtsp/data/generic/raw"
-    base_files_directory = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data\raw_graphs"
-    xml_files_directory = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data\raw"
+    
+    base_files_directory = r""
+    xml_files_directory = r""
     generate_xml_files(base_files_directory, xml_files_directory)

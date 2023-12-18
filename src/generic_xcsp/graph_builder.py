@@ -410,7 +410,7 @@ class XCSP3GraphBuilder:
             pass
         else:
             value_id = self.variable_type_ids.get_node_id(name=value)
-            self.variable_to_operato_edges.append([value_id, element_id])
+            self.variable_to_operator_edges.append([value_id, element_id])
         
     def add_all_different_constraint_to_graph(self, constraint):
         all_different_subtype_id = self.constraint_type_ids.add_subtype_id("allDifferent")["id"]
@@ -656,7 +656,7 @@ class XCSP3GraphBuilder:
             self.value_to_operator_edges.append([value_id, element_value_operator_id])
         else:
             value_id = self.variable_type_ids.get_node_id(name=value)
-            self.variable_to_operato_edges.append([value_id, element_value_operator_id])
+            self.variable_to_operator_edges.append([value_id, element_value_operator_id])
         self.operator_to_constraint_edges.append([element_value_operator_id, element_id])
         
         self.constraint_to_objective_edges.append([element_id, 0])

@@ -9,7 +9,7 @@ os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 from models.decision_tsp.base_model import GNNTSP, GenericGNNTSP
 from models.graph_coloring.base_model import GCGNN
 from models.sat.neurosat_model import NeuroSAT
-from generic_xcsp.knapsack_model import KnapsackModel
+from src.models.knapsack.knapsack_model import KnapsackModel
 import torch.nn.utils as utils
 
 def train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, num_epochs, samples_per_epoch=None, clip_value=None, model_save_path=None, wandb_run_name=None):
@@ -60,7 +60,7 @@ def process_model(model, optimizer, criterion, loader, mode='train', samples_per
         data = data.to(device="cuda")
         if type(model) == NeuroSAT:
             label = data["variable"].y.float()
-        else: # type(model) == GNNTSP or type(model) == GenericGNNTSP or type(model) == GCGNN:
+        else:
             label = data.label.float()
         if mode == 'train':
             optimizer.zero_grad()

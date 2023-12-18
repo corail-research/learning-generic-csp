@@ -1,27 +1,24 @@
+import argparse
 import socket
 from datetime import datetime
 import wandb
 import torch
-from torch.optim.lr_scheduler import LambdaLR
 import os
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-import cProfile
-import pstats
 from models.common.lstm_conv import AdaptedNeuroSAT
 from models.sat.neurosat_model import NeuroSAT
 from models.sat.dataset import SatDataset
-# from torch_geometric.loader import DataLoader
 from torch.utils.data import DataLoader
 import multiprocessing
 multiprocessing.set_start_method("spawn", force=True)
 
 from models.common.training_utils import train_model
-from models.sat.config import SATExperimentConfig
-from models.common.pytorch_lr_scheduler import  GradualWarmupScheduler
-from models.common.pytorch_samplers import  PairNodeSampler, PairBatchSampler, custom_hetero_collate_fn
+from models.sat.config import SATTrainingConfig
+from src.models.common.pytorch_utilities import custom_hetero_list_collate_fn
 
 import random
 import numpy as np
+import math
 
 def set_seed(seed):
     random.seed(seed)
@@ -30,42 +27,74 @@ def set_seed(seed):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
 
+set_seed(42)
+
+# Create the parser
+parser = argparse.ArgumentParser(description='Train a SAT model')
+
+# Add the arguments
+parser.add_argument('--batch_size', type=int, default=128)
+parser.add_argument('--hidden_units', type=int, default=128)
+parser.add_argument('--start_learning_rate', type=float, default=0.00002)
+parser.add_argument('--num_lstm_passes', type=int, default=30)
+parser.add_argument('--num_layers', type=int, default=3)
+parser.add_argument('--dropout', type=float, default=0.1)
+parser.add_argument('--num_epochs', type=int, default=1000)
+parser.add_argument('--device', type=str, default='cuda:0')
+parser.add_argument('--train_ratio', type=float, default=0.99)
+parser.add_argument('--samples_per_epoch', type=int, default=100000)
+parser.add_argument('--nodes_per_batch', type=int, default=12000)
+parser.add_argument('--use_sampler_loader', type=bool, default=False)
+parser.add_argument('--weight_decay', type=float, default=0.0000000001)
+parser.add_argument('--lr_decay_factor', type=float, default=0.5)
+parser.add_argument('--lr_scheduler_patience', type=float, default=25)
+parser.add_argument('--clip_gradient_norm', type=float, default=0.5)
+parser.add_argument('--generic_representation', type=bool, default=True)
+parser.add_argument('--gnn_aggregation', type=str, default='add')
+parser.add_argument('--model_save_path', type=str, default=None)
+parser.add_argument('--project_name', type=str, default='SAT')
+parser.add_argument('--data_path', type=str)
+parser.add_argument('--model_save_path', type=str)
+
+# Parse the arguments
+args = parser.parse_args()
+
+batch_size = args.batch_size
+hidden_units = args.hidden_units
+start_learning_rate = args.start_learning_rate
+num_lstm_passes = args.num_lstm_passes
+num_layers = args.num_layers
+dropout = args.dropout
+num_epochs = args.num_epochs
+device = args.device
+train_ratio = args.train_ratio
+samples_per_epoch = args.samples_per_epoch
+nodes_per_batch = args.nodes_per_batch
+use_sampler_loader = args.use_sampler_loader
+weight_decay = args.weight_decay
+lr_decay_factor = args.lr_decay_factor
+lr_scheduler_patience = args.lr_scheduler_patience
+clip_gradient_norm = args.clip_gradient_norm
+gnn_aggregation = args.gnn_aggregation
+model_save_path = args.model_save_path
+project_name = args.project_name
+data_path = args.data_path
+model_save_path = args.model_save_path
+generic_representation = args.generic_representation
 
 
 if __name__ == "__main__":
-    import math
-    search_method = "grid"  # Set to either "grid" or "random"
-    # data_path = r"./src/models/sat/generic/temp_remote_date" # local
-    data_path = r"/scratch1/boileo/sat/data/sat_specific" # servercd 
-    # data_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\sat\sat_specific\train_small"
-    # Hyperparameters for grid search or random search
-    batch_sizes = [128]
-    # batch_sizes = [2]
-    hidden_units = [256]
-    start_learning_rates = [0.00008]
-    num_lstm_passes = [26]
-    num_layers = [3]
-    dropout = [0.1]
-    num_epochs = 400
-    device = "cuda:0"
-    train_ratio = 0.99
-    samples_per_epoch = 200000
-    nodes_per_batch= [12000]
-    use_sampler_loader = False
-    weight_decay = [0.0000000001]
-    lr_decay_factor = 0.8
-    generic_representation = False
-    gnn_aggregation = "add"
-    model_save_path = "./scratch1/boileo/sat/models"
-    # model_save_path = r"./src/models/sat/models/"
-    set_seed(42)
-
     hostname = socket.gethostname()
 
-    experiment_config = SATExperimentConfig(
-        batch_sizes=batch_sizes,
+    if generic_representation:
+        flip_inputs = False
+    else:
+        flip_inputs = True
+
+    experiment_config = SATTrainingConfig(
+        batch_sizes=batch_size,
         hidden_units=hidden_units,
-        start_learning_rates=start_learning_rates,
+        start_learning_rates=start_learning_rate,
         num_layers=num_layers,
         dropouts=dropout,
         num_epochs=num_epochs,
@@ -79,86 +108,75 @@ if __name__ == "__main__":
         weight_decay=weight_decay,
         lr_decay_factor=lr_decay_factor,
         generic_representation=generic_representation,
-        flip_inputs=True,
-        lr_scheduler_patience=70,
-        lr_scheduler_factor=0.5,
+        flip_inputs=flip_inputs,
+        lr_scheduler_patience=lr_scheduler_patience,
+        lr_scheduler_factor=lr_decay_factor,
         layernorm_lstm_cell=True,
         gnn_aggregation=gnn_aggregation,
         model_save_path=model_save_path
     )
 
-    # Generate parameters based on the search method
-    if search_method == "grid":
-        search_parameters = experiment_config.generate_grid_search_parameters()
-    elif search_method == "random":
-        num_random_combinations = 10
-        search_parameters = experiment_config.generate_random_search_parameters(num_random_combinations)
+
+    if generic_representation:
+        dataset = SatDataset(root=data_path, graph_type="generic", meta_connected_to_all=False, in_memory=False)
     else:
-        raise ValueError("Invalid search_method. Must be 'grid' or 'random'")
-    if experiment_config.generic_representation:
-        dataset = SatDataset(root=experiment_config.data_path, graph_type="generic", meta_connected_to_all=False, in_memory=False)
-    else:
-        dataset = SatDataset(root=experiment_config.data_path, graph_type="sat_specific", meta_connected_to_all=False, in_memory=False)
-    train_dataset = dataset[:math.floor(len(dataset) * experiment_config.train_ratio)]
-    test_dataset = dataset[math.floor(len(dataset) * experiment_config.train_ratio):]
-    train_dataset[1]
+        dataset = SatDataset(root=data_path, graph_type="sat_specific", meta_connected_to_all=False, in_memory=False)
+    
+    train_dataset = dataset[:math.floor(len(dataset) * train_ratio)]
+    test_dataset = dataset[math.floor(len(dataset) * train_ratio):]
+    
     criterion = torch.nn.BCEWithLogitsLoss(reduction="sum")
     date = str(datetime.now().date())
 
-    for params in search_parameters:
-        train_loader = DataLoader(train_dataset, batch_size=64//32, shuffle=True, collate_fn=custom_hetero_collate_fn, num_workers=0)
-        test_loader = DataLoader(test_dataset, batch_size=1024//32, shuffle=False, collate_fn=custom_hetero_collate_fn, num_workers=0)
-        first_batch = train_dataset[0][0]
-        metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
-        num_hidden_channels = params.hidden_units
-        input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
-        hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
-        out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
-        # model_type = "sat_spec"
-        model = NeuroSAT(
-            metadata,
-            input_size,
-            out_channels,
-            hidden_size,
-            num_passes=params.num_lstm_passes,
-            device=device,
-            flip_inputs=params.flip_inputs,
-            layernorm_lstm_cell=params.layernorm_lstm_cell,
-            aggr=params.gnn_aggregation
-        )
-        # model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=params.num_lstm_passes, device=device)
-        model = model.cuda()
-        optimizer = torch.optim.Adam(model.parameters(),lr=params.start_learning_rate, weight_decay=params.weight_decay)
-        if type(model) == AdaptedNeuroSAT:
-            group = "generic" + hostname
-        else:
-            group = "sat_specific" + hostname
-        wandb.init(
-            project=f"SATGNN",
-            config=params,
-            group=group
-        )
-        if params.lr_scheduler_patience is not None:
-            lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=params.lr_scheduler_patience, gamma=params.lr_scheduler_factor, verbose=True)
-        else:
-            lr_scheduler = None
-        train_model(
-            model,
-            train_loader,
-            test_loader,
-            optimizer,
-            lr_scheduler,
-            criterion,
-            params.num_epochs,
-            samples_per_epoch=params.samples_per_epoch,
-            clip_value=params.clip_gradient_norm,
-            model_save_path=params.model_save_path,
-            wandb_run_name=wandb.run.name
-        )
-        # profile = cProfile.Profile()
-        # profile.run('train_model(model, train_loader, test_loader, optimizer, lr_scheduler, criterion, params.num_epochs, samples_per_epoch=params.samples_per_epoch, clip_value=0.65)')
+    # for params in search_parameters:
+    train_loader = DataLoader(train_dataset, batch_size=batch_size//32, shuffle=True, collate_fn=custom_hetero_list_collate_fn, num_workers=0)
+    test_loader = DataLoader(test_dataset, batch_size=1024//32, shuffle=False, collate_fn=custom_hetero_list_collate_fn, num_workers=0)
+    first_batch = train_dataset[0][0]
+    metadata = (list(first_batch.x_dict.keys()), list(first_batch.edge_index_dict.keys()))
+    num_hidden_channels = hidden_units
+    input_size = {key: value.size(1) for key, value in first_batch.x_dict.items()}
+    hidden_size = {key: num_hidden_channels for key, value in first_batch.x_dict.items()}
+    out_channels = {key: num_hidden_channels for key in first_batch.x_dict.keys()}
 
-        # stats = pstats.Stats(profile)
-        # stats.sort_stats('tottime')
-        # stats.print_stats()
-        wandb.finish() 
+    model = NeuroSAT(
+        metadata,
+        input_size,
+        out_channels,
+        hidden_size,
+        num_passes=num_lstm_passes,
+        device=device,
+        flip_inputs=flip_inputs,
+        layernorm_lstm_cell=True,
+        aggr=gnn_aggregation
+    )
+    # model = AdaptedNeuroSAT(metadata, input_size, out_channels, hidden_size, num_passes=num_lstm_passes, device=device)
+    model = model.cuda()
+    optimizer = torch.optim.Adam(model.parameters(),lr=start_learning_rate, weight_decay=weight_decay)
+    if type(model) == AdaptedNeuroSAT:
+        group = "generic" + hostname
+    else:
+        group = "sat_specific" + hostname
+    wandb.init(
+        project=f"SATGNN",
+        config=experiment_config,
+        group=group
+    )
+    if lr_scheduler_patience is not None:
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=lr_scheduler_patience, gamma=lr_decay_factor, verbose=True)
+    else:
+        lr_scheduler = None
+    train_model(
+        model,
+        train_loader,
+        test_loader,
+        optimizer,
+        lr_scheduler,
+        criterion,
+        num_epochs,
+        samples_per_epoch=samples_per_epoch,
+        clip_value=clip_gradient_norm,
+        model_save_path=model_save_path,
+        wandb_run_name=wandb.run.name
+    )
+    
+    wandb.finish() 
