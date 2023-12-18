@@ -567,7 +567,6 @@ class XCSP3GraphBuilder:
         condition_comparison_operator = condition["operator"]
         condition_operand = condition["operand"]
         comparison_operator_subtype_id = self.operator_type_ids.add_subtype_id(condition_comparison_operator)["id"]
-        # comparison_operator_node_id = self.operator_type_ids.add_node_id(condition_comparison_operator)
         
         if condition_operand.isdigit(): # in this case, the sum is compared to a float
             new_comparison_node_id = self.operator_type_ids.add_node_id(subtype_name=condition_comparison_operator)
@@ -723,14 +722,8 @@ if __name__ == "__main__":
     from instance import parse_instance
     import os
 
-    # test_files_path = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\XCSP23_V2\MiniCSP23"
-    # files = [os.path.join(test_files_path, file) for file in os.listdir(test_files_path)]
 
-    # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\text.xml"
-    # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\sample_problems\ClockTriplet-03-12_c22.xml"
-    # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\knapsack_instances\instance_1.xml"
-    # filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\graph_coloring_instances\data0_0.xml"
-    filepath = r"C:\Users\leobo\Desktop\École\Poly\Recherche\Generic-Graph-Representation\Graph-Representation\src\models\decision_tsp\data\raw_elem\0.xml"
+    filepath = r""
     instance = parse_instance(filepath)
     graph_builder = XCSP3GraphBuilder(instance, filepath)
     graph_builder.get_graph_representation()
