@@ -2,10 +2,10 @@
 This repo contains experiments related to the representation of combinatorial optimization problems as (heterogeneous) graphs. We include all the code related to the implementations of 4 problem-specific representations, as well as our generic model and our XCSP3 parser. 
 
 The problem-specific models are the following:
-- (NeuroSAT)[https://arxiv.org/abs/1802.03685]:a GNN trained to predict whether a given SAT problem is solvable or not- and an attempt to model SAT problems with a generic graph representation. 
-- (TSP-GNN)[https://arxiv.org/abs/1809.02721]: a GNN trained to predict the decision variant of a TSP.
-- (GC-GNN)[https://arxiv.org/abs/1903.04598]: a GNN trained to predict the decision variant of a Graph coloring problem.
-- (KS-GNN)[https://link.springer.com/chapter/10.1007/978-3-030-58475-7_51]: a GNN trained to predict the decision variant of a Knapsack problem.
+- [NeuroSAT](https://arxiv.org/abs/1802.03685) :a GNN trained to predict whether a given SAT problem is solvable or not- and an attempt to model SAT problems with a generic graph representation. 
+- [TSP-GNN](https://arxiv.org/abs/1809.02721): a GNN trained to predict the decision variant of a TSP.
+- [GC-GNN](https://arxiv.org/abs/1903.04598) : a GNN trained to predict the decision variant of a Graph coloring problem.
+- [KS-GNN](https://link.springer.com/chapter/10.1007/978-3-030-58475-7_51): a GNN trained to predict the decision variant of a Knapsack problem.
 - The generic graph representation is intended to be used to model any combinatorial optimization as a graph.
 
 ## Our heterogeneous graph representation
