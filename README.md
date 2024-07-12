@@ -232,3 +232,21 @@ Training scripts are provided for all models. They are located in the `src` dire
 - `train_graph_coloring.py` Trains a graph coloring-specific model
 - `train_knapsack_specific_model.py` Trains a knapsack-specific model
 - `train_generic_model.py` Trains a generic model
+
+## Using this project
+
+To cite this work:
+```
+@InProceedings{10.1007/978-3-031-60597-0_7,
+author="Boisvert, L{\'e}o
+and Verhaeghe, H{\'e}l{\`e}ne
+and Cappart, Quentin",
+editor="Dilkina, Bistra",
+title="Towards a Generic Representation of Combinatorial Problems for Learning-Based Approaches",
+booktitle="Integration of Constraint Programming, Artificial Intelligence, and Operations Research",
+year="2024",
+publisher="Springer Nature Switzerland",
+pages="99--108",
+isbn="978-3-031-60597-0"
+}
+```
